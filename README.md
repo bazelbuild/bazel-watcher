@@ -1,3 +1,3 @@
-# IBazel
+# Bazel watcher
 
-Copyright 2016 The Bazel Authors. All right reserved.
+Copyright 2017 The Bazel Authors. All right reserved.
