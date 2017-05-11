@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/fsnotify/fsnotify"
 )
 

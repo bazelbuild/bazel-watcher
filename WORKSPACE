@@ -14,9 +14,8 @@
 
 git_repository(
     name = "io_bazel_rules_go",
-    # TODO: If the bazel changes are accepted into rules_go then make this correct.
-    commit = "0bf5e8a0f6de2760cb42e9803018808172a73737",
-    remote = "https://github.com/achew22/rules_go",
+    remote = "https://github.com/bazelbuild/rules_go",
+    tag = "0.4.4",
 )
 
 load("@io_bazel_rules_go//go:def.bzl", "go_repositories", "new_go_repository")
