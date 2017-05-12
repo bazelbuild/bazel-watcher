@@ -2,7 +2,7 @@
 
 Note: This is not an official Google product.
 
-A source file watcher for [Bazel.io](https://Bazel.io) projects
+A source file watcher for [Bazel](https://Bazel.build) projects
 
 Ever wanted to save a file and have your tests automatically run? How about
 restart your webserver when one of the source files change? Look no further.
