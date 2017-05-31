@@ -26,6 +26,10 @@ import (
 
 var b *bazel.Bazel
 
+const moveCheckInterval time.Duration = 20 * time.Millisecond
+
+const moveCheckRetries int = 10
+
 func usage() {
 	fmt.Printf(`ibazel
 
@@ -98,8 +102,23 @@ func main() {
 	go func() {
 		for {
 			select {
-			case _ = <-watcher.Events:
-				fmt.Printf("Files changed rebuilding...\n")
+			case event := <-watcher.Events:
+				switch event.Op {
+				case fsnotify.Remove:
+					for i := 0; i < moveCheckRetries; i++ {
+						err = watcher.Add(event.Name)
+						if err == nil {
+							fmt.Printf("File replaced, rebuilding...\n")
+							break
+						}
+						if i == moveCheckRetries - 1 {
+							fmt.Printf("File removed, rebuilding...\n")
+						}
+						time.Sleep(moveCheckInterval)
+					}
+				default:
+					fmt.Printf("File changed, rebuilding...\n")
+				}
 				commandToRun(b, target)
 			case err := <-watcher.Errors:
 				fmt.Println("Error:", err)
