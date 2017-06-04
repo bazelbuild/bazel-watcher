@@ -24,11 +24,20 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-var b *bazel.Bazel
+type State string
 
-const moveCheckInterval time.Duration = 20 * time.Millisecond
+const (
+	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
+	QUERY          State = "QUERY"
+	WAIT           State = "WAIT"
+	DEBOUNCE_RUN   State = "DEBOUNCE_RUN"
+	RUN            State = "RUN"
+	QUIT           State = "QUIT"
+)
 
-const moveCheckRetries int = 10
+const debounceDuration = 100 * time.Millisecond
+const sourceQuery = "kind('source file', deps(set(%s)))"
+const buildQuery = "buildfiles(deps(set(%s)))"
 
 func usage() {
 	fmt.Printf(`ibazel
@@ -57,32 +66,26 @@ func main() {
 		return
 	}
 
-	b = bazel.New()
-
 	command := os.Args[1]
 	target := os.Args[2]
 
-	query := fmt.Sprintf("kind('source file', deps('%s'))", target)
-
-	toWatch := queryForSourceFiles(query)
-
-	watcher, err := fsnotify.NewWatcher()
+	// Even though we are going to recreate this when the query happens, create
+	// the pointer we will use to refer to the watchers right now.
+	buildFileWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		fmt.Printf("Watcher error: %v", err)
 		return
 	}
-	defer watcher.Close()
+	defer buildFileWatcher.Close()
 
-	for _, line := range toWatch {
-		fmt.Printf("Line: %s\n", line)
-		err = watcher.Add(line)
-		if err != nil {
-			fmt.Printf("Error watching: %v", err)
-			return
-		}
+	sourceFileWatcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		fmt.Printf("Watcher error: %v", err)
+		return
 	}
+	defer sourceFileWatcher.Close()
 
-	var commandToRun func(*bazel.Bazel, string)
+	var commandToRun func(string)
 	switch command {
 	case "build":
 		fmt.Printf("Building %s\n", target)
@@ -98,42 +101,52 @@ func main() {
 		return
 	}
 
-	// Listen to the events and trigger action based on the response code.
-	go func() {
-		for {
+	state := QUERY
+	for {
+		fmt.Printf("State: %s\n", state)
+		switch state {
+		case WAIT:
 			select {
-			case event := <-watcher.Events:
-				switch event.Op {
-				case fsnotify.Remove:
-					for i := 0; i < moveCheckRetries; i++ {
-						err = watcher.Add(event.Name)
-						if err == nil {
-							fmt.Printf("File replaced, rebuilding...\n")
-							break
-						}
-						if i == moveCheckRetries - 1 {
-							fmt.Printf("File removed, rebuilding...\n")
-						}
-						time.Sleep(moveCheckInterval)
-					}
-				default:
-					fmt.Printf("File changed, rebuilding...\n")
-				}
-				commandToRun(b, target)
-			case err := <-watcher.Errors:
-				fmt.Println("Error:", err)
+			case <-sourceFileWatcher.Events:
+				fmt.Printf("Detected source change. Rebuilding...\n")
+				state = DEBOUNCE_RUN
+			case <-buildFileWatcher.Events:
+				fmt.Printf("Detected build graph change. Requerying...\n")
+				state = DEBOUNCE_QUERY
 			}
+		case DEBOUNCE_QUERY:
+			select {
+			case <-buildFileWatcher.Events:
+				state = DEBOUNCE_QUERY
+			case <-time.After(debounceDuration):
+				state = QUERY
+			}
+		case QUERY:
+			// Query for which files to watch.
+			fmt.Printf("Querying for BUILD files...\n")
+			watchFiles(fmt.Sprintf(buildQuery, target), buildFileWatcher)
+			fmt.Printf("Querying for source files...\n")
+			watchFiles(fmt.Sprintf(sourceQuery, target), sourceFileWatcher)
+			state = RUN
+		case DEBOUNCE_RUN:
+			select {
+			case <-sourceFileWatcher.Events:
+				state = DEBOUNCE_RUN
+			case <-time.After(debounceDuration):
+				state = RUN
+			}
+		case RUN:
+			state = WAIT
+			commandToRun(target)
 		}
-	}()
-
-	// Kick things off by sending an event to make the first run happen.
-	watcher.Events <- fsnotify.Event{}
-
-	// Wait for the file to change for 24 hours. If it doesn't quit.
-	time.Sleep(24 * time.Hour)
+	}
 }
 
 func queryForSourceFiles(query string) []string {
+	b := bazel.New()
+	b.WriteToStderr(false)
+	b.WriteToStdout(false)
+
 	res, err := b.Query(query)
 	if err != nil {
 		fmt.Printf("Error running Bazel %s\n", err)
@@ -144,13 +157,41 @@ func queryForSourceFiles(query string) []string {
 		if strings.HasPrefix(line, "@") {
 			continue
 		}
+		if strings.HasPrefix(line, "//external") {
+			continue
+		}
+
+		// For files that are served from the root they will being with "//:". This
+		// is a problematic string because, for example, "//:demo.sh" will become
+		// "/demo.sh" which is in the root of the filesystem and is unlikely to exist.
+		if strings.HasPrefix(line, "//:") {
+			line = line[3:]
+		}
 
 		toWatch = append(toWatch, strings.Replace(strings.TrimPrefix(line, "//"), ":", "/", 1))
 	}
+
 	return toWatch
 }
 
-func build(b *bazel.Bazel, target string) {
+func watchFiles(query string, watcher *fsnotify.Watcher) {
+	toWatch := queryForSourceFiles(query)
+
+	// TODO: Figure out how to unwatch files that are no longer included
+
+	for _, line := range toWatch {
+		fmt.Printf("Watching: %s\n", line)
+		err := watcher.Add(line)
+		if err != nil {
+			fmt.Printf("Error watching file %v\nError: %v\n", line, err)
+			continue
+		}
+	}
+}
+
+func build(target string) {
+	b := bazel.New()
+
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -161,7 +202,9 @@ func build(b *bazel.Bazel, target string) {
 	}
 }
 
-func test(b *bazel.Bazel, target string) {
+func test(target string) {
+	b := bazel.New()
+
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -172,10 +215,14 @@ func test(b *bazel.Bazel, target string) {
 	}
 }
 
-func run(b *bazel.Bazel, target string) {
+func run(target string) {
+	b := bazel.New()
+
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	// Start run in a goroutine so that it doesn't block.
+
+	// Start run in a goroutine so that it doesn't block watching for files that
+	// have changed.
 	go b.Run(target)
 }
