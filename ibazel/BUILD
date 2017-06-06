@@ -22,7 +22,7 @@ go_binary(
 
 go_library(
     name = "go_default_library",
-    srcs = ["main.go"],
+    srcs = ["main.go", "source_event_handler.go"],
     visibility = ["//visibility:private"],
     deps = [
         "//bazel:go_default_library",

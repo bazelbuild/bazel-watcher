@@ -59,25 +59,6 @@ ibazel build //path/to/my/buildable:target
 `)
 }
 
-type SourceEventProcessor struct {
-	SourceFileEvents chan fsnotify.Event
-	SourceFileWatcher *fsnotify.Watcher
-}
-
-func (s SourceEventProcessor) Listen() {
-	for {
-		select {
-		case event := <-s.SourceFileWatcher.Events:
-			s.SourceFileEvents <- event
-
-			switch event.Op {
-			case fsnotify.Remove:
-				s.SourceFileWatcher.Add(event.Name)
-			}
-		}
-	}
-}
-
 func main() {
 
 	if len(os.Args) < 3 {
@@ -104,11 +85,7 @@ func main() {
 	}
 	defer sourceFileWatcher.Close()
 
-	sourceFileEvents := make(chan fsnotify.Event)
-
-	var sourceEventProcessor = SourceEventProcessor{sourceFileEvents, sourceFileWatcher}
-
-	go sourceEventProcessor.Listen()
+	sourceEventHandler := NewSourceEventHandler(sourceFileWatcher)
 
 	var commandToRun func(string)
 	switch command {
@@ -132,7 +109,7 @@ func main() {
 		switch state {
 		case WAIT:
 			select {
-			case <-sourceFileEvents:
+			case <-sourceEventHandler.SourceFileEvents:
 				fmt.Printf("Detected source change. Rebuilding...\n")
 				state = DEBOUNCE_RUN
 			case <-buildFileWatcher.Events:
@@ -155,7 +132,7 @@ func main() {
 			state = RUN
 		case DEBOUNCE_RUN:
 			select {
-			case <-sourceFileEvents:
+			case <-sourceEventHandler.SourceFileEvents:
 				state = DEBOUNCE_RUN
 			case <-time.After(debounceDuration):
 				state = RUN
