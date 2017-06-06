@@ -85,6 +85,8 @@ func main() {
 	}
 	defer sourceFileWatcher.Close()
 
+	sourceEventHandler := NewSourceEventHandler(sourceFileWatcher)
+
 	var commandToRun func(string)
 	switch command {
 	case "build":
@@ -107,7 +109,7 @@ func main() {
 		switch state {
 		case WAIT:
 			select {
-			case <-sourceFileWatcher.Events:
+			case <-sourceEventHandler.SourceFileEvents:
 				fmt.Printf("Detected source change. Rebuilding...\n")
 				state = DEBOUNCE_RUN
 			case <-buildFileWatcher.Events:
@@ -130,7 +132,7 @@ func main() {
 			state = RUN
 		case DEBOUNCE_RUN:
 			select {
-			case <-sourceFileWatcher.Events:
+			case <-sourceEventHandler.SourceFileEvents:
 				state = DEBOUNCE_RUN
 			case <-time.After(debounceDuration):
 				state = RUN
