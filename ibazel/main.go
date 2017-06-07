@@ -67,7 +67,7 @@ func main() {
 	}
 
 	command := os.Args[1]
-	target := os.Args[2]
+	targets := os.Args[2:]
 
 	// Even though we are going to recreate this when the query happens, create
 	// the pointer we will use to refer to the watchers right now.
@@ -90,13 +90,10 @@ func main() {
 	var commandToRun func(string)
 	switch command {
 	case "build":
-		fmt.Printf("Building %s\n", target)
 		commandToRun = build
 	case "test":
-		fmt.Printf("Testing %s\n", target)
 		commandToRun = test
 	case "run":
-		fmt.Printf("Running %s\n", target)
 		commandToRun = run
 	default:
 		fmt.Printf("Asked me to perform %s. I don't know how to do that.", command)
@@ -124,12 +121,16 @@ func main() {
 				state = QUERY
 			}
 		case QUERY:
-			// Query for which files to watch.
-			fmt.Printf("Querying for BUILD files...\n")
-			watchFiles(fmt.Sprintf(buildQuery, target), buildFileWatcher)
-			fmt.Printf("Querying for source files...\n")
-			watchFiles(fmt.Sprintf(sourceQuery, target), sourceFileWatcher)
-			state = RUN
+	                // Query for which files to watch.
+                        fmt.Printf("Querying for BUILD files...\n")
+                        for _, target := range targets {
+				watchFiles(fmt.Sprintf(buildQuery, target), buildFileWatcher)
+                        }
+                        fmt.Printf("Querying for source files...\n")
+                        for _, target := range targets {
+				watchFiles(fmt.Sprintf(sourceQuery, target), sourceFileWatcher)
+                        }
+                        state = RUN
 		case DEBOUNCE_RUN:
 			select {
 			case <-sourceEventHandler.SourceFileEvents:
@@ -139,7 +140,10 @@ func main() {
 			}
 		case RUN:
 			state = WAIT
-			commandToRun(target)
+                        for _, target := range targets {
+				fmt.Printf("%sing %s\n", strings.Title(command), target)
+				commandToRun(target)
+                        }
 		}
 	}
 }
