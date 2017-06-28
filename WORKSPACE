@@ -15,7 +15,7 @@
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go",
-    tag = "0.4.4",
+    tag = "0.5.0",
 )
 
 load("@io_bazel_rules_go//go:def.bzl", "go_repositories", "new_go_repository")
@@ -32,4 +32,10 @@ new_go_repository(
     name = "org_golang_x_sys",
     commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
     importpath = "golang.org/x/sys",
+)
+
+new_go_repository(
+    name = "com_github_bazelbuild_rules_go",
+    importpath = "github.com/bazelbuild/rules_go",
+    tag = "0.5.0",
 )
