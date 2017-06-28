@@ -22,7 +22,18 @@ import (
 	"strings"
 )
 
-type Bazel struct {
+type Bazel interface {
+	WriteToStderr(v bool)
+	WriteToStdout(v bool)
+	Info() (map[string]string, error)
+	Query(args ...string) ([]string, error)
+	Build(args ...string) error
+	Test(args ...string) error
+	Run(args ...string) (*exec.Cmd, error)
+	Cancel()
+}
+
+type bazel struct {
 	cmd           *exec.Cmd
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -30,21 +41,21 @@ type Bazel struct {
 	writeToStdout bool
 }
 
-func New() *Bazel {
-	return &Bazel{}
+func New() Bazel {
+	return &bazel{}
 }
 
 // WriteToStderr when running an operation.
-func (b *Bazel) WriteToStderr(v bool) {
+func (b *bazel) WriteToStderr(v bool) {
 	b.writeToStderr = v
 }
 
 // WriteToStdout when running an operation.
-func (b *Bazel) WriteToStdout(v bool) {
+func (b *bazel) WriteToStdout(v bool) {
 	b.writeToStdout = v
 }
 
-func (b *Bazel) newCommand(command string, args ...string) {
+func (b *bazel) newCommand(command string, args ...string) {
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 
 	args = append([]string{command}, args...)
@@ -71,7 +82,7 @@ func (b *Bazel) newCommand(command string, args ...string) {
 // 'bazel help info-keys'.
 //
 //   res, err := b.Info()
-func (b *Bazel) Info() (map[string]string, error) {
+func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 	b.newCommand("info")
@@ -83,7 +94,7 @@ func (b *Bazel) Info() (map[string]string, error) {
 	return b.processInfo(string(info))
 }
 
-func (b *Bazel) processInfo(info string) (map[string]string, error) {
+func (b *bazel) processInfo(info string) (map[string]string, error) {
 	lines := strings.Split(info, "\n")
 	output := make(map[string]string, 0)
 	for _, line := range lines {
@@ -113,7 +124,7 @@ func (b *Bazel) processInfo(info string) (map[string]string, error) {
 // or to find a dependency path between //path/to/package:target and //dependency:
 //
 //   res, err := b.Query('somepath(//path/to/package:target, //dependency)')
-func (b *Bazel) Query(args ...string) ([]string, error) {
+func (b *bazel) Query(args ...string) ([]string, error) {
 	b.newCommand("query", args...)
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
@@ -125,7 +136,7 @@ func (b *Bazel) Query(args ...string) ([]string, error) {
 	return b.processQuery(string(info))
 }
 
-func (b *Bazel) processQuery(info string) ([]string, error) {
+func (b *bazel) processQuery(info string) ([]string, error) {
 	toReturn := make([]string, 0, 10000)
 	lines := strings.Split(info, "\n")
 	for _, line := range lines {
@@ -137,7 +148,7 @@ func (b *Bazel) processQuery(info string) ([]string, error) {
 	return toReturn, nil
 }
 
-func (b *Bazel) Build(args ...string) error {
+func (b *bazel) Build(args ...string) error {
 	b.newCommand("build", args...)
 
 	err := b.cmd.Run()
@@ -145,7 +156,7 @@ func (b *Bazel) Build(args ...string) error {
 	return err
 }
 
-func (b *Bazel) Test(args ...string) error {
+func (b *bazel) Test(args ...string) error {
 	b.newCommand("test", append([]string{"--test_output=streamed"}, args...)...)
 
 	err := b.cmd.Run()
@@ -154,7 +165,7 @@ func (b *Bazel) Test(args ...string) error {
 }
 
 // Build the specified target (singular) and run it with the given arguments.
-func (b *Bazel) Run(args ...string) (*exec.Cmd, error) {
+func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
 	b.newCommand("run", args...)
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -170,7 +181,7 @@ func (b *Bazel) Run(args ...string) (*exec.Cmd, error) {
 
 // Cancel the currently running operation. Useful if you call Run(target) and
 // would like to stop the action running in a goroutine.
-func (b *Bazel) Cancel() {
+func (b *bazel) Cancel() {
 	if b.cancel == nil {
 		return
 	}

@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestProcessInfo(t *testing.T) {
-	b := New()
+	b := &bazel{}
 	got, err := b.processInfo(`KEY: VALUE
 KEY2: VALUE2
 KEY3: value`)
@@ -48,7 +48,7 @@ KEY3: value`)
 }
 
 func TestWriteToStderrAndStdout(t *testing.T) {
-	b := New()
+	b := &bazel{}
 
 	// By default it should write to its own pipe.
 	b.newCommand("version")
@@ -83,7 +83,7 @@ func TestWriteToStderrAndStdout(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	b := New()
+	b := &bazel{}
 	got, err := b.processQuery(`//demo/path/to:target
 //other/path/to:target
 //third_party/path/to:target`)

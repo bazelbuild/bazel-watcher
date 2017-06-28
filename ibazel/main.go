@@ -18,26 +18,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
-
-	"github.com/bazelbuild/bazel-watcher/bazel"
-	"github.com/fsnotify/fsnotify"
 )
-
-type State string
-
-const (
-	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
-	QUERY          State = "QUERY"
-	WAIT           State = "WAIT"
-	DEBOUNCE_RUN   State = "DEBOUNCE_RUN"
-	RUN            State = "RUN"
-	QUIT           State = "QUIT"
-)
-
-const debounceDuration = 100 * time.Millisecond
-const sourceQuery = "kind('source file', deps(set(%s)))"
-const buildQuery = "buildfiles(deps(set(%s)))"
 
 func usage() {
 	fmt.Printf(`ibazel
@@ -59,172 +40,32 @@ ibazel build //path/to/my/buildable:target
 `)
 }
 
+// main entrypoint for IBazel.
 func main() {
-
 	if len(os.Args) < 3 {
 		usage()
 		return
 	}
 
-	command := os.Args[1]
-	targets := os.Args[2:]
+	command := strings.ToLower(os.Args[1])
 
-	joined_targets := strings.Join(targets, " ")
-
-	// Even though we are going to recreate this when the query happens, create
-	// the pointer we will use to refer to the watchers right now.
-	buildFileWatcher, err := fsnotify.NewWatcher()
+	i, err := New()
 	if err != nil {
-		fmt.Printf("Watcher error: %v", err)
-		return
+		fmt.Printf("Error creating iBazel", err)
+		os.Exit(1)
 	}
-	defer buildFileWatcher.Close()
+	defer i.Cleanup()
 
-	sourceFileWatcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		fmt.Printf("Watcher error: %v", err)
-		return
-	}
-	defer sourceFileWatcher.Close()
-
-	sourceEventHandler := NewSourceEventHandler(sourceFileWatcher)
-
-	var commandToRun func(...string)
 	switch command {
 	case "build":
-		commandToRun = build
+		i.Build(os.Args[2:]...)
 	case "test":
-		commandToRun = test
+		i.Test(os.Args[2:]...)
 	case "run":
-		commandToRun = run
+		i.Run(os.Args[2])
 	default:
 		fmt.Printf("Asked me to perform %s. I don't know how to do that.", command)
+		usage()
 		return
 	}
-
-	state := QUERY
-	for {
-		fmt.Printf("State: %s\n", state)
-		switch state {
-		case WAIT:
-			select {
-			case <-sourceEventHandler.SourceFileEvents:
-				fmt.Printf("Detected source change. Rebuilding...\n")
-				state = DEBOUNCE_RUN
-			case <-buildFileWatcher.Events:
-				fmt.Printf("Detected build graph change. Requerying...\n")
-				state = DEBOUNCE_QUERY
-			}
-		case DEBOUNCE_QUERY:
-			select {
-			case <-buildFileWatcher.Events:
-				state = DEBOUNCE_QUERY
-			case <-time.After(debounceDuration):
-				state = QUERY
-			}
-		case QUERY:
-	                // Query for which files to watch.
-                        fmt.Printf("Querying for BUILD files...\n")
-			watchFiles(fmt.Sprintf(buildQuery, joined_targets), buildFileWatcher)
-                        fmt.Printf("Querying for source files...\n")
-			watchFiles(fmt.Sprintf(sourceQuery, joined_targets), sourceFileWatcher)
-                        state = RUN
-		case DEBOUNCE_RUN:
-			select {
-			case <-sourceEventHandler.SourceFileEvents:
-				state = DEBOUNCE_RUN
-			case <-time.After(debounceDuration):
-				state = RUN
-			}
-		case RUN:
-			state = WAIT
-			fmt.Printf("%sing %s\n", strings.Title(command), joined_targets)
-			commandToRun(targets...)
-		}
-	}
-}
-
-func queryForSourceFiles(query string) []string {
-	b := bazel.New()
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
-
-	res, err := b.Query(query)
-	if err != nil {
-		fmt.Printf("Error running Bazel %s\n", err)
-	}
-
-	toWatch := make([]string, 0, 10000)
-	for _, line := range res {
-		if strings.HasPrefix(line, "@") {
-			continue
-		}
-		if strings.HasPrefix(line, "//external") {
-			continue
-		}
-
-		// For files that are served from the root they will being with "//:". This
-		// is a problematic string because, for example, "//:demo.sh" will become
-		// "/demo.sh" which is in the root of the filesystem and is unlikely to exist.
-		if strings.HasPrefix(line, "//:") {
-			line = line[3:]
-		}
-
-		toWatch = append(toWatch, strings.Replace(strings.TrimPrefix(line, "//"), ":", "/", 1))
-	}
-
-	return toWatch
-}
-
-func watchFiles(query string, watcher *fsnotify.Watcher) {
-	toWatch := queryForSourceFiles(query)
-
-	// TODO: Figure out how to unwatch files that are no longer included
-
-	for _, line := range toWatch {
-		fmt.Printf("Watching: %s\n", line)
-		err := watcher.Add(line)
-		if err != nil {
-			fmt.Printf("Error watching file %v\nError: %v\n", line, err)
-			continue
-		}
-	}
-}
-
-func build(targets ...string) {
-	b := bazel.New()
-
-	b.Cancel()
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-	err := b.Build(targets...)
-	if err != nil {
-		fmt.Printf("Build error: %v", err)
-		return
-	}
-}
-
-func test(targets ...string) {
-	b := bazel.New()
-
-	b.Cancel()
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-	err := b.Test(targets...)
-	if err != nil {
-		fmt.Printf("Build error: %v", err)
-		return
-	}
-}
-
-func run(targets ...string) {
-	b := bazel.New()
-
-	b.Cancel()
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-
-	// Start run in a goroutine so that it doesn't block watching for files that
-	// have changed.
-	go b.Run(targets...)
 }
