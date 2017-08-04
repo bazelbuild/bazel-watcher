@@ -18,23 +18,23 @@ git_repository(
     tag = "0.5.2",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_repositories", "new_go_repository")
+load("@io_bazel_rules_go//go:def.bzl", "go_repositories", "go_repository")
 
 go_repositories()
 
-new_go_repository(
+go_repository(
     name = "com_github_fsnotify_fsnotify",
     commit = "7d7316ed6e1ed2de075aab8dfc76de5d158d66e1",
     importpath = "github.com/fsnotify/fsnotify",
 )
 
-new_go_repository(
+go_repository(
     name = "org_golang_x_sys",
     commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
     importpath = "golang.org/x/sys",
 )
 
-new_go_repository(
+go_repository(
     name = "com_github_bazelbuild_rules_go",
     importpath = "github.com/bazelbuild/rules_go",
     tag = "0.5.2",
