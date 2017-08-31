@@ -15,7 +15,7 @@
 git_repository(
     name = "io_bazel_rules_go",
     remote = "https://github.com/bazelbuild/rules_go",
-    tag = "0.5.2",
+    tag = "0.5.4",
 )
 
 load("@io_bazel_rules_go//go:def.bzl", "go_repositories", "new_go_repository")
@@ -37,5 +37,5 @@ new_go_repository(
 new_go_repository(
     name = "com_github_bazelbuild_rules_go",
     importpath = "github.com/bazelbuild/rules_go",
-    tag = "0.5.2",
+    tag = "0.5.4",
 )
