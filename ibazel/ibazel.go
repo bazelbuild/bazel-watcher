@@ -48,7 +48,9 @@ const buildQuery = "buildfiles(deps(set(%s)))"
 type IBazel struct {
 	b *bazel.Bazel
 
-	cmd *exec.Cmd
+	cmd       *exec.Cmd
+	args      []string
+	bazelArgs []string
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
@@ -66,6 +68,16 @@ func New() (*IBazel, error) {
 	}
 
 	return i, nil
+}
+
+func (i *IBazel) newBazel() bazel.Bazel {
+	b := bazelNew()
+	b.SetArguments(i.bazelArgs)
+	return b
+}
+
+func (i *IBazel) SetBazelArgs(args []string) {
+	i.bazelArgs = args
 }
 
 func (i *IBazel) Cleanup() {
@@ -93,7 +105,8 @@ func (i *IBazel) setup() error {
 }
 
 // Run the specified target (singular) in the IBazel loop.
-func (i *IBazel) Run(target string) error {
+func (i *IBazel) Run(target string, args []string) error {
+	i.args = args
 	return i.loop("run", i.run, []string{target})
 }
 
@@ -159,7 +172,7 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 }
 
 func (i *IBazel) build(targets ...string) {
-	b := bazelNew()
+	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
@@ -172,7 +185,7 @@ func (i *IBazel) build(targets ...string) {
 }
 
 func (i *IBazel) test(targets ...string) {
-	b := bazelNew()
+	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
@@ -196,7 +209,7 @@ func (i *IBazel) run(targets ...string) {
 		}
 	}
 
-	b := bazelNew()
+	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
@@ -214,7 +227,7 @@ func (i *IBazel) run(targets ...string) {
 
 	// Now that we have built the target, construct a executable form of it for
 	// execution in a go routine.
-	i.cmd = execCommand(targetPath, "TODO PASS IN ARGUMENTS")
+	i.cmd = execCommand(targetPath, i.args...)
 	i.cmd.Stdout = os.Stdout
 	i.cmd.Stderr = os.Stderr
 
@@ -228,8 +241,8 @@ func (i *IBazel) run(targets ...string) {
 	}
 }
 
-func queryForSourceFiles(query string) []string {
-	b := bazelNew()
+func (i *IBazel) queryForSourceFiles(query string) []string {
+	b := i.newBazel()
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 
@@ -261,7 +274,7 @@ func queryForSourceFiles(query string) []string {
 }
 
 func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
-	toWatch := queryForSourceFiles(query)
+	toWatch := i.queryForSourceFiles(query)
 
 	// TODO: Figure out how to unwatch files that are no longer included
 

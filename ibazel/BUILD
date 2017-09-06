@@ -36,7 +36,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["ibazel_test.go"],
+    srcs = [
+        "ibazel_test.go",
+        "main_test.go",
+    ],
     library = ":go_default_library",
     deps = [
         "@com_github_fsnotify_fsnotify//:go_default_library",

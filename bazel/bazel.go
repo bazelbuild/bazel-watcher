@@ -23,6 +23,7 @@ import (
 )
 
 type Bazel interface {
+	SetArguments([]string)
 	WriteToStderr(v bool)
 	WriteToStdout(v bool)
 	Info() (map[string]string, error)
@@ -35,6 +36,7 @@ type Bazel interface {
 
 type bazel struct {
 	cmd           *exec.Cmd
+	args          []string
 	ctx           context.Context
 	cancel        context.CancelFunc
 	writeToStderr bool
@@ -43,6 +45,10 @@ type bazel struct {
 
 func New() Bazel {
 	return &bazel{}
+}
+
+func (b *bazel) SetArguments(args []string) {
+	b.args = args
 }
 
 // WriteToStderr when running an operation.
@@ -149,7 +155,7 @@ func (b *bazel) processQuery(info string) ([]string, error) {
 }
 
 func (b *bazel) Build(args ...string) error {
-	b.newCommand("build", args...)
+	b.newCommand("build", append(b.args, args...)...)
 
 	err := b.cmd.Run()
 
@@ -157,7 +163,7 @@ func (b *bazel) Build(args ...string) error {
 }
 
 func (b *bazel) Test(args ...string) error {
-	b.newCommand("test", append([]string{"--test_output=streamed"}, args...)...)
+	b.newCommand("test", append(b.args, args...)...)
 
 	err := b.cmd.Run()
 
