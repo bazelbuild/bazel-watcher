@@ -29,6 +29,11 @@ import (
 type MockBazel struct {
 	actions       [][]string
 	queryResponse []string
+	args          []string
+}
+
+func (b *MockBazel) SetArguments(args []string) {
+	b.args = args
 }
 
 func (b *MockBazel) WriteToStderr(v bool) {
