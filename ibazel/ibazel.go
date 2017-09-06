@@ -1,8 +1,26 @@
+// Copyright 2017 The Bazel Authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
@@ -10,6 +28,7 @@ import (
 )
 
 var bazelNew = bazel.New
+var execCommand = exec.Command
 
 type State string
 
@@ -28,6 +47,8 @@ const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
 	b *bazel.Bazel
+
+	cmd *exec.Cmd
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
@@ -164,15 +185,47 @@ func (i *IBazel) test(targets ...string) {
 }
 
 func (i *IBazel) run(targets ...string) {
+	if i.cmd != nil {
+		if i.cmd.Process != nil {
+			// Kill it with fire by sending SIGKILL to the process PID which should
+			// propagate down to any subprocesses in the PGID (Process Group ID). To
+			// send to the PGID, send the signal to the negative of the process PID.
+			// Normally I would do this by calling i.cmd.Process.Signal, but that
+			// only goes to the PID not the PGID.
+			syscall.Kill(-i.cmd.Process.Pid, syscall.SIGKILL)
+		}
+	}
+
 	b := bazelNew()
 
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
+	// Start by building the binary
+	b.Build(targets...)
+
+	// Split the string on either : or / then rejoin it into the path as expected
+	// by the current OS.
+	sections := strings.FieldsFunc(targets[0], func(r rune) bool {
+		return r == ':' || r == '/'
+	})
+	targetPath := filepath.Join(append([]string{"bazel-bin"}, sections...)...)
+
+	// Now that we have built the target, construct a executable form of it for
+	// execution in a go routine.
+	i.cmd = execCommand(targetPath, "TODO PASS IN ARGUMENTS")
+	i.cmd.Stdout = os.Stdout
+	i.cmd.Stderr = os.Stderr
+
+	// Set a process group id (PGID) on the subprocess. This is
+	i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	// Start run in a goroutine so that it doesn't block watching for files that
 	// have changed.
-	go b.Run(targets...)
+	if err := i.cmd.Start(); err != nil {
+		fmt.Printf("Error starting process: %v\n", err)
+	}
 }
 
 func queryForSourceFiles(query string) []string {
