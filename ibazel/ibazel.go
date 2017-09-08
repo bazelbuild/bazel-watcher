@@ -206,6 +206,7 @@ func (i *IBazel) run(targets ...string) {
 			// Normally I would do this by calling i.cmd.Process.Signal, but that
 			// only goes to the PID not the PGID.
 			syscall.Kill(-i.cmd.Process.Pid, syscall.SIGKILL)
+			i.cmd.Wait()
 		}
 	}
 
