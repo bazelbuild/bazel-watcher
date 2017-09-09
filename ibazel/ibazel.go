@@ -16,9 +16,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -216,15 +216,19 @@ func (i *IBazel) run(targets ...string) {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	// Start by building the binary
-	b.Build(targets...)
+	tmpfile, err := ioutil.TempFile("", "bazel_script_path")
+	if err != nil {
+		fmt.Print(err)
+	}
+	// Close the file so bazel can write over it
+	if err := tmpfile.Close(); err != nil {
+		fmt.Print(err)
+	}
 
-	// Split the string on either : or / then rejoin it into the path as expected
-	// by the current OS.
-	sections := strings.FieldsFunc(targets[0], func(r rune) bool {
-		return r == ':' || r == '/'
-	})
-	targetPath := filepath.Join(append([]string{"bazel-bin"}, sections...)...)
+	// Start by building the binary
+	b.Run(append([]string{"--script_path=" + tmpfile.Name()}, targets...)...)
+
+	targetPath := tmpfile.Name()
 
 	// Now that we have built the target, construct a executable form of it for
 	// execution in a go routine.

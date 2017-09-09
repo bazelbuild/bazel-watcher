@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 	"os/exec"
-	"reflect"
+	"regexp"
 	"runtime"
 	"syscall"
 	"testing"
@@ -64,6 +64,24 @@ func (b *MockBazel) Run(args ...string) (*exec.Cmd, error) {
 }
 func (b *MockBazel) Cancel() {
 	b.actions = append(b.actions, []string{"Cancel"})
+}
+func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
+	failed := false
+	if len(b.actions) == len(expected) {
+		for i := range b.actions {
+			for j := range b.actions[i] {
+				match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
+				if !match {
+					failed = true
+				}
+			}
+		}
+	} else {
+		failed = true
+	}
+	if failed {
+		t.Errorf("Test didn't meet expecations.\nWant: %s\nGot:  %s", expected, b.actions)
+	}
 }
 
 var mockBazel *MockBazel
@@ -179,9 +197,7 @@ func TestIBazelBuild(t *testing.T) {
 		[]string{"Build", "//path/to:target"},
 	}
 
-	if !reflect.DeepEqual(mockBazel.actions, expected) {
-		t.Errorf("Build didn't meet expecations.\nWant: %s\nGot:  %s", expected, mockBazel.actions)
-	}
+	mockBazel.AssertActions(t, expected)
 }
 
 func TestIBazelTest(t *testing.T) {
@@ -200,9 +216,7 @@ func TestIBazelTest(t *testing.T) {
 		[]string{"Test", "//path/to:target"},
 	}
 
-	if !reflect.DeepEqual(mockBazel.actions, expected) {
-		t.Errorf("Test didn't meet expecations.\nWant: %s\nGot:  %s", expected, mockBazel.actions)
-	}
+	mockBazel.AssertActions(t, expected)
 }
 
 func TestIBazelRun_firstPass(t *testing.T) {
@@ -225,12 +239,10 @@ func TestIBazelRun_firstPass(t *testing.T) {
 		[]string{"Cancel"},
 		[]string{"WriteToStderr"},
 		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
+		[]string{"Run", "--script_path=.*", "//path/to:target"},
 	}
 
-	if !reflect.DeepEqual(mockBazel.actions, expected) {
-		t.Errorf("Test didn't meet expecations.\nWant: %s\nGot:  %s", expected, mockBazel.actions)
-	}
+	mockBazel.AssertActions(t, expected)
 
 	if cmd.Stdout != os.Stdout {
 		t.Errorf("Didn't set Stdout correctly")
@@ -272,12 +284,10 @@ func TestIBazelRun_killPrexistiingJobWhenStarting(t *testing.T) {
 		[]string{"Cancel"},
 		[]string{"WriteToStderr"},
 		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
+		[]string{"Run", "--script_path=.*", "//path/to:target"},
 	}
 
-	if !reflect.DeepEqual(mockBazel.actions, expected) {
-		t.Errorf("Test didn't meet expecations.\nWant: %s\nGot:  %s", expected, mockBazel.actions)
-	}
+	mockBazel.AssertActions(t, expected)
 
 	if cmd.Stdout != os.Stdout {
 		t.Errorf("Didn't set Stdout correctly")
