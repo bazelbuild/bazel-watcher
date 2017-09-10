@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+var osExit = os.Exit
 var bazelNew = bazel.New
 var execCommand = exec.Command
 
@@ -52,6 +54,9 @@ type IBazel struct {
 	args      []string
 	bazelArgs []string
 
+	sigs           chan os.Signal // Signals channel for the current process
+	interruptCount int
+
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
 
@@ -67,7 +72,51 @@ func New() (*IBazel, error) {
 		return nil, err
 	}
 
+	i.sigs = make(chan os.Signal, 1)
+	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		for {
+			i.handleSignals()
+		}
+	}()
+
 	return i, nil
+}
+
+func (i *IBazel) handleSignals() {
+	// Got an OS signal (SIGINT, SIGKILL).
+	sig := <-i.sigs
+	fmt.Printf("XXXXX: GOT A SIGNAL: %s\n", sig)
+
+	switch sig {
+	case syscall.SIGINT:
+		if i.subprocessRunning() {
+			fmt.Printf("XXXXX: PROCESS IS RUNNING %s\n", sig)
+			fmt.Printf("\nSubprocess killed from getting SIGINT\n")
+			i.kill()
+		} else {
+			fmt.Printf("XXXXX: PROCESS IS NOT RUNNING %s\n", sig)
+			osExit(3)
+		}
+		break
+	case syscall.SIGKILL:
+		if i.subprocessRunning() {
+			fmt.Printf("\nSubprocess killed from getting SIGKILL\n")
+			i.kill()
+		}
+		osExit(3)
+		return
+		break
+	default:
+		fmt.Printf("Got a signal that wasn't handled. Please file a bug against bazel-watceer that describes how you did this. This is a big problem.\n")
+	}
+
+	i.interruptCount += 1
+	if i.interruptCount > 2 {
+		fmt.Printf("\nExiting from getting SIGINT 3 times\n")
+		osExit(3)
+	}
 }
 
 func (i *IBazel) newBazel() bazel.Bazel {
@@ -197,18 +246,39 @@ func (i *IBazel) test(targets ...string) {
 	}
 }
 
-func (i *IBazel) run(targets ...string) {
-	if i.cmd != nil {
-		if i.cmd.Process != nil {
-			// Kill it with fire by sending SIGKILL to the process PID which should
-			// propagate down to any subprocesses in the PGID (Process Group ID). To
-			// send to the PGID, send the signal to the negative of the process PID.
-			// Normally I would do this by calling i.cmd.Process.Signal, but that
-			// only goes to the PID not the PGID.
-			syscall.Kill(-i.cmd.Process.Pid, syscall.SIGKILL)
-			i.cmd.Wait()
+func (i *IBazel) subprocessRunning() bool {
+	if i.cmd == nil {
+		return false
+	}
+	if i.cmd.Process == nil {
+		return false
+	}
+	if i.cmd.ProcessState != nil {
+		if i.cmd.ProcessState.Exited() {
+			return false
 		}
 	}
+
+	return true
+}
+
+func (i *IBazel) kill() {
+	if !i.subprocessRunning() {
+		return
+	}
+
+	// Kill it with fire by sending SIGKILL to the process PID which should
+	// propagate down to any subprocesses in the PGID (Process Group ID). To
+	// send to the PGID, send the signal to the negative of the process PID.
+	// Normally I would do this by calling i.cmd.Process.Signal, but that
+	// only goes to the PID not the PGID.
+	syscall.Kill(-i.cmd.Process.Pid, syscall.SIGKILL)
+	i.cmd.Wait()
+	i.cmd = nil
+}
+
+func (i *IBazel) run(targets ...string) {
+	i.kill()
 
 	b := i.newBazel()
 
