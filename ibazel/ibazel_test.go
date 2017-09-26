@@ -18,73 +18,15 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
-	"regexp"
 	"runtime"
 	"runtime/debug"
 	"syscall"
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
+	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 	"github.com/fsnotify/fsnotify"
 )
-
-type MockBazel struct {
-	actions       [][]string
-	queryResponse []string
-	args          []string
-}
-
-func (b *MockBazel) SetArguments(args []string) {
-	b.args = args
-}
-
-func (b *MockBazel) WriteToStderr(v bool) {
-	b.actions = append(b.actions, []string{"WriteToStderr"})
-}
-func (b *MockBazel) WriteToStdout(v bool) {
-	b.actions = append(b.actions, []string{"WriteToStdout"})
-}
-func (b *MockBazel) Info() (map[string]string, error) {
-	b.actions = append(b.actions, []string{"Info"})
-	return map[string]string{}, nil
-}
-func (b *MockBazel) Query(args ...string) ([]string, error) {
-	b.actions = append(b.actions, append([]string{"Query"}, args...))
-	return b.queryResponse, nil
-}
-func (b *MockBazel) Build(args ...string) error {
-	b.actions = append(b.actions, append([]string{"Build"}, args...))
-	return nil
-}
-func (b *MockBazel) Test(args ...string) error {
-	b.actions = append(b.actions, append([]string{"Test"}, args...))
-	return nil
-}
-func (b *MockBazel) Run(args ...string) (*exec.Cmd, error) {
-	b.actions = append(b.actions, append([]string{"Run"}, args...))
-	return nil, nil
-}
-func (b *MockBazel) Cancel() {
-	b.actions = append(b.actions, []string{"Cancel"})
-}
-func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
-	failed := false
-	if len(b.actions) == len(expected) {
-		for i := range b.actions {
-			for j := range b.actions[i] {
-				match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
-				if !match {
-					failed = true
-				}
-			}
-		}
-	} else {
-		failed = true
-	}
-	if failed {
-		t.Errorf("Test didn't meet expecations.\nWant: %s\nGot:  %s", expected, b.actions)
-	}
-}
 
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
 	if !reflect.DeepEqual(want, got) {
@@ -104,12 +46,12 @@ func assertKilled(t *testing.T, cmd *exec.Cmd) {
 	}
 }
 
-var mockBazel *MockBazel
+var mockBazel *mock_bazel.MockBazel
 
 func init() {
 	// Replace the bazle object creation function with one that makes my mock.
 	bazelNew = func() bazel.Bazel {
-		mockBazel = &MockBazel{}
+		mockBazel = &mock_bazel.MockBazel{}
 		return mockBazel
 	}
 }

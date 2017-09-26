@@ -46,6 +46,7 @@ go_test(
     library = ":go_default_library",
     deps = [
         "//bazel:go_default_library",
+        "//bazel/testing:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
 )
