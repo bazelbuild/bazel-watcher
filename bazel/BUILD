@@ -17,11 +17,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["bazel.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/bazel",
     visibility = ["//visibility:public"],
 )
 
 go_test(
     name = "go_default_test",
     srcs = ["bazel_test.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/bazel",
     library = ":go_default_library",
 )

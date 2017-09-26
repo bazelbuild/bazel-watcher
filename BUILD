@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
+load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_prefix")
 
 go_prefix("github.com/bazelbuild/bazel-watcher")
+
+gazelle(
+    name = "gazelle",
+    prefix = "github.com/bazelbuild/bazel-watcher",
+)

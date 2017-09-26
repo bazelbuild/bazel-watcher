@@ -16,6 +16,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_binary(
     name = "ibazel",
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     library = ":go_default_library",
     visibility = ["//visibility:public"],
 )
@@ -27,6 +28,7 @@ go_library(
         "main.go",
         "source_event_handler.go",
     ],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     visibility = ["//visibility:private"],
     deps = [
         "//bazel:go_default_library",
@@ -40,8 +42,10 @@ go_test(
         "ibazel_test.go",
         "main_test.go",
     ],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     library = ":go_default_library",
     deps = [
+        "//bazel:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
 )
