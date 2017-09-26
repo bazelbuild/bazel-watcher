@@ -12,11 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["mock.go"],
-    importpath = "github.com/bazelbuild/bazel-watcher/bazel/testing",
-    visibility = ["//visibility:public"],
+    srcs = [
+        "command.go",
+        "default_command.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
+    visibility = ["//ibazel:__subpackages__"],
+    deps = ["//bazel:go_default_library"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "command_test.go",
+        "default_command_test.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
+    library = ":go_default_library",
+    deps = ["//bazel/testing:go_default_library"],
 )

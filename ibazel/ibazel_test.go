@@ -16,7 +16,6 @@ package main
 
 import (
 	"os"
-	"os/exec"
 	"reflect"
 	"runtime"
 	"runtime/debug"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
+	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -35,15 +35,40 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 	}
 }
 
-func assertKilled(t *testing.T, cmd *exec.Cmd) {
-	if err := cmd.Wait(); err != nil {
-		if cmd.ProcessState.Success() {
-			t.Errorf("Subprocess terminated from \"natural\" causes, which means the job ran for 5 sec then existed. The Run method should have killed it before then.")
-		}
-		if cmd.ProcessState == nil {
-			t.Errorf("Killable subprocess was never started. State: %v, Err: %v", cmd.ProcessState, err)
-		}
+type mockCommand struct {
+	b      bazel.Bazel
+	target string
+	args   []string
+
+	notifiedOfChanges bool
+	started           bool
+	terminated        bool
+}
+
+func (m *mockCommand) Start() {
+	if m.started {
+		panic("Can't run command twice")
 	}
+	m.started = true
+}
+func (m *mockCommand) NotifyOfChanges() {
+	m.notifiedOfChanges = true
+}
+func (m *mockCommand) Terminate() {
+	if !m.started {
+		panic("Terminated before starting")
+	}
+	m.terminated = true
+}
+func (m *mockCommand) assertTerminated(t *testing.T) {
+	if !m.terminated {
+		t.Errorf("Mock command wasn't terminated")
+		debug.PrintStack()
+	}
+}
+
+func (m *mockCommand) IsSubprocessRunning() bool {
+	return m.started
 }
 
 var mockBazel *mock_bazel.MockBazel
@@ -186,14 +211,7 @@ func TestIBazelRun_firstPass(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
-
 	defer i.Cleanup()
-
-	// ls should be available on all systems.
-	cmd := exec.Command("ls")
-	execCommand = func(name string, arg ...string) *exec.Cmd {
-		return cmd
-	}
 
 	i.run("//path/to:target")
 
@@ -205,109 +223,64 @@ func TestIBazelRun_firstPass(t *testing.T) {
 	}
 
 	mockBazel.AssertActions(t, expected)
-
-	if cmd.Stdout != os.Stdout {
-		t.Errorf("Didn't set Stdout correctly")
-	}
-	if cmd.Stderr != os.Stderr {
-		t.Errorf("Didn't set Stderr correctly")
-	}
-	if cmd.SysProcAttr.Setpgid != true {
-		t.Errorf("Never set PGID (will prevent killing process trees -- see notes in ibazel.go")
-	}
-
-	if err := cmd.Wait(); err != nil {
-		t.Errorf("Subprocess was never started. State: %v, Err: %v", cmd.ProcessState, err)
-	}
 }
 
-func TestIBazelRun_killPrexistiingJobWhenStarting(t *testing.T) {
+func TestIBazelRun_notifyPrexistiingJobWhenStarting(t *testing.T) {
+	oldDefaultCommand := commandDefaultCommand
+	commandDefaultCommand = func(b bazel.Bazel, target string, args []string) command.Command {
+		// Don't do anything
+		return &mockCommand{
+			b:      b,
+			target: target,
+			args:   args,
+		}
+	}
+	defer func() { commandDefaultCommand = oldDefaultCommand }()
+
 	i, err := New()
 	if err != nil {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
-
 	defer i.Cleanup()
 
-	// Create a process that has been started and can be killed
-	toKill := exec.Command("sleep", "5s")
-	toKill.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	i.cmd = toKill
-	toKill.Start()
+	i.args = []string{"--do_it"}
 
-	cmd := exec.Command("ls")
-	execCommand = func(name string, arg ...string) *exec.Cmd {
-		return cmd
+	cmd := &mockCommand{
+		notifiedOfChanges: false,
 	}
+	i.cmd = cmd
 
-	i.run("//path/to:target")
+	path := "//path/to:target"
+	i.run(path)
+
+	if !cmd.notifiedOfChanges {
+		t.Errorf("The preiously running command was not notified of changes")
+	}
 
 	expected := [][]string{
 		[]string{"Cancel"},
 		[]string{"WriteToStderr"},
 		[]string{"WriteToStdout"},
-		[]string{"Run", "--script_path=.*", "//path/to:target"},
+		// it's last action was to call cmd.start, but that was mocked out,
+		// so we can just inspect the mock and see what it did.
 	}
-
 	mockBazel.AssertActions(t, expected)
 
-	if cmd.Stdout != os.Stdout {
-		t.Errorf("Didn't set Stdout correctly")
-	}
-	if cmd.Stderr != os.Stderr {
-		t.Errorf("Didn't set Stderr correctly")
-	}
-	if cmd.SysProcAttr.Setpgid != true {
-		t.Errorf("Never set PGID (will prevent killing process trees -- see notes in ibazel.go")
+	c, ok := i.cmd.(*mockCommand)
+	if !ok {
+		t.Errorf("Unable to cast i.cmd to a mockCommand. Was: %v", i.cmd)
 	}
 
-	if err := cmd.Wait(); err != nil {
-		t.Errorf("New subprocess was never started. State: %v, Err: %v", cmd.ProcessState, err)
+	expectedCmd := &mockCommand{
+		target:            path,
+		args:              i.args,
+		notifiedOfChanges: false,
 	}
-
-	assertKilled(t, toKill)
-}
-
-func TestSubprocessRunning(t *testing.T) {
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
+	if c.target != expectedCmd.target ||
+		!reflect.DeepEqual(c.args, expectedCmd.args) ||
+		c.notifiedOfChanges != expectedCmd.notifiedOfChanges {
+		t.Errorf("Inequal\nCommand:  %v\nExpected: %v", c, expectedCmd)
 	}
-	defer i.Cleanup()
-
-	i.cmd = exec.Command("sleep", "200ms")
-	i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	assertEqual(t, i.subprocessRunning(), false, "")
-	i.cmd.Start()
-	assertEqual(t, i.subprocessRunning(), true, "")
-	i.cmd.Wait()
-	assertEqual(t, i.subprocessRunning(), false, "")
-
-	i.cmd = exec.Command("sleep", "1s")
-	i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	assertEqual(t, i.subprocessRunning(), false, "")
-	i.cmd.Start()
-	assertEqual(t, i.subprocessRunning(), true, "")
-	// Save a reference to the cmd since kill wipes it
-	cmd := i.cmd
-	i.kill()
-	assertEqual(t, i.subprocessRunning(), false, "")
-	assertKilled(t, cmd)
-}
-
-func TestKill(t *testing.T) {
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
-	}
-	defer i.Cleanup()
-
-	i.cmd = exec.Command("sleep", "5s")
-	i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	i.cmd.Start()
-	cmd := i.cmd
-	i.kill()
-	assertKilled(t, cmd)
 }
 
 func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
@@ -324,7 +297,7 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 	osExit = func(i int) {
 		attemptedExit = i
 	}
-	assertEqual(t, i.subprocessRunning(), false, "There shouldn't be a subprocess running")
+	assertEqual(t, i.cmd, nil, "There shouldn't be a subprocess running")
 
 	// SIGINT without a running command should attempt to exit
 	i.sigs <- syscall.SIGINT
@@ -349,35 +322,27 @@ func TestHandleSignals_SIGINT(t *testing.T) {
 		attemptedExit = i
 	}
 
+	var cmd *mockCommand
 	// Attempt to kill a task 2 times (but secretly resurrect the job from the
 	// dead to test the job not responding)
 	for j := 0; j < 2; j++ {
-		// Start a task running for 5 seconds
-		i.cmd = exec.Command("sleep", "5s")
-		i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		i.cmd.Start()
+		cmd = &mockCommand{}
+		cmd.Start()
+		i.cmd = cmd
 
 		// This should kill the subprocess and simulate hitting ctrl-c
 		// First save the cmd so we can make assertions on it. It will be removed
 		// by the SIGINT
-		cmd := i.cmd
 		i.sigs <- syscall.SIGINT
 		i.handleSignals()
-		assertKilled(t, cmd)
+
+		cmd.assertTerminated(t)
 		assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
 	}
-
-	i.cmd = exec.Command("sleep", "5s")
-	i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	i.cmd.Start()
-	// First save the cmd so we can make assertions on it. It will be removed
-	// by the SIGINT
-	cmd := i.cmd
 
 	// This should kill the job and go over the interrupt limit where exiting happens
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
-	assertKilled(t, cmd)
 
 	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
 }
@@ -398,17 +363,13 @@ func TestHandleSignals_SIGKILL(t *testing.T) {
 	}
 	attemptedExit = false
 
-	i.cmd = exec.Command("sleep", "1s")
-	i.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	i.cmd.Start()
-	// First save the cmd so we can make assertions on it. It will be removed
-	// by the SIGINT
-	cmd := i.cmd
-	_ = cmd
+	cmd := &mockCommand{}
+	cmd.Start()
+	i.cmd = cmd
 
 	i.sigs <- syscall.SIGKILL
 	i.handleSignals()
-	assertKilled(t, cmd)
+	cmd.assertTerminated(t)
 
 	assertEqual(t, attemptedExit, true, "Should have exited ibazel")
 }

@@ -14,10 +14,10 @@
 
 package main
 
-import 	"github.com/fsnotify/fsnotify"
+import "github.com/fsnotify/fsnotify"
 
 type SourceEventHandler struct {
-	SourceFileEvents chan fsnotify.Event
+	SourceFileEvents  chan fsnotify.Event
 	SourceFileWatcher *fsnotify.Watcher
 }
 
@@ -36,10 +36,10 @@ func (s *SourceEventHandler) Listen() {
 }
 
 func NewSourceEventHandler(sourceFileWatcher *fsnotify.Watcher) *SourceEventHandler {
-    handler := &SourceEventHandler{
-        make(chan fsnotify.Event),
-        sourceFileWatcher,
-    }
-    go handler.Listen()
-    return handler
+	handler := &SourceEventHandler{
+		make(chan fsnotify.Event),
+		sourceFileWatcher,
+	}
+	go handler.Listen()
+	return handler
 }
