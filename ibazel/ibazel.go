@@ -243,18 +243,14 @@ func (i *IBazel) test(targets ...string) {
 }
 
 func (i *IBazel) run(targets ...string) {
-	if i.cmd != nil {
+	if i.cmd == nil {
+		// If the command is empty, we are in our first pass through the state
+		// machine and we need to make a command object.
+		i.cmd = commandDefaultCommand(i.bazelArgs, targets[0], i.args)
+		i.cmd.Start()
+	} else {
 		i.cmd.NotifyOfChanges()
 	}
-
-	b := i.newBazel()
-
-	b.Cancel()
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-
-	i.cmd = commandDefaultCommand(b, targets[0], i.args)
-	i.cmd.Start()
 }
 
 func (i *IBazel) queryForSourceFiles(query string) []string {

@@ -18,20 +18,17 @@ import (
 	"os/exec"
 	"syscall"
 	"testing"
-
-	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 )
 
 func TestDefaultCommand(t *testing.T) {
 	toKill := exec.Command("sleep", "5s")
 	toKill.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	b := &mock_bazel.MockBazel{}
 	c := &defaultCommand{
-		args:   []string{"moo"},
-		b:      b,
-		cmd:    toKill,
-		target: "//path/to:target",
+		args:      []string{"moo"},
+		bazelArgs: []string{},
+		cmd:       toKill,
+		target:    "//path/to:target",
 	}
 
 	if c.IsSubprocessRunning() {

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"runtime"
@@ -28,6 +29,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+var oldCommandDefaultCommand = command.DefaultCommand
+
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
@@ -36,9 +39,9 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 }
 
 type mockCommand struct {
-	b      bazel.Bazel
-	target string
-	args   []string
+	bazelArgs []string
+	target    string
+	args      []string
 
 	notifiedOfChanges bool
 	started           bool
@@ -73,11 +76,27 @@ func (m *mockCommand) IsSubprocessRunning() bool {
 
 var mockBazel *mock_bazel.MockBazel
 
+func getMockCommand(i *IBazel) *mockCommand {
+	c, ok := i.cmd.(*mockCommand)
+	if !ok {
+		panic(fmt.Sprintf("Unable to cast i.cmd to a mockCommand. Was: %v", i.cmd))
+	}
+	return c
+}
+
 func init() {
 	// Replace the bazle object creation function with one that makes my mock.
 	bazelNew = func() bazel.Bazel {
 		mockBazel = &mock_bazel.MockBazel{}
 		return mockBazel
+	}
+	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {
+		// Don't do anything
+		return &mockCommand{
+			bazelArgs: bazelArgs,
+			target:    target,
+			args:      args,
+		}
 	}
 }
 
@@ -215,27 +234,16 @@ func TestIBazelRun_firstPass(t *testing.T) {
 
 	i.run("//path/to:target")
 
-	expected := [][]string{
-		[]string{"Cancel"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Run", "--script_path=.*", "//path/to:target"},
-	}
-
-	mockBazel.AssertActions(t, expected)
 }
 
-func TestIBazelRun_notifyPrexistiingJobWhenStarting(t *testing.T) {
-	oldDefaultCommand := commandDefaultCommand
-	commandDefaultCommand = func(b bazel.Bazel, target string, args []string) command.Command {
-		// Don't do anything
-		return &mockCommand{
-			b:      b,
-			target: target,
-			args:   args,
-		}
+func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
+	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {
+		assertEqual(t, bazelArgs, []string{}, "Bazel args")
+		assertEqual(t, target, "", "Target")
+		assertEqual(t, args, []string{}, "Args")
+		return &mockCommand{}
 	}
-	defer func() { commandDefaultCommand = oldDefaultCommand }()
+	defer func() { commandDefaultCommand = oldCommandDefaultCommand }()
 
 	i, err := New()
 	if err != nil {
@@ -255,31 +263,6 @@ func TestIBazelRun_notifyPrexistiingJobWhenStarting(t *testing.T) {
 
 	if !cmd.notifiedOfChanges {
 		t.Errorf("The preiously running command was not notified of changes")
-	}
-
-	expected := [][]string{
-		[]string{"Cancel"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		// it's last action was to call cmd.start, but that was mocked out,
-		// so we can just inspect the mock and see what it did.
-	}
-	mockBazel.AssertActions(t, expected)
-
-	c, ok := i.cmd.(*mockCommand)
-	if !ok {
-		t.Errorf("Unable to cast i.cmd to a mockCommand. Was: %v", i.cmd)
-	}
-
-	expectedCmd := &mockCommand{
-		target:            path,
-		args:              i.args,
-		notifiedOfChanges: false,
-	}
-	if c.target != expectedCmd.target ||
-		!reflect.DeepEqual(c.args, expectedCmd.args) ||
-		c.notifiedOfChanges != expectedCmd.notifiedOfChanges {
-		t.Errorf("Inequal\nCommand:  %v\nExpected: %v", c, expectedCmd)
 	}
 }
 

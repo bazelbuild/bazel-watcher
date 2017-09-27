@@ -22,7 +22,7 @@ import (
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 )
 
-var oldExecCommand = exec.Command
+var oldExecCommand = execCommand
 
 func assertKilled(t *testing.T, cmd *exec.Cmd) {
 	if err := cmd.Wait(); err != nil {

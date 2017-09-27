@@ -25,6 +25,7 @@ import (
 )
 
 var execCommand = exec.Command
+var bazelNew = bazel.New
 
 // Command is an object that wraps the logic of running a task in Bazel and
 // manipulating it.
@@ -50,11 +51,11 @@ func start(b bazel.Bazel, target string, args []string) *exec.Cmd {
 	// Start by building the binary
 	b.Run("--script_path="+tmpfile.Name(), target)
 
-	targetPath := tmpfile.Name()
+	runScriptPath := tmpfile.Name()
 
 	// Now that we have built the target, construct a executable form of it for
 	// execution in a go routine.
-	cmd := execCommand(targetPath, args...)
+	cmd := execCommand(runScriptPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -66,6 +67,7 @@ func start(b bazel.Bazel, target string, args []string) *exec.Cmd {
 	if err := cmd.Start(); err != nil {
 		fmt.Printf("Error starting process: %v\n", err)
 	}
+	fmt.Printf("Starting...")
 
 	return cmd
 }

@@ -17,25 +17,23 @@ package command
 import (
 	"os/exec"
 	"syscall"
-
-	"github.com/bazelbuild/bazel-watcher/bazel"
 )
 
 type defaultCommand struct {
-	target string
-	b      bazel.Bazel
-	args   []string
-	cmd    *exec.Cmd
+	target    string
+	bazelArgs []string
+	args      []string
+	cmd       *exec.Cmd
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
 // server in this mode and notify of changes the server will be killed and
 // restarted.
-func DefaultCommand(bazel bazel.Bazel, target string, args []string) Command {
+func DefaultCommand(bazelArgs []string, target string, args []string) Command {
 	return &defaultCommand{
-		target: target,
-		b:      bazel,
-		args:   args,
+		target:    target,
+		bazelArgs: bazelArgs,
+		args:      args,
 	}
 }
 
@@ -55,11 +53,18 @@ func (c *defaultCommand) Terminate() {
 }
 
 func (c *defaultCommand) Start() {
-	c.cmd = start(c.b, c.target, c.args)
+	b := bazelNew()
+	b.SetArguments(c.bazelArgs)
+
+	b.WriteToStderr(true)
+	b.WriteToStdout(true)
+
+	c.cmd = start(b, c.target, c.args)
 }
 
 func (c *defaultCommand) NotifyOfChanges() {
 	c.Terminate()
+	c.Start()
 }
 
 func (c *defaultCommand) IsSubprocessRunning() bool {
