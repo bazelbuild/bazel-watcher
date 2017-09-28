@@ -19,6 +19,7 @@ go_library(
     srcs = [
         "command.go",
         "default_command.go",
+        "notify_command.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
     visibility = ["//ibazel:__subpackages__"],
@@ -30,6 +31,7 @@ go_test(
     srcs = [
         "command_test.go",
         "default_command_test.go",
+        "notify_command_test.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
     library = ":go_default_library",

@@ -31,6 +31,7 @@ type Bazel interface {
 	Build(args ...string) error
 	Test(args ...string) error
 	Run(args ...string) (*exec.Cmd, error)
+	Wait() error
 	Cancel()
 }
 
@@ -183,6 +184,10 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
 	}
 
 	return b.cmd, err
+}
+
+func (b *bazel) Wait() error {
+	return b.cmd.Wait()
 }
 
 // Cancel the currently running operation. Useful if you call Run(target) and

@@ -24,6 +24,8 @@ type MockBazel struct {
 	actions       [][]string
 	queryResponse []string
 	args          []string
+
+	waitError error
 }
 
 func (b *MockBazel) SetArguments(args []string) {
@@ -55,6 +57,12 @@ func (b *MockBazel) Test(args ...string) error {
 func (b *MockBazel) Run(args ...string) (*exec.Cmd, error) {
 	b.actions = append(b.actions, append([]string{"Run"}, args...))
 	return nil, nil
+}
+func (b *MockBazel) WaitError(e error) {
+	b.waitError = e
+}
+func (b *MockBazel) Wait() error {
+	return b.waitError
 }
 func (b *MockBazel) Cancel() {
 	b.actions = append(b.actions, []string{"Cancel"})

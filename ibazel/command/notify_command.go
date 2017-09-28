@@ -16,29 +16,31 @@ package command
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 	"syscall"
 )
 
-type defaultCommand struct {
+type notifyCommand struct {
 	target    string
 	bazelArgs []string
 	args      []string
-	cmd       *exec.Cmd
+
+	cmd   *exec.Cmd
+	stdin io.WriteCloser
 }
 
-// DefaultCommand is the normal mode of interacting with iBazel. If you start a
-// server in this mode and notify of changes the server will be killed and
-// restarted.
-func DefaultCommand(bazelArgs []string, target string, args []string) Command {
-	return &defaultCommand{
+// NotifyCommand is an alternate mode for starting a command. In this mode the
+// command will be notified on stdin that the source files have changed.
+func NotifyCommand(bazelArgs []string, target string, args []string) Command {
+	return &notifyCommand{
 		target:    target,
 		bazelArgs: bazelArgs,
 		args:      args,
 	}
 }
 
-func (c *defaultCommand) Terminate() {
+func (c *notifyCommand) Terminate() {
 	if !subprocessRunning(c.cmd) {
 		return
 	}
@@ -53,7 +55,7 @@ func (c *defaultCommand) Terminate() {
 	c.cmd = nil
 }
 
-func (c *defaultCommand) Start() {
+func (c *notifyCommand) Start() {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
@@ -61,19 +63,36 @@ func (c *defaultCommand) Start() {
 	b.WriteToStdout(true)
 
 	c.cmd = start(b, c.target, c.args)
-
 	var err error
+	c.stdin, err = c.cmd.StdinPipe()
+	if err != nil {
+		fmt.Printf("Error creating process: %v\n", err)
+	}
+
 	if err = c.cmd.Start(); err != nil {
 		fmt.Printf("Error starting process: %v\n", err)
 	}
 	fmt.Printf("Starting...")
 }
 
-func (c *defaultCommand) NotifyOfChanges() {
-	c.Terminate()
-	c.Start()
+func (c *notifyCommand) NotifyOfChanges() {
+	b := bazelNew()
+	b.SetArguments(c.bazelArgs)
+
+	b.WriteToStderr(true)
+	b.WriteToStdout(true)
+
+	b.Build(c.target)
+
+	if b.Wait() != nil {
+		fmt.Printf("FAILURE")
+		io.WriteString(c.stdin, "IBAZEL_BUILD_COMPLETED FAILURE\n")
+	} else {
+		fmt.Printf("SUCCESS")
+		io.WriteString(c.stdin, "IBAZEL_BUILD_COMPLETED SUCCESS\n")
+	}
 }
 
-func (c *defaultCommand) IsSubprocessRunning() bool {
+func (c *notifyCommand) IsSubprocessRunning() bool {
 	return subprocessRunning(c.cmd)
 }

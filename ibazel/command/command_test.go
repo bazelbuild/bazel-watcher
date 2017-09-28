@@ -15,14 +15,14 @@
 package command
 
 import (
-	"os"
 	"os/exec"
 	"testing"
 
-	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
+	"github.com/bazelbuild/bazel-watcher/bazel"
 )
 
 var oldExecCommand = execCommand
+var oldBazelNew = bazel.New
 
 func assertKilled(t *testing.T, cmd *exec.Cmd) {
 	if err := cmd.Wait(); err != nil {
@@ -36,6 +36,11 @@ func assertKilled(t *testing.T, cmd *exec.Cmd) {
 }
 
 func TestSubprocessRunning(t *testing.T) {
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		return oldExecCommand("ls") // Every system has ls.
+	}
+	defer func() { execCommand = oldExecCommand }()
+
 	if subprocessRunning(nil) {
 		t.Errorf("Nil subprocesses don't run")
 	}
@@ -56,31 +61,4 @@ func TestSubprocessRunning(t *testing.T) {
 	if err != nil || subprocessRunning(cmd) {
 		t.Errorf("Subprocess finished with error: %v State: %v", err, cmd.ProcessState)
 	}
-}
-
-func TestDefaultCommand_Start(t *testing.T) {
-	// Set up mock execCommand and prep it to be returned
-	execCommand = func(name string, args ...string) *exec.Cmd {
-		return oldExecCommand("ls") // Every system has ls.
-	}
-	defer func() { execCommand = oldExecCommand }()
-
-	b := &mock_bazel.MockBazel{}
-
-	cmd := start(b, "//path/to:target", []string{"moo"})
-	cmd.Start()
-
-	if cmd.Stdout != os.Stdout {
-		t.Errorf("Didn't set Stdout correctly")
-	}
-	if cmd.Stderr != os.Stderr {
-		t.Errorf("Didn't set Stderr correctly")
-	}
-	if cmd.SysProcAttr.Setpgid != true {
-		t.Errorf("Never set PGID (will prevent killing process trees -- see notes in ibazel.go")
-	}
-
-	b.AssertActions(t, [][]string{
-		[]string{"Run", "--script_path=.*", "//path/to:target"},
-	})
 }

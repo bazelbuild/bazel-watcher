@@ -62,13 +62,6 @@ func start(b bazel.Bazel, target string, args []string) *exec.Cmd {
 	// Set a process group id (PGID) on the subprocess. This is
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	// Start run in a goroutine so that it doesn't block watching for files that
-	// have changed.
-	if err := cmd.Start(); err != nil {
-		fmt.Printf("Error starting process: %v\n", err)
-	}
-	fmt.Printf("Starting...")
-
 	return cmd
 }
 

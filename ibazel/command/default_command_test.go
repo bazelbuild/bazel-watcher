@@ -15,14 +15,22 @@
 package command
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
 	"testing"
+
+	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 )
 
 func TestDefaultCommand(t *testing.T) {
-	toKill := exec.Command("sleep", "5s")
+	toKill := exec.Command("sleep", "10s")
 	toKill.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		return oldExecCommand("ls") // Every system has ls.
+	}
+	defer func() { execCommand = oldExecCommand }()
 
 	c := &defaultCommand{
 		args:      []string{"moo"},
@@ -44,4 +52,31 @@ func TestDefaultCommand(t *testing.T) {
 	// This is synonymous with killing the job so use it to kill the job and test everything.
 	c.NotifyOfChanges()
 	assertKilled(t, toKill)
+}
+
+func TestDefaultCommand_Start(t *testing.T) {
+	// Set up mock execCommand and prep it to be returned
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		return oldExecCommand("ls") // Every system has ls.
+	}
+	defer func() { execCommand = oldExecCommand }()
+
+	b := &mock_bazel.MockBazel{}
+
+	cmd := start(b, "//path/to:target", []string{"moo"})
+	cmd.Start()
+
+	if cmd.Stdout != os.Stdout {
+		t.Errorf("Didn't set Stdout correctly")
+	}
+	if cmd.Stderr != os.Stderr {
+		t.Errorf("Didn't set Stderr correctly")
+	}
+	if cmd.SysProcAttr.Setpgid != true {
+		t.Errorf("Never set PGID (will prevent killing process trees -- see notes in ibazel.go")
+	}
+
+	b.AssertActions(t, [][]string{
+		[]string{"Run", "--script_path=.*", "//path/to:target"},
+	})
 }
