@@ -82,24 +82,6 @@ func TestWriteToStderrAndStdout(t *testing.T) {
 	}
 }
 
-func TestQuery(t *testing.T) {
-	b := &bazel{}
-	got, err := b.processQuery(`//demo/path/to:target
-//other/path/to:target
-//third_party/path/to:target`)
-	if err != nil {
-		t.Errorf("Got error processing query: %s", err)
-	}
-	expected := []string{"//demo/path/to:target",
-		"//other/path/to:target",
-		"//third_party/path/to:target",
-	}
-
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("Got:\n%sExpected:\n%s", got, expected)
-	}
-}
-
 // Test that cancel doesn't NPE if there is no command running.
 func TestCancel(t *testing.T) {
 	b := New()

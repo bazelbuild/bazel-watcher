@@ -18,11 +18,13 @@ import (
 	"os/exec"
 	"regexp"
 	"testing"
+
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
 
 type MockBazel struct {
 	actions       [][]string
-	queryResponse []string
+	queryResponse *blaze_query.QueryResult
 	args          []string
 
 	waitError error
@@ -42,7 +44,7 @@ func (b *MockBazel) Info() (map[string]string, error) {
 	b.actions = append(b.actions, []string{"Info"})
 	return map[string]string{}, nil
 }
-func (b *MockBazel) Query(args ...string) ([]string, error) {
+func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	b.actions = append(b.actions, append([]string{"Query"}, args...))
 	return b.queryResponse, nil
 }

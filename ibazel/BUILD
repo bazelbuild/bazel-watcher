@@ -33,6 +33,7 @@ go_library(
     deps = [
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
 )

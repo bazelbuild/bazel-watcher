@@ -19,4 +19,5 @@ go_library(
     srcs = ["mock.go"],
     importpath = "github.com/bazelbuild/bazel-watcher/bazel/testing",
     visibility = ["//visibility:public"],
+    deps = ["//third_party/bazel/master/src/main/protobuf:go_default_library"],
 )

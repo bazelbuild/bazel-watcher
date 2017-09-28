@@ -25,6 +25,8 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/fsnotify/fsnotify"
+
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
 
 var osExit = os.Exit
@@ -103,7 +105,6 @@ func (i *IBazel) handleSignals() {
 		}
 		osExit(3)
 		return
-		break
 	default:
 		fmt.Printf("Got a signal that wasn't handled. Please file a bug against bazel-watcher that describes how you did this. This is a big problem.\n")
 	}
@@ -264,22 +265,29 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 	}
 
 	toWatch := make([]string, 0, 10000)
-	for _, line := range res {
-		if strings.HasPrefix(line, "@") {
-			continue
-		}
-		if strings.HasPrefix(line, "//external") {
-			continue
-		}
+	for _, target := range res.Target {
+		switch *target.Type {
+		case blaze_query.Target_SOURCE_FILE:
+			label := *target.SourceFile.Name
+			if strings.HasPrefix(label, "@") {
+				continue
+			}
+			if strings.HasPrefix(label, "//external") {
+				continue
+			}
 
-		// For files that are served from the root they will being with "//:". This
-		// is a problematic string because, for example, "//:demo.sh" will become
-		// "/demo.sh" which is in the root of the filesystem and is unlikely to exist.
-		if strings.HasPrefix(line, "//:") {
-			line = line[3:]
-		}
+			// For files that are served from the root they will being with "//:". This
+			// is a problematic string because, for example, "//:demo.sh" will become
+			// "/demo.sh" which is in the root of the filesystem and is unlikely to exist.
+			if strings.HasPrefix(label, "//:") {
+				label = label[3:]
+			}
 
-		toWatch = append(toWatch, strings.Replace(strings.TrimPrefix(line, "//"), ":", "/", 1))
+			toWatch = append(toWatch, strings.Replace(strings.TrimPrefix(label, "//"), ":", "/", 1))
+			break
+		default:
+			fmt.Printf("%v\n\n", target)
+		}
 	}
 
 	return toWatch

@@ -17,9 +17,13 @@ package bazel
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/golang/protobuf/proto"
 )
 
 type Bazel interface {
@@ -27,7 +31,7 @@ type Bazel interface {
 	WriteToStderr(v bool)
 	WriteToStdout(v bool)
 	Info() (map[string]string, error)
-	Query(args ...string) ([]string, error)
+	Query(args ...string) (*blaze_query.QueryResult, error)
 	Build(args ...string) error
 	Test(args ...string) error
 	Run(args ...string) (*exec.Cmd, error)
@@ -131,28 +135,28 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 // or to find a dependency path between //path/to/package:target and //dependency:
 //
 //   res, err := b.Query('somepath(//path/to/package:target, //dependency)')
-func (b *bazel) Query(args ...string) ([]string, error) {
-	b.newCommand("query", args...)
+func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
+	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no")
+	blazeArgs = append(blazeArgs, args...)
+
+	b.newCommand("query", blazeArgs...)
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 
-	info, err := b.cmd.Output()
+	out, err := b.cmd.Output()
 	if err != nil {
 		return nil, err
 	}
-	return b.processQuery(string(info))
+	return b.processQuery(out)
 }
 
-func (b *bazel) processQuery(info string) ([]string, error) {
-	toReturn := make([]string, 0, 10000)
-	lines := strings.Split(info, "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		toReturn = append(toReturn, line)
+func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
+	var qr blaze_query.QueryResult
+	if err := proto.Unmarshal(out, &qr); err != nil {
+		fmt.Printf("Could not read blaze query response: %s %s", err, out)
+		return nil, err
 	}
-	return toReturn, nil
+	return &qr, nil
 }
 
 func (b *bazel) Build(args ...string) error {
