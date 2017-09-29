@@ -27,6 +27,9 @@ import (
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/fsnotify/fsnotify"
+
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/golang/protobuf/proto"
 )
 
 var oldCommandDefaultCommand = command.DefaultCommand
@@ -88,6 +91,20 @@ func init() {
 	// Replace the bazle object creation function with one that makes my mock.
 	bazelNew = func() bazel.Bazel {
 		mockBazel = &mock_bazel.MockBazel{}
+		mockBazel.AddQueryResponse("//path/to:target", &blaze_query.QueryResult{
+			Target: []*blaze_query.Target{
+				&blaze_query.Target{
+					Type: blaze_query.Target_RULE.Enum(),
+					Rule: &blaze_query.Rule{
+						Attribute: []*blaze_query.Attribute{
+							&blaze_query.Attribute{
+								Name: proto.String("name"),
+							},
+						},
+					},
+				},
+			},
+		})
 		return mockBazel
 	}
 	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {

@@ -24,7 +24,7 @@ import (
 
 type MockBazel struct {
 	actions       [][]string
-	queryResponse *blaze_query.QueryResult
+	queryResponse map[string]*blaze_query.QueryResult
 	args          []string
 
 	waitError error
@@ -44,9 +44,22 @@ func (b *MockBazel) Info() (map[string]string, error) {
 	b.actions = append(b.actions, []string{"Info"})
 	return map[string]string{}, nil
 }
+func (b *MockBazel) AddQueryResponse(query string, res *blaze_query.QueryResult) {
+	if b.queryResponse == nil {
+		b.queryResponse = map[string]*blaze_query.QueryResult{}
+	}
+	b.queryResponse[query] = res
+}
 func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	b.actions = append(b.actions, append([]string{"Query"}, args...))
-	return b.queryResponse, nil
+	query := args[0]
+	res, ok := b.queryResponse[query]
+
+	if !ok || res == nil {
+		res = &blaze_query.QueryResult{}
+	}
+
+	return res, nil
 }
 func (b *MockBazel) Build(args ...string) error {
 	b.actions = append(b.actions, append([]string{"Build"}, args...))

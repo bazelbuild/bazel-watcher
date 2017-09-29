@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -32,6 +33,7 @@ import (
 var osExit = os.Exit
 var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
+var commandNotifyCommand = command.DefaultCommand
 
 type State string
 
@@ -243,15 +245,61 @@ func (i *IBazel) test(targets ...string) {
 	}
 }
 
+func contains(l []string, e string) bool {
+	for _, i := range l {
+		if i == e {
+			return true
+		}
+	}
+	return false
+}
+
+func (i *IBazel) getCommandForRule(target string) command.Command {
+	rule, err := i.queryRule(target)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	}
+
+	for _, attr := range rule.Attribute {
+		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
+			if contains(attr.StringListValue, "IBAZEL_MAGIC_TAG") {
+				fmt.Printf("Launching with notifications")
+				return commandNotifyCommand(i.bazelArgs, target, i.args)
+			}
+		}
+	}
+	return commandDefaultCommand(i.bazelArgs, target, i.args)
+}
+
 func (i *IBazel) run(targets ...string) {
 	if i.cmd == nil {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
-		i.cmd = commandDefaultCommand(i.bazelArgs, targets[0], i.args)
+		i.cmd = i.getCommandForRule(targets[0])
 		i.cmd.Start()
 	} else {
 		i.cmd.NotifyOfChanges()
 	}
+}
+
+func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
+	b := i.newBazel()
+	b.WriteToStderr(false)
+	b.WriteToStdout(false)
+
+	res, err := b.Query(rule)
+	if err != nil {
+		fmt.Printf("Error running Bazel %s\n", err)
+	}
+
+	for _, target := range res.Target {
+		switch *target.Type {
+		case blaze_query.Target_RULE:
+			return target.Rule, nil
+		}
+	}
+
+	return nil, errors.New("No information available")
 }
 
 func (i *IBazel) queryForSourceFiles(query string) []string {
