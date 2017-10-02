@@ -17,6 +17,7 @@ package bazel
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,6 +26,8 @@ import (
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 	"github.com/golang/protobuf/proto"
 )
+
+var bazelPath = flag.String("bazel_path", "bazel", "Path to the bazel binary to use for actions")
 
 type Bazel interface {
 	SetArguments([]string)
@@ -70,7 +73,7 @@ func (b *bazel) newCommand(command string, args ...string) {
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 
 	args = append([]string{command}, args...)
-	b.cmd = exec.CommandContext(b.ctx, "bazel", args...)
+	b.cmd = exec.CommandContext(b.ctx, *bazelPath, args...)
 	if b.writeToStderr {
 		b.cmd.Stderr = os.Stderr
 	}

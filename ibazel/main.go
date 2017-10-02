@@ -15,6 +15,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -25,7 +26,7 @@ var overrideableBazelFlags []string = []string{
 }
 
 func usage() {
-	fmt.Printf(`ibazel
+	fmt.Printf(`iBazel
 
 A file watcher for Bazel. Whenever a source file used in a specified
 target, run, build, or test the specified targets.
@@ -41,7 +42,9 @@ ibazel test //path/to/my/testing/targets/...
 ibazel run //path/to/my/runnable:target -- --arguments --for_your=binary
 ibazel build //path/to/my/buildable:target
 
+iBazel flags:
 `)
+	flag.PrintDefaults()
 }
 
 func isOverrideableBazelFlag(arg string) bool {
@@ -81,13 +84,16 @@ func parseArgs(in []string) (targets, bazelArgs, args []string) {
 
 // main entrypoint for IBazel.
 func main() {
-	if len(os.Args) < 3 {
+	flag.Usage = usage
+	flag.Parse()
+
+	if len(flag.Args()) < 2 {
 		usage()
 		return
 	}
 
-	command := strings.ToLower(os.Args[1])
-	args := os.Args[2:]
+	command := strings.ToLower(flag.Args()[0])
+	args := flag.Args()[1:]
 
 	i, err := New()
 	if err != nil {
