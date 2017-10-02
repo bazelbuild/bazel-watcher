@@ -17,6 +17,7 @@ package command
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -66,13 +67,13 @@ func (c *notifyCommand) Start() {
 	var err error
 	c.stdin, err = c.cmd.StdinPipe()
 	if err != nil {
-		fmt.Printf("Error creating process: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating process: %v\n", err)
 	}
 
 	if err = c.cmd.Start(); err != nil {
-		fmt.Printf("Error starting process: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
 	}
-	fmt.Printf("Starting...")
+	fmt.Fprintf(os.Stderr, "Starting...")
 }
 
 func (c *notifyCommand) NotifyOfChanges() {
@@ -85,10 +86,10 @@ func (c *notifyCommand) NotifyOfChanges() {
 	b.Build(c.target)
 
 	if b.Wait() != nil {
-		fmt.Printf("FAILURE")
+		fmt.Fprintf(os.Stderr, "FAILURE")
 		io.WriteString(c.stdin, "IBAZEL_BUILD_COMPLETED FAILURE\n")
 	} else {
-		fmt.Printf("SUCCESS")
+		fmt.Fprintf(os.Stderr, "SUCCESS")
 		io.WriteString(c.stdin, "IBAZEL_BUILD_COMPLETED SUCCESS\n")
 	}
 }

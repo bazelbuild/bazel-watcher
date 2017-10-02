@@ -16,6 +16,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -64,9 +65,9 @@ func (c *defaultCommand) Start() {
 
 	var err error
 	if err = c.cmd.Start(); err != nil {
-		fmt.Printf("Error starting process: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
 	}
-	fmt.Printf("Starting...")
+	fmt.Fprintf(os.Stderr, "Starting...")
 }
 
 func (c *defaultCommand) NotifyOfChanges() {

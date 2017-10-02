@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+rules_go_commit = "f37989f66a6980436d6c78651e801063f2f55b36"
+
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "f37989f66a6980436d6c78651e801063f2f55b36",
+    commit = rules_go_commit,
     remote = "https://github.com/bazelbuild/rules_go",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_repositories", "go_repository")
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains", "go_repository")
 
-go_repositories()
+go_rules_dependencies()
+
+go_register_toolchains()
 
 go_repository(
     name = "com_github_fsnotify_fsnotify",
@@ -36,8 +40,8 @@ go_repository(
 
 go_repository(
     name = "com_github_bazelbuild_rules_go",
+    commit = rules_go_commit,
     importpath = "github.com/bazelbuild/rules_go",
-    tag = "0.5.4",
 )
 
 go_repository(

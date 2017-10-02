@@ -25,8 +25,10 @@ var overrideableBazelFlags []string = []string{
 	"--test_output=",
 }
 
+var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file instead of os.Stderr")
+
 func usage() {
-	fmt.Printf(`iBazel
+	fmt.Fprintf(os.Stderr, `iBazel
 
 A file watcher for Bazel. Whenever a source file used in a specified
 target, run, build, or test the specified targets.
@@ -87,6 +89,15 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
+	if *logToFile != "-" {
+		var err error
+		logFile, err := os.OpenFile(*logToFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
+		}
+		os.Stderr = logFile
+	}
+
 	if len(flag.Args()) < 2 {
 		usage()
 		return
@@ -97,7 +108,7 @@ func main() {
 
 	i, err := New()
 	if err != nil {
-		fmt.Printf("Error creating iBazel", err)
+		fmt.Fprintf(os.Stderr, "Error creating iBazel", err)
 		os.Exit(1)
 	}
 	defer i.Cleanup()
@@ -118,7 +129,7 @@ func handle(i *IBazel, command string, args []string) {
 		// Run only takes one argument
 		i.Run(targets[0], args)
 	default:
-		fmt.Printf("Asked me to perform %s. I don't know how to do that.", command)
+		fmt.Fprintf(os.Stderr, "Asked me to perform %s. I don't know how to do that.", command)
 		usage()
 		return
 	}
