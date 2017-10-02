@@ -35,5 +35,8 @@ go_test(
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
     library = ":go_default_library",
-    deps = ["//bazel/testing:go_default_library"],
+    deps = [
+        "//bazel:go_default_library",
+        "//bazel/testing:go_default_library",
+    ],
 )
