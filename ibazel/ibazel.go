@@ -33,7 +33,7 @@ import (
 var osExit = os.Exit
 var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
-var commandNotifyCommand = command.DefaultCommand
+var commandNotifyCommand = command.NotifyCommand
 
 type State string
 
