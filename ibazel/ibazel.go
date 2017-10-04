@@ -345,13 +345,16 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 	toWatch := i.queryForSourceFiles(query)
 
 	// TODO: Figure out how to unwatch files that are no longer included
-
+	successFullWatchFileCount := 0
 	for _, line := range toWatch {
-		fmt.Printf("Watching: %s\n", line)
 		err := watcher.Add(line)
 		if err != nil {
 			fmt.Printf("Error watching file %v\nError: %v\n", line, err)
 			continue
+		} else {
+			successFullWatchFileCount++
 		}
 	}
+
+	fmt.Printf("Watching: %d files\n", successFullWatchFileCount)
 }
