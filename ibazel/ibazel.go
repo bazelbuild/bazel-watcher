@@ -88,7 +88,7 @@ func New() (*IBazel, error) {
 }
 
 func (i *IBazel) handleSignals() {
-	// Got an OS signal (SIGINT, SIGKILL).
+	// Got an OS signal (SIGINT, SIGTERM).
 	sig := <-i.sigs
 
 	switch sig {
@@ -100,9 +100,9 @@ func (i *IBazel) handleSignals() {
 			osExit(3)
 		}
 		break
-	case syscall.SIGKILL:
+	case syscall.SIGTERM:
 		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGKILL\n")
+			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGTERM\n")
 			i.cmd.Terminate()
 		}
 		osExit(3)
