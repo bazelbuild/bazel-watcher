@@ -347,7 +347,7 @@ func TestHandleSignals_SIGINT(t *testing.T) {
 	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
 }
 
-func TestHandleSignals_SIGKILL(t *testing.T) {
+func TestHandleSignals_SIGTERM(t *testing.T) {
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -356,7 +356,7 @@ func TestHandleSignals_SIGKILL(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	// Now test sending SIGKILL
+	// Now test sending SIGTERM
 	attemptedExit := false
 	osExit = func(i int) {
 		attemptedExit = true
@@ -367,7 +367,7 @@ func TestHandleSignals_SIGKILL(t *testing.T) {
 	cmd.Start()
 	i.cmd = cmd
 
-	i.sigs <- syscall.SIGKILL
+	i.sigs <- syscall.SIGTERM
 	i.handleSignals()
 	cmd.assertTerminated(t)
 
