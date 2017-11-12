@@ -46,12 +46,13 @@ const (
 	QUIT           State = "QUIT"
 )
 
-const debounceDuration = 100 * time.Millisecond
 const sourceQuery = "kind('source file', deps(set(%s)))"
 const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
 	b *bazel.Bazel
+
+	debounceDuration time.Duration
 
 	cmd       command.Command
 	args      []string
@@ -74,6 +75,8 @@ func New() (*IBazel, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	i.debounceDuration = 100 * time.Millisecond
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -126,6 +129,10 @@ func (i *IBazel) newBazel() bazel.Bazel {
 
 func (i *IBazel) SetBazelArgs(args []string) {
 	i.bazelArgs = args
+}
+
+func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
+	i.debounceDuration = debounceDuration
 }
 
 func (i *IBazel) Cleanup() {
@@ -195,7 +202,7 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		select {
 		case <-i.buildFileWatcher.Events:
 			i.state = DEBOUNCE_QUERY
-		case <-time.After(debounceDuration):
+		case <-time.After(i.debounceDuration):
 			i.state = QUERY
 		}
 	case QUERY:
@@ -209,7 +216,7 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		select {
 		case <-i.sourceEventHandler.SourceFileEvents:
 			i.state = DEBOUNCE_RUN
-		case <-time.After(debounceDuration):
+		case <-time.After(i.debounceDuration):
 			i.state = RUN
 		}
 	case RUN:

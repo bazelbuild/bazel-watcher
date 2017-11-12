@@ -19,12 +19,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
 }
 
+var debounceDuration = flag.Int("debounce", 100, "Debounce duration in milliseconds")
 var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file instead of os.Stderr")
 
 func usage() {
@@ -111,6 +113,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error creating iBazel", err)
 		os.Exit(1)
 	}
+	i.SetDebounceDuration(time.Duration(*debounceDuration) * time.Millisecond)
 	defer i.Cleanup()
 
 	handle(i, command, args)
