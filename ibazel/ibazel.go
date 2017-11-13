@@ -310,7 +310,7 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 	res, err := b.Query(query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
-		return []string{}
+		osExit(1)
 	}
 
 	toWatch := make([]string, 0, 10000)

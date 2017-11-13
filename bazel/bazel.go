@@ -15,6 +15,7 @@
 package bazel
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -146,11 +147,15 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 
-	out, err := b.cmd.Output()
+	var stdout, stderr bytes.Buffer
+	b.cmd.Stdout = &stdout
+	b.cmd.Stderr = &stderr
+	err := b.cmd.Run()
 	if err != nil {
+		fmt.Fprintf(os.Stderr, stderr.String())
 		return nil, err
 	}
-	return b.processQuery(out)
+	return b.processQuery(stdout.Bytes())
 }
 
 func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
