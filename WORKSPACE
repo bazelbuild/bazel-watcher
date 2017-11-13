@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rules_go_commit = "f37989f66a6980436d6c78651e801063f2f55b36"
+rules_go_commit = "a7d4dc749931e65f2ad66c50fbb9e6f9e77d92a0"
 
 git_repository(
     name = "io_bazel_rules_go",
@@ -28,13 +28,13 @@ go_register_toolchains()
 
 go_repository(
     name = "com_github_fsnotify_fsnotify",
-    commit = "7d7316ed6e1ed2de075aab8dfc76de5d158d66e1",
+    commit = "4da3e2cfbabc9f751898f250b49f2439785783a1",
     importpath = "github.com/fsnotify/fsnotify",
 )
 
 go_repository(
     name = "org_golang_x_sys",
-    commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
+    commit = "665f6529cca930e27b831a0d1dafffbe1c172924",
     importpath = "golang.org/x/sys",
 )
 
