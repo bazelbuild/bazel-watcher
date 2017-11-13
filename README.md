@@ -1,6 +1,6 @@
 # Bazel watcher
 
-+[![Build Status](https://ci.bazel.io/buildStatus/icon?job=bazel-watcher)](https://ci.bazel.io/job/bazel-watcher)
+[![Build Status](https://ci.bazel.io/buildStatus/icon?job=bazel-watcher)](https://ci.bazel.io/job/bazel-watcher)
 
 Note: This is not an official Google product.
 
