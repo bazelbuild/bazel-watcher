@@ -1,9 +1,6 @@
 # Bazel watcher
 
-Bazel ≥0.5.2 | linux-x86_64 | ubuntu_15.10-x86_64 | darwin-x86_64
-:---: | :---: | :---: | :---:
-[![Build Status](https://travis-ci.org/bazelbuild/bazel-watcher.svg?branch=master)](https://travis-ci.org/bazelbuild/bazel-watcher) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=linux-x86_64)](http://ci.bazel.io/job/bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=linux-x86_64) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=ubuntu_15.10-x86_64)](http://ci.bazel.io/job/bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=ubuntu_15.10-x86_64) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=darwin-x86_64)](http://ci.bazel.io/job/bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=darwin-x86_64)
-
++[![Build Status](https://ci.bazel.io/buildStatus/icon?job=bazel-watcher)](https://ci.bazel.io/job/bazel-watcher)
 
 Note: This is not an official Google product.
 
