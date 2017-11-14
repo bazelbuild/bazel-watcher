@@ -33,6 +33,18 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_jaschaephraim_lrserver",
+    commit = "0dac7fe720b94c2a85f984dbc7406a495c35b25b",
+    importpath = "github.com/jaschaephraim/lrserver",
+)
+
+go_repository(
+    name = "com_github_gorilla_websocket",
+    commit = "7ca4275b84a9d500f68971c8c4a97f0ec18eb889",
+    importpath = "github.com/gorilla/websocket",
+)
+
+go_repository(
     name = "org_golang_x_sys",
     commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
     importpath = "golang.org/x/sys",

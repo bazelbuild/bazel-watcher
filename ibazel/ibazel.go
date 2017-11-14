@@ -26,6 +26,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/fsnotify/fsnotify"
+	"github.com/jaschaephraim/lrserver"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
@@ -62,10 +63,12 @@ type IBazel struct {
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
+	lrserver *lrserver.Server
 
 	sourceEventHandler *SourceEventHandler
 
 	state State
+	lastChangeTime time.Time
 }
 
 func New() (*IBazel, error) {
@@ -135,6 +138,7 @@ func (i *IBazel) Cleanup() {
 
 func (i *IBazel) setup() error {
 	var err error
+
 	// Even though we are going to recreate this when the query happens, create
 	// the pointer we will use to refer to the watchers right now.
 	i.buildFileWatcher, err = fsnotify.NewWatcher()
@@ -148,6 +152,9 @@ func (i *IBazel) setup() error {
 	}
 
 	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher)
+
+	i.lrserver = lrserver.New("ibazel", lrserver.DefaultPort)
+	go i.lrserver.ListenAndServe()
 
 	return nil
 }
@@ -172,6 +179,7 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 	joinedTargets := strings.Join(targets, " ")
 
 	i.state = QUERY
+	i.lastChangeTime = time.Now()
 	for {
 		i.iteration(command, commandToRun, targets, joinedTargets)
 	}
@@ -181,14 +189,17 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 
 func (i *IBazel) iteration(command string, commandToRun func(...string), targets []string, joinedTargets string) {
 	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
+	fmt.Fprintf(os.Stderr, "%s since last change\n", time.Since(i.lastChangeTime))
 	switch i.state {
 	case WAIT:
 		select {
 		case <-i.sourceEventHandler.SourceFileEvents:
 			fmt.Fprintf(os.Stderr, "Detected source change. Rebuilding...\n")
+			i.lastChangeTime = time.Now();
 			i.state = DEBOUNCE_RUN
 		case <-i.buildFileWatcher.Events:
 			fmt.Fprintf(os.Stderr, "Detected build graph change. Requerying...\n")
+			i.lastChangeTime = time.Now();
 			i.state = DEBOUNCE_QUERY
 		}
 	case DEBOUNCE_QUERY:
@@ -213,9 +224,11 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 			i.state = RUN
 		}
 	case RUN:
-		i.state = WAIT
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
 		commandToRun(targets...)
+		fmt.Fprintf(os.Stderr, "Triggering live reload\n")
+		i.lrserver.Reload("reload")
+		i.state = WAIT
 	}
 }
 
@@ -263,7 +276,7 @@ func (i *IBazel) getCommandForRule(target string) command.Command {
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
 			if contains(attr.StringListValue, "IBAZEL_MAGIC_TAG") {
-				fmt.Fprintf(os.Stderr, "Launching with notifications")
+				fmt.Fprintf(os.Stderr, "Launching with notifications\n")
 				return commandNotifyCommand(i.bazelArgs, target, i.args)
 			}
 		}
