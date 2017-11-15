@@ -1,9 +1,6 @@
 # Bazel watcher
 
-Bazel ≥0.5.2 | linux-x86_64 | ubuntu_15.10-x86_64 | darwin-x86_64
-:---: | :---: | :---: | :---:
-[![Build Status](https://travis-ci.org/bazelbuild/bazel-watcher.svg?branch=master)](https://travis-ci.org/bazelbuild/bazel-watcher) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=linux-x86_64)](http://ci.bazel.io/job/bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=linux-x86_64) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=ubuntu_15.10-x86_64)](http://ci.bazel.io/job/bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=ubuntu_15.10-x86_64) | [![Build Status](http://ci.bazel.io/buildStatus/icon?job=bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=darwin-x86_64)](http://ci.bazel.io/job/bazel-watcher/BAZEL_VERSION=latest,PLATFORM_NAME=darwin-x86_64)
-
+[![Build Status](https://ci.bazel.io/buildStatus/icon?job=Global%2Fbazel-watcher)](https://ci.bazel.io/blue/organizations/jenkins/Global%2Fbazel-watcher/activity/)
 
 Note: This is not an official Google product.
 
@@ -26,6 +23,14 @@ Hack hack hack. Save and your target will be rebuilt.
 Right now this repo supports `build`, `test`, and `run`.
 
 ## Additional notes
+
+### Termination
+
+SIGINT has to be sent twice to kill ibazel: once to kill the subprocess, and
+the second time for ibazel itself. Also, ibazel will exit on its own when a
+bazel query fails, but it will stay alive when a build, test, or run fails.
+We use an exit code of 3 for a signal termination, and 4 for a query failure.
+These codes are not an API and may change at any point.
 
 ### What about the `--watchfs` flag?
 
