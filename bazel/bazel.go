@@ -142,9 +142,9 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no")
 	blazeArgs = append(blazeArgs, args...)
 
+        b.WriteToStderr(true)
+        b.WriteToStdout(false)
 	b.newCommand("query", blazeArgs...)
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
 
 	out, err := b.cmd.Output()
 	if err != nil {
@@ -180,9 +180,9 @@ func (b *bazel) Test(args ...string) error {
 
 // Build the specified target (singular) and run it with the given arguments.
 func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
-	b.newCommand("run", args...)
 	b.WriteToStderr(true)
-	b.WriteToStdout(true)
+        b.WriteToStdout(true)
+        b.newCommand("run", args...)
 	b.cmd.Stdin = os.Stdin
 
 	err := b.cmd.Run()
@@ -194,7 +194,13 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
 }
 
 func (b *bazel) Wait() error {
-	return b.cmd.Wait()
+	res := b.cmd.Wait()
+	if res.Error() == "exec: Wait was already called" {
+		if b.cmd.ProcessState.Success() {
+			return nil
+		}
+	}
+	return res
 }
 
 // Cancel the currently running operation. Useful if you call Run(target) and

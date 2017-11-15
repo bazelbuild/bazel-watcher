@@ -49,13 +49,13 @@ const (
 	QUIT           State = "QUIT"
 )
 
-const debounceDuration = 100 * time.Millisecond
 const sourceQuery = "kind('source file', deps(set(%s)))"
 const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
 	b *bazel.Bazel
 
+	debounceDuration time.Duration
 
 	cmd       command.Command
 	args      []string
@@ -82,6 +82,8 @@ func New() (*IBazel, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	i.debounceDuration = 100 * time.Millisecond
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -142,6 +144,10 @@ func (i *IBazel) SetNoLiveReload(noLiveReload bool) {
 
 func (i *IBazel) SetProfileDev(profileDev bool) {
 	i.profileDev = profileDev
+}
+
+func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
+	i.debounceDuration = debounceDuration
 }
 
 func (i *IBazel) Cleanup() {
@@ -224,7 +230,7 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		select {
 		case <-i.buildFileWatcher.Events:
 			i.state = DEBOUNCE_QUERY
-		case <-time.After(debounceDuration):
+		case <-time.After(i.debounceDuration):
 			i.state = QUERY
 		}
 	case QUERY:
@@ -238,7 +244,7 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		select {
 		case <-i.sourceEventHandler.SourceFileEvents:
 			i.state = DEBOUNCE_RUN
-		case <-time.After(debounceDuration):
+		case <-time.After(i.debounceDuration):
 			i.state = RUN
 		}
 	case RUN:
@@ -309,10 +315,10 @@ func (i *IBazel) setupRun(target string) {
 	liveReload := false
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
-			if contains(attr.StringListValue, "IBAZEL_MAGIC_TAG") {
+			if contains(attr.StringListValue, "iblaze_notify_changes") {
 				commandNotify = true
 			}
-			if contains(attr.StringListValue, "IBAZEL_LIVE_RELOAD") {
+			if contains(attr.StringListValue, "ibazel_live_reload") {
 				liveReload = true
 			}
 		}
@@ -343,18 +349,18 @@ func (i *IBazel) run(targets ...string) {
 		i.setupRun(targets[0])
 		i.cmd.Start()
 	} else {
+		fmt.Fprintf(os.Stderr, "Notifying of changes\n")
 		i.cmd.NotifyOfChanges()
 	}
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b := i.newBazel()
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
 
 	res, err := b.Query(rule)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+                osExit(4)
 	}
 
 	for _, target := range res.Target {
@@ -369,13 +375,11 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 
 func (i *IBazel) queryForSourceFiles(query string) []string {
 	b := i.newBazel()
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
 
 	res, err := b.Query(query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
-		return []string{}
+		osExit(4)
 	}
 
 	toWatch := make([]string, 0, 10000)
