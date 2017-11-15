@@ -194,7 +194,13 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
 }
 
 func (b *bazel) Wait() error {
-	return b.cmd.Wait()
+	res := b.cmd.Wait()
+	if res.Error() == "exec: Wait was already called" {
+		if b.cmd.ProcessState.Success() {
+			return nil
+		}
+	}
+	return res
 }
 
 // Cancel the currently running operation. Useful if you call Run(target) and
