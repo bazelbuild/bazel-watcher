@@ -64,11 +64,14 @@ func (c *notifyCommand) Start() {
 	b.WriteToStdout(true)
 
 	c.cmd = start(b, c.target, c.args)
+	// Keep the writer around.
 	var err error
 	c.stdin, err = c.cmd.StdinPipe()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating process: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error getting stdin pipe: %v\n", err)
 	}
+
+	c.cmd.Env = append(os.Environ(), "IBAZEL_NOTIFY_CHANGES=y")
 
 	if err = c.cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
@@ -83,14 +86,24 @@ func (c *notifyCommand) NotifyOfChanges() {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	b.Build(c.target)
+	err := b.Build(c.target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building target: %s\n%v", err)
+	}
 
-	if b.Wait() != nil {
-		fmt.Fprintf(os.Stderr, "FAILURE")
-		io.WriteString(c.stdin, "IBAZEL_BUILD_COMPLETED FAILURE\n")
+	res := b.Wait()
+	if res != nil {
+		fmt.Fprintf(os.Stderr, "FAILURE: %v\n", res)
+		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing failure to stdin: %s\n%v", err)
+		}
 	} else {
-		fmt.Fprintf(os.Stderr, "SUCCESS")
-		io.WriteString(c.stdin, "IBAZEL_BUILD_COMPLETED SUCCESS\n")
+		fmt.Fprintf(os.Stderr, "SUCCESS\n")
+		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %s\n", err)
+		}
 	}
 }
 
