@@ -288,6 +288,7 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	res, err := b.Query(rule)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+                osExit(4)
 	}
 
 	for _, target := range res.Target {
