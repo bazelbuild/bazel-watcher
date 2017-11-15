@@ -291,12 +291,11 @@ func (i *IBazel) run(targets ...string) {
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b := i.newBazel()
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
 
 	res, err := b.Query(rule)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+                osExit(4)
 	}
 
 	for _, target := range res.Target {
@@ -311,13 +310,11 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 
 func (i *IBazel) queryForSourceFiles(query string) []string {
 	b := i.newBazel()
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
 
 	res, err := b.Query(query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
-		return []string{}
+		osExit(4)
 	}
 
 	toWatch := make([]string, 0, 10000)
