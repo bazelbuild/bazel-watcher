@@ -64,6 +64,8 @@ type IBazel struct {
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
 
+	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
+
 	sourceEventHandler *SourceEventHandler
 
 	state State
@@ -77,6 +79,7 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
+	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -357,18 +360,28 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 
 func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 	toWatch := i.queryForSourceFiles(query)
+	filesAdded := map[string]bool{}
 
-	// TODO: Figure out how to unwatch files that are no longer included
-	successFullWatchFileCount := 0
 	for _, line := range toWatch {
 		err := watcher.Add(line)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
 			continue
 		} else {
-			successFullWatchFileCount++
+			filesAdded[line] = true
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Watching: %d files\n", successFullWatchFileCount)
+	for line, _ := range i.filesWatched[watcher] {
+		_, ok := filesAdded[line]
+		if !ok {
+			err := watcher.Remove(line)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error unwatching file %v\nError: %v\n", line, err)
+			}
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "Watching: %d files\n", len(filesAdded))
+	i.filesWatched[watcher] = filesAdded
 }
