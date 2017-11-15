@@ -61,6 +61,7 @@ type IBazel struct {
 	args      []string
 	bazelArgs []string
 	noLiveReload bool
+	profileDev bool
 
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
@@ -139,6 +140,10 @@ func (i *IBazel) SetNoLiveReload(noLiveReload bool) {
 	i.noLiveReload = noLiveReload
 }
 
+func (i *IBazel) SetProfileDev(profileDev bool) {
+	i.profileDev = profileDev
+}
+
 func (i *IBazel) Cleanup() {
 	i.buildFileWatcher.Close()
 	i.sourceFileWatcher.Close()
@@ -184,7 +189,9 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 	joinedTargets := strings.Join(targets, " ")
 
 	i.state = QUERY
-	i.lastChangeTime = time.Now()
+	if i.profileDev {
+		i.lastChangeTime = time.Now()
+	}
 	for {
 		i.iteration(command, commandToRun, targets, joinedTargets)
 	}
@@ -194,17 +201,23 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 
 func (i *IBazel) iteration(command string, commandToRun func(...string), targets []string, joinedTargets string) {
 	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
-	fmt.Fprintf(os.Stderr, "%s since last change\n", time.Since(i.lastChangeTime))
+	if i.profileDev {
+		fmt.Fprintf(os.Stderr, "%s since last change\n", time.Since(i.lastChangeTime))
+	}
 	switch i.state {
 	case WAIT:
 		select {
 		case <-i.sourceEventHandler.SourceFileEvents:
 			fmt.Fprintf(os.Stderr, "Detected source change. Rebuilding...\n")
-			i.lastChangeTime = time.Now();
+			if i.profileDev {
+				i.lastChangeTime = time.Now();
+			}
 			i.state = DEBOUNCE_RUN
 		case <-i.buildFileWatcher.Events:
 			fmt.Fprintf(os.Stderr, "Detected build graph change. Requerying...\n")
-			i.lastChangeTime = time.Now();
+			if i.profileDev {
+				i.lastChangeTime = time.Now();
+			}
 			i.state = DEBOUNCE_QUERY
 		}
 	case DEBOUNCE_QUERY:
