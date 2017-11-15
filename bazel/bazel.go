@@ -15,7 +15,6 @@
 package bazel
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -143,19 +142,15 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no")
 	blazeArgs = append(blazeArgs, args...)
 
+        b.WriteToStderr(true)
+        b.WriteToStdout(false)
 	b.newCommand("query", blazeArgs...)
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
 
-	var stdout, stderr bytes.Buffer
-	b.cmd.Stdout = &stdout
-	b.cmd.Stderr = &stderr
-	err := b.cmd.Run()
+	out, err := b.cmd.Output()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, stderr.String())
 		return nil, err
 	}
-	return b.processQuery(stdout.Bytes())
+	return b.processQuery(out)
 }
 
 func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
@@ -185,9 +180,9 @@ func (b *bazel) Test(args ...string) error {
 
 // Build the specified target (singular) and run it with the given arguments.
 func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
-	b.newCommand("run", args...)
 	b.WriteToStderr(true)
-	b.WriteToStdout(true)
+        b.WriteToStdout(true)
+        b.newCommand("run", args...)
 	b.cmd.Stdin = os.Stdin
 
 	err := b.cmd.Run()
