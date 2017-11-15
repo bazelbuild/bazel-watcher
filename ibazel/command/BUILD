@@ -39,4 +39,5 @@ go_test(
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
     ],
+    size = "small",
 )
