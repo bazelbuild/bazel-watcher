@@ -186,17 +186,25 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 	return nil
 }
 
+// fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
+// to avoid triggering builds on file acccesses (e.g. due to your IDE checking modified status).
+const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
+
 func (i *IBazel) iteration(command string, commandToRun func(...string), targets []string, joinedTargets string) {
 	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
 	switch i.state {
 	case WAIT:
 		select {
-		case <-i.sourceEventHandler.SourceFileEvents:
-			fmt.Fprintf(os.Stderr, "Detected source change. Rebuilding...\n")
-			i.state = DEBOUNCE_RUN
-		case <-i.buildFileWatcher.Events:
-			fmt.Fprintf(os.Stderr, "Detected build graph change. Requerying...\n")
-			i.state = DEBOUNCE_QUERY
+		case e := <-i.sourceEventHandler.SourceFileEvents:
+			if e.Op&modifyingEvents != 0 {
+				fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
+				i.state = DEBOUNCE_RUN
+			}
+		case e := <-i.buildFileWatcher.Events:
+			if e.Op&modifyingEvents != 0 {
+				fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
+				i.state = DEBOUNCE_QUERY
+			}
 		}
 	case DEBOUNCE_QUERY:
 		select {
