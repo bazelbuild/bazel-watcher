@@ -27,7 +27,8 @@ type MockBazel struct {
 	queryResponse map[string]*blaze_query.QueryResult
 	args          []string
 
-	waitError error
+	buildError error
+	waitError  error
 }
 
 func (b *MockBazel) SetArguments(args []string) {
@@ -63,7 +64,10 @@ func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 }
 func (b *MockBazel) Build(args ...string) error {
 	b.actions = append(b.actions, append([]string{"Build"}, args...))
-	return nil
+	return b.buildError
+}
+func (b *MockBazel) BuildError(e error) {
+	b.buildError = e
 }
 func (b *MockBazel) Test(args ...string) error {
 	b.actions = append(b.actions, append([]string{"Test"}, args...))
