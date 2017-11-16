@@ -299,6 +299,8 @@ func (i *IBazel) startLiveReloadServer() {
 		if (testPort(port)) {
 			i.lrserver = lrserver.New("live reload", port)
 			go i.lrserver.ListenAndServe()
+			url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
+			os.Setenv("IBAZEL_LIVERELOAD_URL", url)
 			return
 		}
 	}
