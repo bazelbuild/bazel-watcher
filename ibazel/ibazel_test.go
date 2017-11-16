@@ -181,7 +181,7 @@ func TestIBazelLoop(t *testing.T) {
 	assertRun()
 	assertState(WAIT)
 	// Source file change.
-	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{}
+	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{Op: fsnotify.Write}
 	step()
 	assertState(DEBOUNCE_RUN)
 	step()
@@ -191,7 +191,7 @@ func TestIBazelLoop(t *testing.T) {
 	assertRun()
 	assertState(WAIT)
 	// Build file change.
-	i.buildFileWatcher.Events <- fsnotify.Event{}
+	i.buildFileWatcher.Events <- fsnotify.Event{Op: fsnotify.Write}
 	step()
 	assertState(DEBOUNCE_QUERY)
 	// Don't send another event in to test the timer
