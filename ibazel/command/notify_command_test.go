@@ -47,14 +47,14 @@ func TestNotifyCommand(t *testing.T) {
 
 	// Mock out bazel to return non-error on test
 	b := &mock_bazel.MockBazel{}
-	b.WaitError(nil)
+	b.BuildError(nil)
 	bazelNew = func() bazel.Bazel { return b }
 	defer func() { bazelNew = oldBazelNew }()
 
 	c.NotifyOfChanges()
-	b.WaitError(errors.New("Demo error"))
+	b.BuildError(errors.New("Demo error"))
 	c.NotifyOfChanges()
-	b.WaitError(nil)
+	b.BuildError(nil)
 	c.NotifyOfChanges()
 
 	b.AssertActions(t, [][]string{

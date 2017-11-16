@@ -86,12 +86,7 @@ func (c *notifyCommand) NotifyOfChanges() {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	err := b.Build(c.target)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error building target: %s\n%v", err)
-	}
-
-	res := b.Wait()
+	res := b.Build(c.target)
 	if res != nil {
 		fmt.Fprintf(os.Stderr, "FAILURE: %v\n", res)
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))
