@@ -28,7 +28,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/fsnotify/fsnotify"
-	"github.com/jaschaephraim/lrserver"
+	"github.com/gregmagolan/lrserver"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
@@ -153,6 +153,9 @@ func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 func (i *IBazel) Cleanup() {
 	i.buildFileWatcher.Close()
 	i.sourceFileWatcher.Close()
+	if i.lrserver != nil {
+		i.lrserver.Close()
+	}
 }
 
 func (i *IBazel) setup() error {
@@ -274,7 +277,7 @@ func (i *IBazel) build(targets ...string) {
 	b.WriteToStdout(true)
 	err := b.Build(targets...)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Build error: %v", err)
+		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
 		return
 	}
 }
@@ -287,7 +290,7 @@ func (i *IBazel) test(targets ...string) {
 	b.WriteToStdout(true)
 	err := b.Test(targets...)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Build error: %v", err)
+		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
 		return
 	}
 }
@@ -306,7 +309,12 @@ func (i *IBazel) startLiveReloadServer() {
 	for ; port < lrserver.DefaultPort + 100; port++ {
 		if (testPort(port)) {
 			i.lrserver = lrserver.New("live reload", port)
-			go i.lrserver.ListenAndServe()
+			go func() {
+					err := i.lrserver.ListenAndServe()
+					if err != nil {
+							fmt.Fprintf(os.Stderr, "Live reload server failed to start: %v\n", err)
+					}
+			}()
 			url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
 			os.Setenv("IBAZEL_LIVERELOAD_URL", url)
 			return
@@ -318,7 +326,7 @@ func (i *IBazel) startLiveReloadServer() {
 func (i *IBazel) setupRun(target string) {
 	rule, err := i.queryRule(target)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 
 	commandNotify := false
@@ -443,7 +451,7 @@ func testPort(port uint16) bool {
   ln, err := net.Listen("tcp", ":" + strconv.FormatInt(int64(port), 10))
 
   if err != nil {
-		fmt.Fprintf(os.Stderr, "Port %d error: %v\n", port, err)
+		fmt.Fprintf(os.Stderr, "Port %d: %v\n", port, err)
     return false
   }
 

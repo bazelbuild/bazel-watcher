@@ -33,9 +33,9 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_jaschaephraim_lrserver",
-    commit = "0dac7fe720b94c2a85f984dbc7406a495c35b25b",
-    importpath = "github.com/jaschaephraim/lrserver",
+    name = "com_github_gregmagolan_lrserver",
+    commit = "2e678573ccbdc2144f01a52f3219bf67cd5f0fc8",
+    importpath = "github.com/gregmagolan/lrserver",
 )
 
 go_repository(
