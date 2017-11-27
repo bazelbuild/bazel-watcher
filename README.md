@@ -22,6 +22,14 @@ Hack hack hack. Save and your target will be rebuilt.
 
 Right now this repo supports `build`, `test`, and `run`.
 
+## Running a target
+
+By default, a target started with `ibazel run` will be terminated and restarted
+whenever it's notified of source changes. Alternatively, if the build rule for
+your target contains `ibazel_notify_changes` in its `tags` attribute, then the
+command will stay alive and will receive a notification of the source changes on
+stdin.
+
 ## Additional notes
 
 ### Termination

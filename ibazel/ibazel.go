@@ -277,7 +277,7 @@ func (i *IBazel) getCommandForRule(target string) command.Command {
 
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
-			if contains(attr.StringListValue, "iblaze_notify_changes") {
+			if contains(attr.StringListValue, "ibazel_notify_changes") {
 				fmt.Fprintf(os.Stderr, "Launching with notifications\n")
 				return commandNotifyCommand(i.bazelArgs, target, i.args)
 			}
