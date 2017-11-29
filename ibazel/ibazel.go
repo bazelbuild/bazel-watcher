@@ -316,7 +316,7 @@ func (i *IBazel) setupRun(target string) command.Command {
 	liveReload := false
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
-			if contains(attr.StringListValue, "iblaze_notify_changes") {
+			if contains(attr.StringListValue, "ibazel_notify_changes") {
 				commandNotify = true
 			}
 			if contains(attr.StringListValue, "ibazel_live_reload") {
