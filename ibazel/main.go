@@ -26,8 +26,9 @@ var overrideableBazelFlags []string = []string{
 	"--test_output=",
 }
 
-var debounceDuration = flag.Duration("debounce", 100 * time.Millisecond, "Debounce duration")
+var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
 var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file instead of os.Stderr")
+var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `iBazel
@@ -37,7 +38,7 @@ target, run, build, or test the specified targets.
 
 Usage:
 
-ibazel build|test|run targets...
+ibazel [flags] build|test|run targets...
 
 Example:
 
@@ -122,6 +123,7 @@ func main() {
 func handle(i *IBazel, command string, args []string) {
 	targets, bazelArgs, args := parseArgs(args)
 	i.SetBazelArgs(bazelArgs)
+	i.SetLiveReload(!(*noLiveReload))
 
 	switch command {
 	case "build":
