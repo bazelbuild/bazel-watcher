@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rules_go_commit = "0bd97fc6ae48d4124e1a8506bcb397be766f8b83"
+rules_go_commit = "2ecdcec93951ce4de9adea3a8bd6272d58240e6f"
 
 git_repository(
     name = "io_bazel_rules_go",
