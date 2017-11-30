@@ -1,6 +1,6 @@
 {
     "name": "@bazel/ibazel",
-    "version": "v0.0.1",
+    "version": "0.0.1",
     "description": "node distribution of ibazel",
     "bin": {
         "ibazel": "index.js"
