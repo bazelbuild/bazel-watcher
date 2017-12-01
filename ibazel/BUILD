@@ -18,7 +18,13 @@ go_binary(
     name = "ibazel",
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     library = ":go_default_library",
+    # Since we don't have any cgo dependencies, force build to be pure
+    # golang. This will make multi-os compatability *MUCH* easier.
+    pure = "on",
     visibility = ["//visibility:public"],
+    x_defs = {
+        "main.Version": "{STABLE_GIT_VERSION}",
+    },
 )
 
 go_library(
@@ -35,7 +41,6 @@ go_library(
         "//ibazel/command:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
-        "@com_github_gorilla_websocket//:go_default_library",
         "@com_github_gregmagolan_lrserver//:go_default_library",
     ],
 )
@@ -54,8 +59,6 @@ go_test(
         "//ibazel/command:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
-        "@com_github_gorilla_websocket//:go_default_library",
-        "@com_github_gregmagolan_lrserver//:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )

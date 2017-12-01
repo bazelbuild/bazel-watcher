@@ -20,6 +20,9 @@ set -o pipefail
 # cd to the root of the project so that relative paths work.
 cd "$(git rev-parse --show-toplevel)"
 
+# Clean the repo to make sure nothing strange is happening.
+bazel clean --expunge
+
 # Make a temporary directory to stage the release in.
 readonly STAGING="$(mktemp -d)"
 echo "Staging into ${STAGING}"
@@ -27,7 +30,8 @@ echo "Staging into ${STAGING}"
 # Copy over the base files required for NPM
 cp "README.md" "${STAGING}/README.md"
 cp "npm/index.js" "${STAGING}/index.js"
-cp "npm/package.json" "${STAGING}/package.json"
+bazel build --config=release "//npm:package.json"
+cp "$(bazel info bazel-genfiles)/npm/package.json" "${STAGING}/package.json"
 
 compile() {
   export GOOS=$1; shift
@@ -38,13 +42,31 @@ compile() {
   if [[ "${GOOS}" == "windows" ]]; then
     DESTINATION="${DESTINATION}.exe"
   fi
-  go build -o "${DESTINATION}" github.com/bazelbuild/bazel-watcher/ibazel
+  bazel build \
+    --config=release \
+    "--experimental_platforms=@io_bazel_rules_go//go/toolchain:${GOOS}_${GOARCH}" \
+    "//ibazel:ibazel"
+  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel"
+  cp "${SOURCE}" "${DESTINATION}"
+
+  # Sometimes bazel likes to change the ouput directory for binaries
+  # depending on command line flags (platforms for example). In order to
+  # make this an easy to detect error, force remove the binary that was
+  # generated for this platform so that if future bazel build runs for a
+  # different architecture write to a different folder the expected
+  # directory will not exist.
+  rm -f "${SOURCE}"
 }
 
 # Now compiler ibazel for every platform/arch that is supported.
 compile "linux"   "amd64"
 compile "darwin"  "amd64"
-compile "windows" "amd64"
+# Windows isn't compatable due to the os.Setpgid call.
+#compile "windows" "amd64"
+echo "Build successful."
+
+echo -n "Publishing ${STAGING} to NPM as "
+grep "version" < "${STAGING}/package.json"
 
 # Everything is staged now, actually upload the package.
 cd "$STAGING" && npm publish
