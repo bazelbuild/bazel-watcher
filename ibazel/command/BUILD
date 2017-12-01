@@ -28,6 +28,7 @@ go_library(
 
 go_test(
     name = "go_default_test",
+    size = "small",
     srcs = [
         "command_test.go",
         "default_command_test.go",
@@ -39,5 +40,4 @@ go_test(
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
     ],
-    size = "small",
 )
