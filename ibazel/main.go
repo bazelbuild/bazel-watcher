@@ -22,6 +22,8 @@ import (
 	"time"
 )
 
+var Version = "Development"
+
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
 }
@@ -31,7 +33,7 @@ var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file ins
 var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `iBazel
+	fmt.Fprintf(os.Stderr, `iBazel - Version %s
 
 A file watcher for Bazel. Whenever a source file used in a specified
 target, run, build, or test the specified targets.
@@ -48,7 +50,7 @@ ibazel run //path/to/my/runnable:target -- --arguments --for_your=binary
 ibazel build //path/to/my/buildable:target
 
 iBazel flags:
-`)
+`, Version)
 	flag.PrintDefaults()
 }
 
