@@ -1,8 +1,10 @@
 package e2e
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"runtime/debug"
 	"testing"
 
@@ -46,5 +48,5 @@ func getPath(p string) string {
 var ibazelPath string
 
 func init() {
-	ibazelPath = getPath("ibazel/ibazel")
+	ibazelPath = getPath(fmt.Sprintf("ibazel/%s_%s_pure_stripped/ibazel", runtime.GOOS, runtime.GOARCH))
 }
