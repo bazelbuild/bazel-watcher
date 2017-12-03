@@ -1,17 +1,16 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+# gazelle:exclude simple_test.go
 
-go_test(
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@com_github_bazelbuild_bazel_integration_testing//go:bazel_integration_test.bzl", "bazel_go_integration_test")
+
+bazel_go_integration_test(
     name = "go_default_test",
     srcs = ["simple_test.go"],
     data = [
-        "//e2e/bazel",
-        "//e2e/simple",
         "//ibazel",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/e2e",
     library = ":go_default_library",
-    # Run from the root of the repo.
-    rundir = ".",
 )
 
 go_library(
@@ -22,11 +21,16 @@ go_library(
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/e2e",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_bazelbuild_rules_go//go/tools/bazel:go_default_library"],
+    deps = [
+        "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",
+        "@com_github_bazelbuild_rules_go//go/tools/bazel:go_default_library",
+    ],
 )
 
 # I kept running this wrong so I aliased it to make my monkey brain hurt less.
-alias(
-    name = "e2e",
-    actual = ":go_default_test",
-)
+# Deactivated until
+# https://github.com/bazelbuild/bazel/issues/4205
+#alias(
+#    name = "e2e",
+#    actual = "//e2e:go_default_test/bazel0.7",
+#)
