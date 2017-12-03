@@ -22,7 +22,7 @@ load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl",
 
 bazel_binaries()
 
-rules_go_commit = "2ecdcec93951ce4de9adea3a8bd6272d58240e6f"
+rules_go_commit = "f80dec7889568c36eb191d3d1534d2db4574d430"
 
 git_repository(
     name = "io_bazel_rules_go",
