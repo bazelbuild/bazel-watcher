@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -66,6 +67,7 @@ type IBazel struct {
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
 
+	workspacePath string
 	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
 
 	sourceEventHandler *SourceEventHandler
@@ -77,6 +79,11 @@ type IBazel struct {
 func New() (*IBazel, error) {
 	i := &IBazel{}
 	err := i.setup()
+	if err != nil {
+		return nil, err
+	}
+
+	i.workspacePath, err = i.getWorkspacePath()
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +109,35 @@ func New() (*IBazel, error) {
 	}()
 
 	return i, nil
+}
+
+func (i *IBazel) getWorkspacePath() (string, error) {
+	path, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	volume := filepath.VolumeName(path)
+
+	for {
+		// filepath.Dir() includes a trailing separator if we're at the root
+		if path == volume + string(filepath.Separator) {
+			path = volume
+		}
+
+		// Check if we're at the workspace path
+		if _, err := os.Stat(filepath.Join(path, "WORKSPACE")); !os.IsNotExist(err) {
+			return path, nil
+		}
+
+		// If we've reached the root, then we know the cwd isn't within a workspace
+		if path == volume {
+			return "", errors.New("ibazel was not invoked from within a workspace\n")
+		}
+
+		// Move one level up the path
+		path = filepath.Dir(path)
+	}
 }
 
 func (i *IBazel) handleSignals() {
@@ -397,14 +433,8 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 				continue
 			}
 
-			// For files that are served from the root they will being with "//:". This
-			// is a problematic string because, for example, "//:demo.sh" will become
-			// "/demo.sh" which is in the root of the filesystem and is unlikely to exist.
-			if strings.HasPrefix(label, "//:") {
-				label = label[3:]
-			}
-
-			toWatch = append(toWatch, strings.Replace(strings.TrimPrefix(label, "//"), ":", "/", 1))
+			label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
+			toWatch = append(toWatch, filepath.Join(i.workspacePath, label))
 			break
 		default:
 			fmt.Fprintf(os.Stderr, "%v\n\n", target)
