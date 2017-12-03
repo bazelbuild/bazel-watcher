@@ -28,6 +28,6 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["bazel_test.go"],
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/bazel",
-    library = ":go_default_library",
 )

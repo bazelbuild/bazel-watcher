@@ -32,13 +32,12 @@ go_library(
     srcs = ["generate_package.go"],
     importpath = "github.com/bazelbuild/bazel-watcher/npm",
     visibility = ["//visibility:private"],
-    deps = ["@com_github_bazelbuild_rules_go//go/tools/bazel:go_default_library"],
 )
 
 go_binary(
     name = "npm",
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/npm",
-    library = ":go_default_library",
     visibility = ["//visibility:public"],
     x_defs = {
         "main.Version": "{STABLE_GIT_VERSION}",

@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+git_repository(
+    name = "com_github_bazelbuild_bazel_integration_testing",
+    commit = "3951dc70d9b586224f930e957e4b093fe318a433",
+    remote = "https://github.com/bazelbuild/bazel-integration-testing",
+)
+
+load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
+
+bazel_binaries()
+
 rules_go_commit = "2ecdcec93951ce4de9adea3a8bd6272d58240e6f"
 
 git_repository(

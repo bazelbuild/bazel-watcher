@@ -16,8 +16,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_binary")
 
 go_binary(
     name = "ibazel",
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    library = ":go_default_library",
     # Since we don't have any cgo dependencies, force build to be pure
     # golang. This will make multi-os compatability *MUCH* easier.
     pure = "on",
@@ -51,8 +51,8 @@ go_test(
         "ibazel_test.go",
         "main_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    library = ":go_default_library",
     deps = [
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
