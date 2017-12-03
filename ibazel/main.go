@@ -18,9 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -92,30 +90,6 @@ func parseArgs(in []string) (targets, bazelArgs, args []string) {
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	levels := strings.Split(cwd, "/")
-
-	// Iterate upward from the cwd to the root
-	for l := range levels {
-		base_path := strings.Join(levels[:len(levels)-l], "/")
-		npm_ibazel_path := fmt.Sprintf("%s/node_modules/@bazel/ibazel/bin/%s_%s/ibazel",
-		                               base_path, runtime.GOOS, runtime.GOARCH)
-
-		if _, err := os.Stat(npm_ibazel_path); !os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Using npm installed ibazel at %s\n", npm_ibazel_path)
-
-			args := append([]string{"ibazel"}, flag.Args()...)
-			err := syscall.Exec(npm_ibazel_path, args, os.Environ())
-			if err != nil {
-				panic(err)
-			}
-			break
-		}
-	}
 
 	if *logToFile != "-" {
 		var err error
