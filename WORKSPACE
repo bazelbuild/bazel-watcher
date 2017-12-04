@@ -14,7 +14,7 @@
 
 git_repository(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    commit = "3951dc70d9b586224f930e957e4b093fe318a433",
+    commit = "55a6a70dbcc2cc7699ee715746fb1452788f8d3c",
     remote = "https://github.com/bazelbuild/bazel-integration-testing",
 )
 
