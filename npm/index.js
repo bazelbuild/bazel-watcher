@@ -54,6 +54,12 @@ function main(args) {
       break;
     }
   }
+  if (basePath === __dirname) {
+    console.error(`WARNING: no ibazel version found in your node_modules.
+        We recommend installing a devDependency on ibazel so you use the same
+        version as other engineers on this project.
+        Using the globally installed version at ${__dirname}`);
+  }
 
   const binary = path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel');
   const ibazel = spawn(binary, args, {stdio: 'inherit'});
