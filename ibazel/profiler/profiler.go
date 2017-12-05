@@ -42,8 +42,8 @@ type profileEvent struct {
 	// start event
 	IBazelVersion string `json:"iBazelVersion,omitempty"`
 	BazelVersion string `json:"bazelVersion,omitempty"`
-	MaxHeapSize int `json:"maxHeapSize,omitempty"`
-	CommittedHeapSize int `json:"committedHeapSize,omitempty"`
+	MaxHeapSize string `json:"maxHeapSize,omitempty"`
+	CommittedHeapSize string `json:"committedHeapSize,omitempty"`
 
 	// change event
 	Change string `json:"change,omitempty"`
@@ -118,6 +118,12 @@ func (i *Profiler) GraphChangeEvent(change string) {
 func (i *Profiler) startEvent(info *map[string]string) {
 	event := profileEvent{}
 	event.Type = "IBAZEL_START"
+	if info != nil {
+		event.IBazelVersion = "" // FIXME: get the iBazel version here
+		event.BazelVersion = (*info)["release"]
+		event.MaxHeapSize = (*info)["max-heap-size"]
+		event.CommittedHeapSize = (*info)["committed-heap-size"]
+	}
 	i.processEvent(&event, false)
 }
 
