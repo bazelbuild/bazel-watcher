@@ -39,6 +39,7 @@ go_library(
     deps = [
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
+        "//ibazel/profiler:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
         "@com_github_gregmagolan_lrserver//:go_default_library",
@@ -57,6 +58,7 @@ go_test(
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
         "//ibazel/command:go_default_library",
+        "//ibazel/profiler:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",

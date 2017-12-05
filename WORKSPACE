@@ -71,3 +71,9 @@ go_repository(
     commit = "130e6b02ab059e7b717a096f397c5b60111cae74",
     importpath = "github.com/golang/protobuf",
 )
+
+go_repository(
+    name = "com_github_satori_go_uuid",
+    commit = "5bf94b69c6b68ee1b541973bb8e1144db23a194b",
+    importpath = "github.com/satori/go.uuid",
+)
