@@ -63,6 +63,8 @@ func (c *defaultCommand) Start() {
 
 	c.cmd = start(b, c.target, c.args)
 
+	c.cmd.Env = os.Environ()
+
 	var err error
 	if err = c.cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)

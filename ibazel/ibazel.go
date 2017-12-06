@@ -17,18 +17,16 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/fsnotify/fsnotify"
-	"github.com/gregmagolan/lrserver"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
@@ -57,21 +55,20 @@ type IBazel struct {
 
 	debounceDuration time.Duration
 
-	cmd        command.Command
-	args       []string
-	bazelArgs  []string
-	liveReload bool
+	cmd       command.Command
+	args      []string
+	bazelArgs []string
 
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
-	lrserver          *lrserver.Server
 
 	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
 
 	sourceEventHandler *SourceEventHandler
+	lifecycleListeners []Lifecycle
 
 	state State
 }
@@ -85,10 +82,17 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
-	i.liveReload = true // default to true
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	i.lifecycleListeners = []Lifecycle{
+		live_reload.New(),
+	}
+
+	for _, l := range i.lifecycleListeners {
+		l.Setup()
+	}
 
 	go func() {
 		for {
@@ -140,10 +144,6 @@ func (i *IBazel) SetBazelArgs(args []string) {
 	i.bazelArgs = args
 }
 
-func (i *IBazel) SetLiveReload(liveReload bool) {
-	i.liveReload = liveReload
-}
-
 func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 	i.debounceDuration = debounceDuration
 }
@@ -151,8 +151,24 @@ func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 func (i *IBazel) Cleanup() {
 	i.buildFileWatcher.Close()
 	i.sourceFileWatcher.Close()
-	if i.lrserver != nil {
-		i.lrserver.Close()
+	for _, l := range i.lifecycleListeners {
+		l.Cleanup()
+	}
+}
+
+func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
+	for _, l := range i.lifecycleListeners {
+		l.TargetDecider(rule)
+	}
+}
+func (i *IBazel) beforeEvent(name string) {
+	for _, l := range i.lifecycleListeners {
+		l.BeforeEvent(name)
+	}
+}
+func (i *IBazel) afterEvent(name string) {
+	for _, l := range i.lifecycleListeners {
+		l.AfterEvent(name)
 	}
 }
 
@@ -246,11 +262,9 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		}
 	case RUN:
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
+		i.beforeEvent(command)
 		commandToRun(targets...)
-		if i.lrserver != nil {
-			fmt.Fprintf(os.Stderr, "Triggering live reload\n")
-			i.lrserver.Reload("reload")
-		}
+		i.afterEvent(command)
 		i.state = WAIT
 	}
 }
@@ -290,52 +304,21 @@ func contains(l []string, e string) bool {
 	return false
 }
 
-func (i *IBazel) startLiveReloadServer() {
-	port := lrserver.DefaultPort
-	for ; port < lrserver.DefaultPort+100; port++ {
-		if testPort(port) {
-			i.lrserver = lrserver.New("live reload", port)
-			go func() {
-				err := i.lrserver.ListenAndServe()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Live reload server failed to start: %v\n", err)
-				}
-			}()
-			url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
-			os.Setenv("IBAZEL_LIVERELOAD_URL", url)
-			return
-		}
-	}
-	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
-}
-
 func (i *IBazel) setupRun(target string) command.Command {
 	rule, err := i.queryRule(target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 
+	i.targetDecider(rule)
+
 	commandNotify := false
-	liveReload := false
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
 			if contains(attr.StringListValue, "ibazel_notify_changes") {
 				commandNotify = true
 			}
-			if contains(attr.StringListValue, "ibazel_live_reload") {
-				liveReload = true
-			}
 		}
-	}
-
-	if liveReload && !i.liveReload {
-		fmt.Fprintf(os.Stderr, "Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.\n")
-		liveReload = false
-	}
-
-	if liveReload {
-		fmt.Fprintf(os.Stderr, "Launching with live reload\n")
-		i.startLiveReloadServer()
 	}
 
 	if commandNotify {
@@ -441,16 +424,4 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 
 	fmt.Fprintf(os.Stderr, "Watching: %d files\n", len(filesAdded))
 	i.filesWatched[watcher] = filesAdded
-}
-
-func testPort(port uint16) bool {
-	ln, err := net.Listen("tcp", ":"+strconv.FormatInt(int64(port), 10))
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Port %d: %v\n", port, err)
-		return false
-	}
-
-	ln.Close()
-	return true
 }

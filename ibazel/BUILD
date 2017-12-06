@@ -31,6 +31,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "ibazel.go",
+        "lifecycle.go",
         "main.go",
         "source_event_handler.go",
     ],
@@ -39,9 +40,9 @@ go_library(
     deps = [
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
+        "//ibazel/live_reload:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
-        "@com_github_gregmagolan_lrserver//:go_default_library",
     ],
 )
 
