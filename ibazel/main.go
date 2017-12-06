@@ -31,6 +31,7 @@ var overrideableBazelFlags []string = []string{
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
 var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file instead of os.Stderr")
 var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
+var profileDev = flag.String("profile_dev", "", "Turn on profiling and append report to file")
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `iBazel - Version %s
@@ -126,6 +127,9 @@ func handle(i *IBazel, command string, args []string) {
 	targets, bazelArgs, args := parseArgs(args)
 	i.SetBazelArgs(bazelArgs)
 	i.SetLiveReload(!(*noLiveReload))
+	if *profileDev != "" {
+		i.StartProfiler(*profileDev, targets)
+	}
 
 	switch command {
 	case "build":

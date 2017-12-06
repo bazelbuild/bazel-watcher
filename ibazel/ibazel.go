@@ -27,6 +27,7 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gregmagolan/lrserver"
 
@@ -53,8 +54,6 @@ const sourceQuery = "kind('source file', deps(set(%s)))"
 const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
-	b *bazel.Bazel
-
 	debounceDuration time.Duration
 
 	cmd        command.Command
@@ -65,6 +64,7 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
+	profiler          *profiler.Profiler
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
 	lrserver          *lrserver.Server
@@ -148,11 +148,29 @@ func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 	i.debounceDuration = debounceDuration
 }
 
+func (i *IBazel) StartProfiler(outputPath string, targets []string) {
+	info, _ := i.getInfo()
+
+	profiler, err := profiler.New(outputPath, targets, info)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating profiler: %v\n", err)
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "Profile output: %s\n", outputPath)
+	i.profiler = profiler
+
+	i.startProfilerServer();
+}
+
 func (i *IBazel) Cleanup() {
 	i.buildFileWatcher.Close()
 	i.sourceFileWatcher.Close()
 	if i.lrserver != nil {
 		i.lrserver.Close()
+	}
+	if i.profiler != nil {
+		i.profiler.Close()
 	}
 }
 
@@ -215,17 +233,28 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		case e := <-i.sourceEventHandler.SourceFileEvents:
 			if e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
+				if i.profiler != nil {
+					i.profiler.SourceChangeEvent(e.Name)
+				}
 				i.state = DEBOUNCE_RUN
 			}
 		case e := <-i.buildFileWatcher.Events:
 			if e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
+				if i.profiler != nil {
+					i.profiler.GraphChangeEvent(e.Name)
+				}
 				i.state = DEBOUNCE_QUERY
 			}
 		}
 	case DEBOUNCE_QUERY:
 		select {
-		case <-i.buildFileWatcher.Events:
+		case e := <-i.buildFileWatcher.Events:
+			if e.Op&modifyingEvents != 0 {
+				if i.profiler != nil {
+					i.profiler.GraphChangeEvent(e.Name)
+				}
+			}
 			i.state = DEBOUNCE_QUERY
 		case <-time.After(i.debounceDuration):
 			i.state = QUERY
@@ -239,7 +268,12 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
-		case <-i.sourceEventHandler.SourceFileEvents:
+		case e := <-i.sourceEventHandler.SourceFileEvents:
+			if e.Op&modifyingEvents != 0 {
+				if i.profiler != nil {
+					i.profiler.SourceChangeEvent(e.Name)
+				}
+			}
 			i.state = DEBOUNCE_RUN
 		case <-time.After(i.debounceDuration):
 			i.state = RUN
@@ -249,13 +283,20 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		commandToRun(targets...)
 		if i.lrserver != nil {
 			fmt.Fprintf(os.Stderr, "Triggering live reload\n")
-			i.lrserver.Reload("reload")
+			if i.profiler != nil {
+				i.profiler.ReloadTriggeredEvent()
+			}
+			i.lrserver.Reload("{}")
 		}
 		i.state = WAIT
 	}
 }
 
 func (i *IBazel) build(targets ...string) {
+	if i.profiler != nil {
+		i.profiler.BuildStartEvent()
+	}
+
 	b := i.newBazel()
 
 	b.Cancel()
@@ -264,11 +305,22 @@ func (i *IBazel) build(targets ...string) {
 	err := b.Build(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
+		if i.profiler != nil {
+			i.profiler.BuildFailedEvent()
+		}
 		return
+	}
+
+	if i.profiler != nil {
+		i.profiler.BuildDoneEvent()
 	}
 }
 
 func (i *IBazel) test(targets ...string) {
+	if i.profiler != nil {
+		i.profiler.TestStartEvent()
+	}
+
 	b := i.newBazel()
 
 	b.Cancel()
@@ -277,7 +329,14 @@ func (i *IBazel) test(targets ...string) {
 	err := b.Test(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
+		if i.profiler != nil {
+			i.profiler.TestFailedEvent()
+		}
 		return
+	}
+
+	if i.profiler != nil {
+		i.profiler.TestDoneEvent()
 	}
 }
 
@@ -307,6 +366,24 @@ func (i *IBazel) startLiveReloadServer() {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
+}
+
+func (i *IBazel) startProfilerServer() {
+	port := profiler.DefaultPort
+	for ; port < profiler.DefaultPort+100; port++ {
+		if testPort(port) {
+			go func() {
+				err := i.profiler.Listen(port)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Profiler server failed to start: %v\n", err)
+				}
+			}()
+			url := fmt.Sprintf("http://localhost:%d/profiler-event", port)
+			os.Setenv("IBAZEL_PROFILER_URL", url)
+			return
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Could not find open port for profiler server\n")
 }
 
 func (i *IBazel) setupRun(target string) command.Command {
@@ -347,6 +424,9 @@ func (i *IBazel) setupRun(target string) command.Command {
 }
 
 func (i *IBazel) run(targets ...string) {
+	if i.profiler != nil {
+		i.profiler.RunStartEvent()
+	}
 	if i.cmd == nil {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
@@ -355,6 +435,9 @@ func (i *IBazel) run(targets ...string) {
 	} else {
 		fmt.Fprintf(os.Stderr, "Notifying of changes\n")
 		i.cmd.NotifyOfChanges()
+	}
+	if i.profiler != nil {
+		i.profiler.RunDoneEvent()
 	}
 }
 
@@ -375,6 +458,18 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	}
 
 	return nil, errors.New("No information available")
+}
+
+func (i *IBazel) getInfo() (*map[string]string, error) {
+	b := i.newBazel()
+
+	res, err := b.Info()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting Bazel info %s\n", err)
+		return nil, err
+	}
+
+	return &res, nil
 }
 
 func (i *IBazel) queryForSourceFiles(query string) []string {
