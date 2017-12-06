@@ -1,11 +1,34 @@
-package e2e
+package simple
 
 import (
+	"reflect"
+	"runtime/debug"
 	"testing"
 	"time"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
+	"github.com/bazelbuild/bazel-watcher/e2e"
 )
+
+func must(t *testing.T, e error) {
+	if e != nil {
+		t.Errorf("Error: %s", e)
+		debug.PrintStack()
+	}
+}
+
+func assertNotEqual(t *testing.T, want, got interface{}, msg string) {
+	if reflect.DeepEqual(want, got) {
+		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
+		debug.PrintStack()
+	}
+}
+func assertEqual(t *testing.T, want, got interface{}, msg string) {
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
+		debug.PrintStack()
+	}
+}
 
 func TestSimpleRun(t *testing.T) {
 	b, err := bazel.New()
@@ -21,7 +44,7 @@ sh_binary(
 )
 `))
 
-	ibazel := IBazelTester(b)
+	ibazel := e2e.NewIBazelTester(b)
 	ibazel.Run("//:test")
 	defer ibazel.Kill()
 	time.Sleep(2 * time.Second)
@@ -44,7 +67,7 @@ sh_binary(
 )
 `))
 
-	ibazel := IBazelTester(b)
+	ibazel := e2e.NewIBazelTester(b)
 	ibazel.Run("//:test")
 	defer ibazel.Kill()
 
