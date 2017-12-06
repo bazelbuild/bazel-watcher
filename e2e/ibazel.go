@@ -12,7 +12,7 @@ import (
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 )
 
-type iBazelTester struct {
+type IBazelTester struct {
 	bazel *bazel.TestingBazel
 
 	cmd          *exec.Cmd
@@ -20,17 +20,17 @@ type iBazelTester struct {
 	stdoutBuffer *bytes.Buffer
 }
 
-func IBazelTester(bazel *bazel.TestingBazel) *iBazelTester {
-	return &iBazelTester{
+func NewIBazelTester(bazel *bazel.TestingBazel) *IBazelTester {
+	return &IBazelTester{
 		bazel: bazel,
 	}
 }
 
-func (i *iBazelTester) bazelPath() string {
+func (i *IBazelTester) bazelPath() string {
 	return i.bazel.GetBazel()
 }
 
-func (i *iBazelTester) Run(target string) {
+func (i *IBazelTester) Run(target string) {
 	i.cmd = exec.Command(ibazelPath, "--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/output.log", "run", target)
 
 	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
@@ -50,15 +50,15 @@ func (i *iBazelTester) Run(target string) {
 	}
 }
 
-func (i *iBazelTester) GetOutput() string {
+func (i *IBazelTester) GetOutput() string {
 	return string(i.stdoutBuffer.Bytes())
 }
 
-func (i *iBazelTester) GetError() string {
+func (i *IBazelTester) GetError() string {
 	return string(i.stderrBuffer.Bytes())
 }
 
-func (i *iBazelTester) GetSubprocessPid() int64 {
+func (i *IBazelTester) GetSubprocessPid() int64 {
 	f, err := os.Open(filepath.Join(os.TempDir(), "ibazel_e2e_subprocess_launcher.pid"))
 	if err != nil {
 		panic(err)
@@ -76,7 +76,7 @@ func (i *iBazelTester) GetSubprocessPid() int64 {
 	return pid
 }
 
-func (i *iBazelTester) Kill() {
+func (i *IBazelTester) Kill() {
 	if err := i.cmd.Process.Kill(); err != nil {
 		panic(err)
 	}
