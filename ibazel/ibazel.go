@@ -159,6 +159,8 @@ func (i *IBazel) StartProfiler(outputPath string, targets []string) {
 
 	fmt.Fprintf(os.Stderr, "Profile output: %s\n", outputPath)
 	i.profiler = profiler
+
+	i.startProfilerServer();
 }
 
 func (i *IBazel) Cleanup() {
@@ -281,7 +283,10 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		commandToRun(targets...)
 		if i.lrserver != nil {
 			fmt.Fprintf(os.Stderr, "Triggering live reload\n")
-			i.lrserver.Reload("reload")
+			if i.profiler != nil {
+				i.profiler.ReloadTriggeredEvent()
+			}
+			i.lrserver.Reload("{}")
 		}
 		i.state = WAIT
 	}
@@ -361,6 +366,24 @@ func (i *IBazel) startLiveReloadServer() {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
+}
+
+func (i *IBazel) startProfilerServer() {
+	port := profiler.DefaultPort
+	for ; port < profiler.DefaultPort+100; port++ {
+		if testPort(port) {
+			go func() {
+				err := i.profiler.Listen(port)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Profiler server failed to start: %v\n", err)
+				}
+			}()
+			url := fmt.Sprintf("http://localhost:%d/profiler-event", port)
+			os.Setenv("IBAZEL_PROFILER_URL", url)
+			return
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Could not find open port for profiler server\n")
 }
 
 func (i *IBazel) setupRun(target string) command.Command {
