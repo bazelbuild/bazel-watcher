@@ -12,36 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package main
 
 import (
-	"fmt"
-	"path/filepath"
-	"runtime"
-
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
 
-func GetPath(p string) string {
-	path, err := bazel.Runfile(p)
-	if err != nil {
-		panic(err)
-	}
-
-	path, err = filepath.Abs(path)
-	if err != nil {
-		panic(err)
-	}
-
-	return path
-}
-
-var ibazelPath string
-
-func init() {
-	var err error
-	ibazelPath = GetPath(fmt.Sprintf("ibazel/%s_%s_pure_stripped/ibazel", runtime.GOOS, runtime.GOARCH))
-	if err != nil {
-		panic(err)
-	}
+type Querier interface {
+	QueryForSourceFiles(query string) ([]string, error)
+	QueryRule(rule string) (*blaze_query.Rule, error)
 }

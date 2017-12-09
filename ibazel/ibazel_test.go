@@ -119,13 +119,14 @@ func init() {
 }
 
 func newIBazel(t *testing.T) *IBazel {
-	i, err := New()
+	i, err := New(
+		&FakeWorkspaceFinder{},
+	)
 	if err != nil {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
 
-	i.workspaceFinder = &FakeWorkspaceFinder{}
-
+	i.lifecycleListeners = []Lifecycle{}
 	return i
 }
 

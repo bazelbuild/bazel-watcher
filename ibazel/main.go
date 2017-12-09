@@ -110,7 +110,9 @@ func main() {
 	command := strings.ToLower(flag.Args()[0])
 	args := flag.Args()[1:]
 
-	i, err := New()
+	i, err := New(
+		&MainWorkspaceFinder{},
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating iBazel", err)
 		os.Exit(1)

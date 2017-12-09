@@ -15,7 +15,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -28,6 +27,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
+	"github.com/bazelbuild/bazel-watcher/ibazel/query"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -64,6 +64,7 @@ type IBazel struct {
 	interruptCount int
 
 	workspaceFinder WorkspaceFinder
+	querier         Querier
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
@@ -76,7 +77,7 @@ type IBazel struct {
 	state State
 }
 
-func New() (*IBazel, error) {
+func New(wsf WorkspaceFinder) (*IBazel, error) {
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -85,7 +86,13 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
-	i.workspaceFinder = &MainWorkspaceFinder{}
+	i.workspaceFinder = wsf
+
+	workspacePath, err := wsf.FindWorkspace()
+	if err != nil {
+		return nil, err
+	}
+	i.querier = query.New(bazelNew, workspacePath)
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -346,9 +353,10 @@ func contains(l []string, e string) bool {
 }
 
 func (i *IBazel) setupRun(target string) command.Command {
-	rule, err := i.queryRule(target)
+	rule, err := i.querier.QueryRule(target)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		osExit(4)
 	}
 
 	i.targetDecider(target, rule)
@@ -385,25 +393,6 @@ func (i *IBazel) run(targets ...string) error {
 	fmt.Fprintf(os.Stderr, "Notifying of changes\n")
 	i.cmd.NotifyOfChanges()
 	return nil
-}
-
-func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
-	b := i.newBazel()
-
-	res, err := b.Query(rule)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
-		osExit(4)
-	}
-
-	for _, target := range res.Target {
-		switch *target.Type {
-		case blaze_query.Target_RULE:
-			return target.Rule, nil
-		}
-	}
-
-	return nil, errors.New("No information available")
 }
 
 func (i *IBazel) getInfo() (*map[string]string, error) {
@@ -457,7 +446,11 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 }
 
 func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
-	toWatch := i.queryForSourceFiles(query)
+	toWatch, err := i.querier.QueryForSourceFiles(query)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error querying for source files: %s\n", err)
+		osExit(4)
+	}
 	filesAdded := map[string]bool{}
 
 	for _, line := range toWatch {

@@ -33,6 +33,7 @@ go_library(
         "ibazel.go",
         "lifecycle.go",
         "main.go",
+        "querier.go",
         "source_event_handler.go",
         "workspace_finder.go"
     ],
@@ -43,6 +44,7 @@ go_library(
         "//ibazel/command:go_default_library",
         "//ibazel/profiler:go_default_library",
         "//ibazel/live_reload:go_default_library",
+        "//ibazel/query:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],

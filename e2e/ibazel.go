@@ -1,3 +1,17 @@
+// Copyright 2017 The Bazel Authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package e2e
 
 import (
@@ -17,7 +31,7 @@ import (
 )
 
 // Maximum amount of time to wait before failing a test for not matching your expectations.
-var delay = 10 * time.Second
+var delay = 30 * time.Second
 
 type IBazelTester struct {
 	bazel *bazel.TestingBazel
@@ -45,7 +59,7 @@ func (i *IBazelTester) Run(target string) {
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
-	i.run(target, []string{"--profile_dev="+profiler})
+	i.run(target, []string{"--profile_dev=" + profiler})
 }
 
 func (i *IBazelTester) GetOutput() string {
@@ -107,7 +121,7 @@ func (i *IBazelTester) Kill() {
 }
 
 func (i *IBazelTester) run(target string, additionalArgs []string) {
-	args := []string{"--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
+	args := []string{"--bazel_path=" + i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
 	args = append(args, target)

@@ -1,5 +1,3 @@
-# gazelle:exclude live_reload_test.go
-
 # Copyright 2017 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,18 +13,14 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@com_github_bazelbuild_bazel_integration_testing//go:bazel_integration_test.bzl", "bazel_go_integration_test")
 
-bazel_go_integration_test(
-    name = "go_default_test",
-    srcs = ["live_reload_test.go"],
-    data = [
-        "//ibazel",
-    ],
-    importpath = "github.com/bazelbuild/bazel-watcher/e2e/live_reload",
+go_library(
+    name = "go_default_library",
+    srcs = ["query.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/query",
+    visibility = ["//visibility:public"],
     deps = [
-        "//e2e:go_default_library",
-        "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",
-        "@com_github_gorilla_websocket//:go_default_library",
+        "//bazel:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf:go_default_library",
     ],
 )
