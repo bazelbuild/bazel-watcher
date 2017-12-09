@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -28,7 +27,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
 	"github.com/bazelbuild/bazel-watcher/ibazel/query"
-	"github.com/fsnotify/fsnotify"
+	"github.com/bazelbuild/bazel-watcher/ibazel/watch"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
@@ -63,16 +62,11 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
+	lifecycleListeners []Lifecycle
+
 	workspaceFinder WorkspaceFinder
 	querier         Querier
-
-	buildFileWatcher  *fsnotify.Watcher
-	sourceFileWatcher *fsnotify.Watcher
-
-	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
-
-	sourceEventHandler *SourceEventHandler
-	lifecycleListeners []Lifecycle
+	watcher         Watcher
 
 	state State
 }
@@ -84,8 +78,8 @@ func New(wsf WorkspaceFinder) (*IBazel, error) {
 		return nil, err
 	}
 
+	// Default at 100ms (overridable by SetDebounceDuration).
 	i.debounceDuration = 100 * time.Millisecond
-	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
 	i.workspaceFinder = wsf
 
 	workspacePath, err := wsf.FindWorkspace()
@@ -167,11 +161,10 @@ func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 }
 
 func (i *IBazel) Cleanup() {
-	i.buildFileWatcher.Close()
-	i.sourceFileWatcher.Close()
 	for _, l := range i.lifecycleListeners {
 		l.Cleanup()
 	}
+	i.watcher.Cleanup()
 }
 
 func (i *IBazel) targetDecider(target string, rule *blaze_query.Rule) {
@@ -212,22 +205,8 @@ func (i *IBazel) afterCommand(targets []string, command string, success bool) {
 
 func (i *IBazel) setup() error {
 	var err error
-
-	// Even though we are going to recreate this when the query happens, create
-	// the pointer we will use to refer to the watchers right now.
-	i.buildFileWatcher, err = fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-
-	i.sourceFileWatcher, err = fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-
-	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher)
-
-	return nil
+	i.watcher, err = watch.NewFSNotifyWatcher()
+	return err
 }
 
 // Run the specified target (singular) in the IBazel loop.
@@ -257,34 +236,23 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 	return nil
 }
 
-// fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
-// to avoid triggering builds on file acccesses (e.g. due to your IDE checking modified status).
-const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
-
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
 	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
 	switch i.state {
 	case WAIT:
 		select {
-		case e := <-i.sourceEventHandler.SourceFileEvents:
-			if e.Op&modifyingEvents != 0 {
-				fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
-				i.changeDetected(targets, "source", e.Name)
-				i.state = DEBOUNCE_RUN
-			}
-		case e := <-i.buildFileWatcher.Events:
-			if e.Op&modifyingEvents != 0 {
-				fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
-				i.changeDetected(targets, "graph", e.Name)
-				i.state = DEBOUNCE_QUERY
-			}
+		case e := <-i.watcher.SourceEvents():
+			fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
+			i.changeDetected(targets, "source", e.Name)
+			i.state = DEBOUNCE_RUN
+		case e := <-i.watcher.BuildEvents():
+			fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
+			i.changeDetected(targets, "graph", e.Name)
+			i.state = DEBOUNCE_QUERY
 		}
 	case DEBOUNCE_QUERY:
 		select {
-		case e := <-i.buildFileWatcher.Events:
-			if e.Op&modifyingEvents != 0 {
-				i.changeDetected(targets, "graph", e.Name)
-			}
+		case <-i.watcher.BuildEvents():
 			i.state = DEBOUNCE_QUERY
 		case <-time.After(i.debounceDuration):
 			i.state = QUERY
@@ -292,16 +260,37 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case QUERY:
 		// Query for which files to watch.
 		fmt.Fprintf(os.Stderr, "Querying for BUILD files...\n")
-		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
+		query := fmt.Sprintf(buildQuery, joinedTargets)
+		toWatch, err := i.querier.QueryForSourceFiles(query)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error querying for source files: %s\n", err)
+			osExit(4)
+		}
+		buildCount, err := i.watcher.WatchBuildFiles(toWatch)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error querying for source files: %s\n", err)
+			osExit(4)
+		}
+
 		fmt.Fprintf(os.Stderr, "Querying for source files...\n")
-		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
+		query = fmt.Sprintf(sourceQuery, joinedTargets)
+		toWatch, err = i.querier.QueryForSourceFiles(query)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error querying for source files: %s\n", err)
+			osExit(4)
+		}
+		sourceCount, err := i.watcher.WatchSourceFiles(toWatch)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error querying for source files: %s\n", err)
+			osExit(4)
+		}
+
+		fmt.Fprintf(os.Stderr, "Watching %d BUILD files and %d source files\n", buildCount, sourceCount)
+
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
-		case e := <-i.sourceEventHandler.SourceFileEvents:
-			if e.Op&modifyingEvents != 0 {
-				i.changeDetected(targets, "source", e.Name)
-			}
+		case <-i.watcher.SourceEvents():
 			i.state = DEBOUNCE_RUN
 		case <-time.After(i.debounceDuration):
 			i.state = RUN
@@ -405,74 +394,4 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 	}
 
 	return &res, nil
-}
-
-func (i *IBazel) queryForSourceFiles(query string) []string {
-	b := i.newBazel()
-
-	res, err := b.Query(query)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
-		osExit(4)
-	}
-
-	workspacePath, err := i.workspaceFinder.FindWorkspace()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding workspace: %v\n", err)
-		osExit(5)
-	}
-
-	toWatch := make([]string, 0, 10000)
-	for _, target := range res.Target {
-		switch *target.Type {
-		case blaze_query.Target_SOURCE_FILE:
-			label := *target.SourceFile.Name
-			if strings.HasPrefix(label, "@") {
-				continue
-			}
-			if strings.HasPrefix(label, "//external") {
-				continue
-			}
-
-			label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
-			toWatch = append(toWatch, filepath.Join(workspacePath, label))
-			break
-		default:
-			fmt.Fprintf(os.Stderr, "%v\n\n", target)
-		}
-	}
-
-	return toWatch
-}
-
-func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
-	toWatch, err := i.querier.QueryForSourceFiles(query)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error querying for source files: %s\n", err)
-		osExit(4)
-	}
-	filesAdded := map[string]bool{}
-
-	for _, line := range toWatch {
-		err := watcher.Add(line)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
-			continue
-		} else {
-			filesAdded[line] = true
-		}
-	}
-
-	for line, _ := range i.filesWatched[watcher] {
-		_, ok := filesAdded[line]
-		if !ok {
-			err := watcher.Remove(line)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error unwatching file %v\nError: %v\n", line, err)
-			}
-		}
-	}
-
-	fmt.Fprintf(os.Stderr, "Watching: %d files\n", len(filesAdded))
-	i.filesWatched[watcher] = filesAdded
 }

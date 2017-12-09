@@ -12,29 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
     srcs = [
-        "events.go",
-        "server.go",
+        "fsnotify.go",
+        "source_event_handler.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/live_reload",
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/watch",
     visibility = ["//visibility:public"],
-    deps = [
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
-        "@com_github_jaschaephraim_lrserver//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["server_test.go"],
-    embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/live_reload",
-    deps = [
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-    ],
+    deps = ["@com_github_fsnotify_fsnotify//:go_default_library"],
 )

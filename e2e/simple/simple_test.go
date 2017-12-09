@@ -68,20 +68,24 @@ sh_binary(
 
 	ibazel := e2e.NewIBazelTester(t, b)
 
+	// In order to verify that file paths are being watched as absolutes, CD into
+	// a subdir and run the test, then modify a file.
 	err = os.Chdir("subdir")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ibazel.Run("test")
+	ibazel.Run(":test")
 	defer ibazel.Kill()
 
 	err = os.Chdir("..")
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	ibazel.ExpectOutput("Started!")
+
+	must(t, b.ScratchFileWithMode("subdir/test.sh", `printf "Started2!"`, 0777))
+	ibazel.ExpectOutput("Started2!")
 }
 
 func TestSimpleRunWithModifiedFile(t *testing.T) {

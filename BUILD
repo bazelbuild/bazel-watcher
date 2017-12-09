@@ -18,6 +18,10 @@ go_prefix("github.com/bazelbuild/bazel-watcher")
 
 gazelle(
     name = "gazelle",
+    args = [
+        "-build_file_name",
+        "BUILD",
+    ],
     prefix = "github.com/bazelbuild/bazel-watcher",
 )
 
