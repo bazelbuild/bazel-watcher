@@ -31,7 +31,7 @@ func (i *IBazelTester) bazelPath() string {
 }
 
 func (i *IBazelTester) Run(target string) {
-	i.cmd = exec.Command(ibazelPath, "--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/output.log", "run", target)
+	i.cmd = exec.Command(ibazelPath, "--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log", "run", target)
 
 	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
 	if errCode != 0 {

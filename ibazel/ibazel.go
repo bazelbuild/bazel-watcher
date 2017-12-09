@@ -17,18 +17,16 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/fsnotify/fsnotify"
-	"github.com/gregmagolan/lrserver"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
@@ -39,6 +37,7 @@ var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 
 type State string
+type runnableCommand func(...string) error
 
 const (
 	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
@@ -57,21 +56,20 @@ type IBazel struct {
 
 	debounceDuration time.Duration
 
-	cmd        command.Command
-	args       []string
-	bazelArgs  []string
-	liveReload bool
+	cmd       command.Command
+	args      []string
+	bazelArgs []string
 
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
-	lrserver          *lrserver.Server
 
 	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
 
 	sourceEventHandler *SourceEventHandler
+	lifecycleListeners []Lifecycle
 
 	state State
 }
@@ -85,10 +83,17 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
-	i.liveReload = true // default to true
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	i.lifecycleListeners = []Lifecycle{
+		live_reload.New(),
+	}
+
+	for _, l := range i.lifecycleListeners {
+		l.Initialize()
+	}
 
 	go func() {
 		for {
@@ -140,10 +145,6 @@ func (i *IBazel) SetBazelArgs(args []string) {
 	i.bazelArgs = args
 }
 
-func (i *IBazel) SetLiveReload(liveReload bool) {
-	i.liveReload = liveReload
-}
-
 func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 	i.debounceDuration = debounceDuration
 }
@@ -151,8 +152,36 @@ func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 func (i *IBazel) Cleanup() {
 	i.buildFileWatcher.Close()
 	i.sourceFileWatcher.Close()
-	if i.lrserver != nil {
-		i.lrserver.Close()
+	for _, l := range i.lifecycleListeners {
+		l.Cleanup()
+	}
+}
+
+func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
+	for _, l := range i.lifecycleListeners {
+		// TODO: As the name implies, it would be good to use this to make a
+		// determination about if future events should be routed to this listener.
+		// Why not do it now?
+		// Right now I don't track which file is associated with the end target. I
+		// just query for a list of all files that are rdeps of any target that is
+		// in the list of targets to build/test/run (although run can only have 1).
+		// Since I don't have that mapping right now the information doesn't
+		// presently exist to implement this properly. Additionally, since querying
+		// is currently in the critical path for getting something the user cares
+		// about on screen, I'm not sure that it is wise to do this in the first
+		// pass. It might be worth trigging the user action, launching their thing
+		// and then running a background thread to access the data.
+		l.TargetDecider(rule)
+	}
+}
+func (i *IBazel) beforeCommand(name string) {
+	for _, l := range i.lifecycleListeners {
+		l.BeforeCommand(name)
+	}
+}
+func (i *IBazel) afterCommand(name string, success bool) {
+	for _, l := range i.lifecycleListeners {
+		l.AfterCommand(name, success)
 	}
 }
 
@@ -192,7 +221,7 @@ func (i *IBazel) Test(targets ...string) error {
 	return i.loop("test", i.test, targets)
 }
 
-func (i *IBazel) loop(command string, commandToRun func(...string), targets []string) error {
+func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []string) error {
 	joinedTargets := strings.Join(targets, " ")
 
 	i.state = QUERY
@@ -207,7 +236,7 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 // to avoid triggering builds on file acccesses (e.g. due to your IDE checking modified status).
 const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
 
-func (i *IBazel) iteration(command string, commandToRun func(...string), targets []string, joinedTargets string) {
+func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
 	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
 	switch i.state {
 	case WAIT:
@@ -246,16 +275,14 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		}
 	case RUN:
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
-		commandToRun(targets...)
-		if i.lrserver != nil {
-			fmt.Fprintf(os.Stderr, "Triggering live reload\n")
-			i.lrserver.Reload("reload")
-		}
+		i.beforeCommand(command)
+		err := commandToRun(targets...)
+		i.afterCommand(command, err == nil)
 		i.state = WAIT
 	}
 }
 
-func (i *IBazel) build(targets ...string) {
+func (i *IBazel) build(targets ...string) error {
 	b := i.newBazel()
 
 	b.Cancel()
@@ -264,11 +291,12 @@ func (i *IBazel) build(targets ...string) {
 	err := b.Build(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return
+		return err
 	}
+	return nil
 }
 
-func (i *IBazel) test(targets ...string) {
+func (i *IBazel) test(targets ...string) error {
 	b := i.newBazel()
 
 	b.Cancel()
@@ -277,8 +305,9 @@ func (i *IBazel) test(targets ...string) {
 	err := b.Test(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return
+		return err
 	}
+	return nil
 }
 
 func contains(l []string, e string) bool {
@@ -290,52 +319,21 @@ func contains(l []string, e string) bool {
 	return false
 }
 
-func (i *IBazel) startLiveReloadServer() {
-	port := lrserver.DefaultPort
-	for ; port < lrserver.DefaultPort+100; port++ {
-		if testPort(port) {
-			i.lrserver = lrserver.New("live reload", port)
-			go func() {
-				err := i.lrserver.ListenAndServe()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Live reload server failed to start: %v\n", err)
-				}
-			}()
-			url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
-			os.Setenv("IBAZEL_LIVERELOAD_URL", url)
-			return
-		}
-	}
-	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
-}
-
 func (i *IBazel) setupRun(target string) command.Command {
 	rule, err := i.queryRule(target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 
+	i.targetDecider(rule)
+
 	commandNotify := false
-	liveReload := false
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
 			if contains(attr.StringListValue, "ibazel_notify_changes") {
 				commandNotify = true
 			}
-			if contains(attr.StringListValue, "ibazel_live_reload") {
-				liveReload = true
-			}
 		}
-	}
-
-	if liveReload && !i.liveReload {
-		fmt.Fprintf(os.Stderr, "Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.\n")
-		liveReload = false
-	}
-
-	if liveReload {
-		fmt.Fprintf(os.Stderr, "Launching with live reload\n")
-		i.startLiveReloadServer()
 	}
 
 	if commandNotify {
@@ -346,16 +344,17 @@ func (i *IBazel) setupRun(target string) command.Command {
 	}
 }
 
-func (i *IBazel) run(targets ...string) {
+func (i *IBazel) run(targets ...string) error {
 	if i.cmd == nil {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
 		i.cmd = i.setupRun(targets[0])
-		i.cmd.Start()
-	} else {
-		fmt.Fprintf(os.Stderr, "Notifying of changes\n")
-		i.cmd.NotifyOfChanges()
+		return i.cmd.Start()
 	}
+
+	fmt.Fprintf(os.Stderr, "Notifying of changes\n")
+	i.cmd.NotifyOfChanges()
+	return nil
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
@@ -441,16 +440,4 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 
 	fmt.Fprintf(os.Stderr, "Watching: %d files\n", len(filesAdded))
 	i.filesWatched[watcher] = filesAdded
-}
-
-func testPort(port uint16) bool {
-	ln, err := net.Listen("tcp", ":"+strconv.FormatInt(int64(port), 10))
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Port %d: %v\n", port, err)
-		return false
-	}
-
-	ln.Close()
-	return true
 }

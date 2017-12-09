@@ -30,7 +30,7 @@ var bazelNew = bazel.New
 // Command is an object that wraps the logic of running a task in Bazel and
 // manipulating it.
 type Command interface {
-	Start()
+	Start() error
 	Terminate()
 	NotifyOfChanges()
 	IsSubprocessRunning() bool
