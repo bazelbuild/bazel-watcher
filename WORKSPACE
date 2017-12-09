@@ -43,9 +43,9 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_gregmagolan_lrserver",
-    commit = "2e678573ccbdc2144f01a52f3219bf67cd5f0fc8",
-    importpath = "github.com/gregmagolan/lrserver",
+    name = "com_github_jaschaephraim_lrserver",
+    commit = "50d19f603f71e0a914f23eea33124ba9717e7873",
+    importpath = "github.com/jaschaephraim/lrserver",
 )
 
 go_repository(
@@ -70,4 +70,10 @@ go_repository(
     name = "com_github_golang_protobuf",
     commit = "130e6b02ab059e7b717a096f397c5b60111cae74",
     importpath = "github.com/golang/protobuf",
+)
+
+go_repository(
+    name = "com_github_gorilla_websocket",
+    commit = "c55883f97322b4bcbf48f734e23d6ab3af1ea488",
+    importpath = "github.com/gorilla/websocket",
 )
