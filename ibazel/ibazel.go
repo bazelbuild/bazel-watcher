@@ -37,6 +37,7 @@ var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 
 type State string
+type runnableCommand func(...string) error
 
 const (
 	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
@@ -91,7 +92,7 @@ func New() (*IBazel, error) {
 	}
 
 	for _, l := range i.lifecycleListeners {
-		l.Setup()
+		l.Initialize()
 	}
 
 	go func() {
@@ -158,17 +159,29 @@ func (i *IBazel) Cleanup() {
 
 func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
 	for _, l := range i.lifecycleListeners {
+		// TODO: As the name implies, it would be good to use this to make a
+		// determination about if future events should be routed to this listener.
+		// Why not do it now?
+		// Right now I don't track which file is associated with the end target. I
+		// just query for a list of all files that are rdeps of any target that is
+		// in the list of targets to build/test/run (although run can only have 1).
+		// Since I don't have that mapping right now the information doesn't
+		// presently exist to implement this properly. Additionally, since querying
+		// is currently in the critical path for getting something the user cares
+		// about on screen, I'm not sure that it is wise to do this in the first
+		// pass. It might be worth trigging the user action, launching their thing
+		// and then running a background thread to access the data.
 		l.TargetDecider(rule)
 	}
 }
-func (i *IBazel) beforeEvent(name string) {
+func (i *IBazel) beforeCommand(name string) {
 	for _, l := range i.lifecycleListeners {
-		l.BeforeEvent(name)
+		l.BeforeCommand(name)
 	}
 }
-func (i *IBazel) afterEvent(name string) {
+func (i *IBazel) afterCommand(name string, success bool) {
 	for _, l := range i.lifecycleListeners {
-		l.AfterEvent(name)
+		l.AfterCommand(name, success)
 	}
 }
 
@@ -208,7 +221,7 @@ func (i *IBazel) Test(targets ...string) error {
 	return i.loop("test", i.test, targets)
 }
 
-func (i *IBazel) loop(command string, commandToRun func(...string), targets []string) error {
+func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []string) error {
 	joinedTargets := strings.Join(targets, " ")
 
 	i.state = QUERY
@@ -223,7 +236,7 @@ func (i *IBazel) loop(command string, commandToRun func(...string), targets []st
 // to avoid triggering builds on file acccesses (e.g. due to your IDE checking modified status).
 const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
 
-func (i *IBazel) iteration(command string, commandToRun func(...string), targets []string, joinedTargets string) {
+func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
 	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
 	switch i.state {
 	case WAIT:
@@ -262,14 +275,14 @@ func (i *IBazel) iteration(command string, commandToRun func(...string), targets
 		}
 	case RUN:
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
-		i.beforeEvent(command)
-		commandToRun(targets...)
-		i.afterEvent(command)
+		i.beforeCommand(command)
+		err := commandToRun(targets...)
+		i.afterCommand(command, err == nil)
 		i.state = WAIT
 	}
 }
 
-func (i *IBazel) build(targets ...string) {
+func (i *IBazel) build(targets ...string) error {
 	b := i.newBazel()
 
 	b.Cancel()
@@ -278,11 +291,12 @@ func (i *IBazel) build(targets ...string) {
 	err := b.Build(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return
+		return err
 	}
+	return nil
 }
 
-func (i *IBazel) test(targets ...string) {
+func (i *IBazel) test(targets ...string) error {
 	b := i.newBazel()
 
 	b.Cancel()
@@ -291,8 +305,9 @@ func (i *IBazel) test(targets ...string) {
 	err := b.Test(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return
+		return err
 	}
+	return nil
 }
 
 func contains(l []string, e string) bool {
@@ -329,16 +344,17 @@ func (i *IBazel) setupRun(target string) command.Command {
 	}
 }
 
-func (i *IBazel) run(targets ...string) {
+func (i *IBazel) run(targets ...string) error {
 	if i.cmd == nil {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
 		i.cmd = i.setupRun(targets[0])
-		i.cmd.Start()
-	} else {
-		fmt.Fprintf(os.Stderr, "Notifying of changes\n")
-		i.cmd.NotifyOfChanges()
+		return i.cmd.Start()
 	}
+
+	fmt.Fprintf(os.Stderr, "Notifying of changes\n")
+	i.cmd.NotifyOfChanges()
+	return nil
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {

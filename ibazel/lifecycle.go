@@ -7,19 +7,26 @@ import (
 // Lifecycle is an object that listens to the lifecycle events of iBazel and
 // behaves appropriately..
 type Lifecycle interface {
+	// Initialize is called once it is known that this lifecycle client is going
+	// to be used.
+	Initialize()
+
 	// TargetDecider takes a protobuf rule and performs setup if it matches the
 	// listener's expectations.
 	TargetDecider(rule *blaze_query.Rule)
 
-	// Setup is called once it is known that this lifesycle client is going to be
-	// used. You can call methods on the ibazel object in this context to set
-	// additional environment variables to be passed into the client or to
-	// retrigger action.
-	Setup()
+	// ChangeDetected is called when a change is detected
+	// changeType: "source"|"graph"
+	ChangeDetected(changeType string)
+
 	// Cleanup is your opportunity to clean up open sockets or connections.
 	Cleanup()
 
-	// Before running an "event" where name = (build|test|run).
-	BeforeEvent(string)
-	AfterEvent(string)
+	// BeforeCommand is called before a blaze $COMMAND is run.
+	// command: "build"|"test"|"run"
+	BeforeCommand(command string)
+	// AfterCommand is called after a blaze $COMMAND is run with the result of
+	// that command.
+	// command: "build"|"test"|"run"
+	AfterCommand(command string, success bool)
 }

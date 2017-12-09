@@ -54,11 +54,12 @@ type mockCommand struct {
 	terminated        bool
 }
 
-func (m *mockCommand) Start() {
+func (m *mockCommand) Start() error {
 	if m.started {
 		panic("Can't run command twice")
 	}
 	m.started = true
+	return nil
 }
 func (m *mockCommand) NotifyOfChanges() {
 	m.notifiedOfChanges = true
@@ -157,8 +158,9 @@ func TestIBazelLoop(t *testing.T) {
 
 	// First let's consume all the events from all the channels we care about
 	called := false
-	command := func(targets ...string) {
+	command := func(targets ...string) error {
 		called = true
+		return nil
 	}
 
 	i.state = QUERY

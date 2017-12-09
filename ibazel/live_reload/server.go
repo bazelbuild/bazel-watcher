@@ -36,7 +36,7 @@ func New() *LiveReloadServer {
 	return &LiveReloadServer{}
 }
 
-func (l *LiveReloadServer) Setup() {}
+func (l *LiveReloadServer) Initialize() {}
 
 func (l *LiveReloadServer) startLiveReloadServer() {
 	if l.lrserver != nil {
@@ -62,7 +62,11 @@ func (l *LiveReloadServer) startLiveReloadServer() {
 	}
 	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
 }
-func (l *LiveReloadServer) Cleanup() {}
+func (l *LiveReloadServer) Cleanup() {
+	if l.lrserver != nil {
+		l.lrserver.Close()
+	}
+}
 
 func (l *LiveReloadServer) TargetDecider(rule *blaze_query.Rule) {
 	for _, attr := range rule.Attribute {
@@ -87,8 +91,10 @@ func contains(l []string, e string) bool {
 	return false
 }
 
-func (l *LiveReloadServer) BeforeEvent(name string) {}
-func (l *LiveReloadServer) AfterEvent(name string) {
+func (l *LiveReloadServer) ChangeDetected(changeType string) {}
+
+func (l *LiveReloadServer) BeforeCommand(command string) {}
+func (l *LiveReloadServer) AfterCommand(command string, success bool) {
 	if l.lrserver != nil {
 		fmt.Fprintf(os.Stderr, "Triggering live reload\n")
 		l.lrserver.Reload("reload")
