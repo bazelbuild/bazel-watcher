@@ -64,10 +64,11 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
+	workspaceFinder WorkspaceFinder
+
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
 
-	workspacePath string
 	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
 
 	sourceEventHandler *SourceEventHandler
@@ -83,13 +84,9 @@ func New() (*IBazel, error) {
 		return nil, err
 	}
 
-	i.workspacePath, err = i.getWorkspacePath()
-	if err != nil {
-		return nil, err
-	}
-
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
+	i.workspaceFinder = &MainWorkspaceFinder{}
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -109,35 +106,6 @@ func New() (*IBazel, error) {
 	}()
 
 	return i, nil
-}
-
-func (i *IBazel) getWorkspacePath() (string, error) {
-	path, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	volume := filepath.VolumeName(path)
-
-	for {
-		// filepath.Dir() includes a trailing separator if we're at the root
-		if path == volume + string(filepath.Separator) {
-			path = volume
-		}
-
-		// Check if we're at the workspace path
-		if _, err := os.Stat(filepath.Join(path, "WORKSPACE")); !os.IsNotExist(err) {
-			return path, nil
-		}
-
-		// If we've reached the root, then we know the cwd isn't within a workspace
-		if path == volume {
-			return "", errors.New("ibazel was not invoked from within a workspace\n")
-		}
-
-		// Move one level up the path
-		path = filepath.Dir(path)
-	}
 }
 
 func (i *IBazel) handleSignals() {
@@ -205,7 +173,7 @@ func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
 		// presently exist to implement this properly. Additionally, since querying
 		// is currently in the critical path for getting something the user cares
 		// about on screen, I'm not sure that it is wise to do this in the first
-		// pass. It might be worth trigging the user action, launching their thing
+		// pass. It might be worth triggering the user action, launching their thing
 		// and then running a background thread to access the data.
 		l.TargetDecider(rule)
 	}
@@ -421,6 +389,12 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 		osExit(4)
 	}
 
+	workspacePath, err := i.workspaceFinder.FindWorkspace()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding workspace: %s\n", err)
+		osExit(5)
+	}
+
 	toWatch := make([]string, 0, 10000)
 	for _, target := range res.Target {
 		switch *target.Type {
@@ -434,7 +408,7 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 			}
 
 			label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
-			toWatch = append(toWatch, filepath.Join(i.workspacePath, label))
+			toWatch = append(toWatch, filepath.Join(workspacePath, label))
 			break
 		default:
 			fmt.Fprintf(os.Stderr, "%v\n\n", target)
