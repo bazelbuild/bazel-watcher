@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"os"
 	"reflect"
 	"runtime/debug"
 	"testing"
@@ -50,7 +51,43 @@ sh_binary(
 	time.Sleep(2 * time.Second)
 	res := ibazel.GetOutput()
 
-	assertEqual(t, "Started!", res, "Ouput was inequal")
+	assertEqual(t, "Started!", res, "Output was unequal")
+}
+
+func TestSimpleRunUnderSubdir(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchDir("subdir"))
+	must(t, b.ScratchFileWithMode("subdir/test.sh", `printf "Started!"`, 0777))
+	must(t, b.ScratchFile("subdir/BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(b)
+
+	err = os.Chdir("subdir")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ibazel.Run("test")
+	defer ibazel.Kill()
+	
+	err = os.Chdir("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(2 * time.Second)
+	res := ibazel.GetOutput()
+
+	assertEqual(t, "Started!", res, "Output was unequal")
 }
 
 func TestSimpleRunWithModifiedFile(t *testing.T) {
@@ -75,7 +112,7 @@ sh_binary(
 	verify := func(startedString string) {
 		expectedOut += startedString
 		time.Sleep(5 * time.Second)
-		assertEqual(t, expectedOut, ibazel.GetOutput(), "Ouput was inequal")
+		assertEqual(t, expectedOut, ibazel.GetOutput(), "Output was unequal")
 	}
 
 	// Give it time to start up and query.
