@@ -22,7 +22,7 @@ load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl",
 
 bazel_binaries()
 
-rules_go_commit = "f80dec7889568c36eb191d3d1534d2db4574d430"
+rules_go_commit = "dea7cd17fe34744e28e6926feb9efb27ae665b18"
 
 git_repository(
     name = "io_bazel_rules_go",
@@ -68,7 +68,7 @@ go_repository(
 
 go_repository(
     name = "com_github_golang_protobuf",
-    commit = "130e6b02ab059e7b717a096f397c5b60111cae74",
+    commit = "1e59b77b52bf8e4b449a57e6f79f21226d571845",
     importpath = "github.com/golang/protobuf",
 )
 

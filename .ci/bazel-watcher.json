@@ -1,0 +1,26 @@
+// This file is a relaxed subset of JSON so it can have comments. For more
+// config examples see:
+// https://github.com/bazelbuild/continuous-integration/tree/master/jenkins/jobs/configs
+[
+  {
+    "product": "bazel-watcher",
+    "configurations": [
+      {
+        "variation": "",
+        "configurations": [
+          {"node": "linux-x86_64"},
+          {"node": "ubuntu_16.04-x86_64"},
+          {"node": "darwin-x86_64"}
+        ]
+      }
+    ],
+    "parameters": {
+      "targets": ["//..."],
+      "test_opts": ["--config=ci"],
+      "build_opts": ["--config=ci"],
+      "tests": ["//..."]
+    }
+  }
+]
+
+

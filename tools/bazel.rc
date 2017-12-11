@@ -1,5 +1,21 @@
 build --workspace_status_command=tools/workplace_status.sh
 
+# Flags used by Jenkins CI
+build:ci --verbose_failures
+build:travis --sandbox_debug
+build:travis --test_output=errors
+build:travis --spawn_strategy=standalone
+build:travis --genrule_strategy=standalone
+build:travis --test_strategy=standalone
+
+# Flags specific to TravisCI (used in conjunction with the :ci flags)
+startup:travis --output_base=/home/travis/.cache/bazel
+#startup:travis --batch
+startup:travis --host_jvm_args=-Xmx500m
+startup:travis --host_jvm_args=-Xms500m
+test:travis --experimental_repository_cache="/home/travis/.bazel_repository_cache"
+test:travis --local_resources=400,1,1.0
+
 # Flags used during releases
 build:release --stamp
 test:release --stamp
