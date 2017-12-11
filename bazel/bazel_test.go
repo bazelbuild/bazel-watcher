@@ -43,7 +43,7 @@ KEY3: value`)
 	}
 
 	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("Objects were inequal. Got:\n%s\nExpected:\n%s", got, expected)
+		t.Errorf("Objects were unequal. Got:\n%s\nExpected:\n%s", got, expected)
 	}
 }
 

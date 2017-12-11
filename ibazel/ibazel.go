@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -63,6 +64,8 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
+	workspaceFinder WorkspaceFinder
+
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
 
@@ -83,6 +86,7 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
+	i.workspaceFinder = &MainWorkspaceFinder{}
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -169,7 +173,7 @@ func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
 		// presently exist to implement this properly. Additionally, since querying
 		// is currently in the critical path for getting something the user cares
 		// about on screen, I'm not sure that it is wise to do this in the first
-		// pass. It might be worth trigging the user action, launching their thing
+		// pass. It might be worth triggering the user action, launching their thing
 		// and then running a background thread to access the data.
 		l.TargetDecider(rule)
 	}
@@ -385,6 +389,12 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 		osExit(4)
 	}
 
+	workspacePath, err := i.workspaceFinder.FindWorkspace()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding workspace: %s\n", err)
+		osExit(5)
+	}
+
 	toWatch := make([]string, 0, 10000)
 	for _, target := range res.Target {
 		switch *target.Type {
@@ -397,14 +407,8 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 				continue
 			}
 
-			// For files that are served from the root they will being with "//:". This
-			// is a problematic string because, for example, "//:demo.sh" will become
-			// "/demo.sh" which is in the root of the filesystem and is unlikely to exist.
-			if strings.HasPrefix(label, "//:") {
-				label = label[3:]
-			}
-
-			toWatch = append(toWatch, strings.Replace(strings.TrimPrefix(label, "//"), ":", "/", 1))
+			label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
+			toWatch = append(toWatch, filepath.Join(workspacePath, label))
 			break
 		default:
 			fmt.Fprintf(os.Stderr, "%v\n\n", target)
