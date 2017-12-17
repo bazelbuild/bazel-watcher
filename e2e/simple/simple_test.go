@@ -2,10 +2,8 @@ package simple
 
 import (
 	"os"
-	"reflect"
 	"runtime/debug"
 	"testing"
-	"time"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
@@ -14,19 +12,6 @@ import (
 func must(t *testing.T, e error) {
 	if e != nil {
 		t.Errorf("Error: %s", e)
-		debug.PrintStack()
-	}
-}
-
-func assertNotEqual(t *testing.T, want, got interface{}, msg string) {
-	if reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
-		debug.PrintStack()
-	}
-}
-func assertEqual(t *testing.T, want, got interface{}, msg string) {
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
 		debug.PrintStack()
 	}
 }
@@ -45,13 +30,11 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:test")
 	defer ibazel.Kill()
-	time.Sleep(2 * time.Second)
-	res := ibazel.GetOutput()
 
-	assertEqual(t, "Started!", res, "Output was unequal")
+	ibazel.ExpectOutput("Started!")
 }
 
 func TestSimpleRunUnderSubdir(t *testing.T) {
@@ -69,7 +52,7 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 
 	err = os.Chdir("subdir")
 	if err != nil {
@@ -78,16 +61,13 @@ sh_binary(
 
 	ibazel.Run("test")
 	defer ibazel.Kill()
-	
+
 	err = os.Chdir("..")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(2 * time.Second)
-	res := ibazel.GetOutput()
-
-	assertEqual(t, "Started!", res, "Output was unequal")
+	ibazel.ExpectOutput("Started!")
 }
 
 func TestSimpleRunWithModifiedFile(t *testing.T) {
@@ -104,24 +84,17 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:test")
 	defer ibazel.Kill()
 
-	expectedOut := ""
-	verify := func(startedString string) {
-		expectedOut += startedString
-		time.Sleep(5 * time.Second)
-		assertEqual(t, expectedOut, ibazel.GetOutput(), "Output was unequal")
-	}
-
 	// Give it time to start up and query.
 	must(t, b.ScratchFileWithMode("test.sh", `printf "Started2!"`, 0777))
-	verify("Started2!")
+	ibazel.ExpectOutput("Started2!")
 
 	// Manipulate a source file and sleep past the debounce.
 	must(t, b.ScratchFileWithMode("test.sh", `printf "Started3!"`, 0777))
-	verify("Started3!")
+	ibazel.ExpectOutput("Started3!")
 
 	// Now a BUILD file.
 	must(t, b.ScratchFile("BUILD", `
@@ -131,5 +104,5 @@ sh_binary(
 	srcs = ["test.sh"],
 )
 `))
-	verify("Started3!")
+	ibazel.ExpectOutput("Started3!")
 }

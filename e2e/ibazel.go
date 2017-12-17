@@ -7,22 +7,32 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime/debug"
 	"strconv"
+	"testing"
+	"time"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 )
 
+// Maximum amount of time to wait before failing a test for not matching your expectations.
+var delay = 10 * time.Second
+
 type IBazelTester struct {
 	bazel *bazel.TestingBazel
+	t     *testing.T
 
 	cmd          *exec.Cmd
 	stderrBuffer *bytes.Buffer
 	stdoutBuffer *bytes.Buffer
+	stdoutOld    string
 }
 
-func NewIBazelTester(bazel *bazel.TestingBazel) *IBazelTester {
+func NewIBazelTester(t *testing.T, bazel *bazel.TestingBazel) *IBazelTester {
 	return &IBazelTester{
 		bazel: bazel,
+		t:     t,
 	}
 }
 
@@ -52,6 +62,32 @@ func (i *IBazelTester) Run(target string) {
 
 func (i *IBazelTester) GetOutput() string {
 	return string(i.stdoutBuffer.Bytes())
+}
+
+func (i *IBazelTester) ExpectOutput(want string) {
+	stopAt := time.Now().Add(delay)
+	for time.Now().Before(stopAt) {
+		time.Sleep(5 * time.Millisecond)
+
+		// Grab the output and strip output that was available last time we passed
+		// a test.
+		out := i.GetOutput()[len(i.stdoutOld):]
+		if match, err := regexp.MatchString(want, out); match == true && err == nil {
+			// Save the current output value for the next iteratinog.
+			i.stdoutOld = i.GetOutput()
+			return
+		}
+	}
+
+	if match, err := regexp.MatchString(want, i.GetOutput()); match == false || err != nil {
+		i.t.Errorf("Expected iBazel output after %v to be:\nWanted [%v], got [%v]", delay, want, i.GetOutput())
+		debug.PrintStack()
+
+		// In order to prevent cascading errors where the first result failing to
+		// match ruins the error output for the rest of the runs, persist the old
+		// stdout.
+		i.stdoutOld = i.GetOutput()
+	}
 }
 
 func (i *IBazelTester) GetError() string {
