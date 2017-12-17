@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//:os.bzl", "OSES")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_binary")
 
 go_binary(
@@ -34,10 +35,10 @@ go_library(
         "lifecycle.go",
         "main.go",
         "source_event_handler.go",
-        "workspace_finder.go"
+        "workspace_finder.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
     deps = [
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",

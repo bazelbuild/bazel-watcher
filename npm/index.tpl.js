@@ -21,23 +21,30 @@ const os = require('os');
 const path = require('path');
 const spawn = require('child_process').spawn;
 
-function main(args) {
-  const arch = {
-    'x64': 'amd64',
-  }[os.arch()];
-  // Filter the platform based on the platforms that are build/included.
-  const platform = {
-    'darwin': 'darwin',
-    'linux': 'linux',
-    'windows': 'windows',
-  }[os.platform()];
+// __OSES__ is a sentinal value that will be replaced by Bazel with the list of
+// OSes that this release was compiled with.
+const OSES = [ "__OSES__" ];
 
-  if (arch == undefined || platform == undefined) {
-    console.error(`FATAL: Your platform/architecture combination ${
-        os.platform() - os.arch()} is not yet supported.
+function main(args) {
+  // Filter the platform based on the platforms that are build/included.
+  const arch = {
+    'x64' : 'amd64',
+  }[os.arch()];
+
+  if (arch == undefined) {
+    console.error(`FATAL: Your architecture combination ${
+        os.arch()} is not yet supported by iBazel.
     Follow install instructions at https://github.com/bazelbuild/bazel-watcher/blob/master/README.md to compile for your system.`);
     return Promise.resolve(1);
   }
+
+  if (OSES.indexOf(os.platform()) == -1) {
+    console.error(
+        `FATAL: Your platform (${os.platform()}) is not suppored by iBazel`);
+    return Promise.resolve(1);
+  }
+
+  const platform = os.platform();
 
   // By default, use the ibazel binary underneath this script
   var basePath = __dirname;
@@ -46,10 +53,13 @@ function main(args) {
 
   // Walk up the cwd, looking for a local ibazel installation
   for (var i = dirs.length; i > 0; i--) {
-    var attemptedBasePath = [...dirs.slice(0, i), 'node_modules', '@bazel', 'ibazel'].join(path.sep);
+    var attemptedBasePath =
+        [...dirs.slice(0, i), 'node_modules', '@bazel', 'ibazel' ].join(
+            path.sep);
 
     // If we find a local installation, use that one instead
-    if (fs.existsSync(path.join(attemptedBasePath, 'bin', `${platform}_${arch}`, 'ibazel'))) {
+    if (fs.existsSync(path.join(attemptedBasePath, 'bin', `${platform}_${arch}`,
+                                'ibazel'))) {
       basePath = attemptedBasePath;
       break;
     }
@@ -62,7 +72,7 @@ function main(args) {
   }
 
   const binary = path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel');
-  const ibazel = spawn(binary, args, {stdio: 'inherit'});
+  const ibazel = spawn(binary, args, {stdio : 'inherit'});
 
   function shutdown() {
     ibazel.kill("SIGTERM")

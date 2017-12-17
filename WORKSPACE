@@ -22,7 +22,7 @@ load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl",
 
 bazel_binaries()
 
-rules_go_commit = "f80dec7889568c36eb191d3d1534d2db4574d430"
+rules_go_commit = "dea7cd17fe34744e28e6926feb9efb27ae665b18"
 
 git_repository(
     name = "io_bazel_rules_go",
@@ -56,7 +56,7 @@ go_repository(
 
 go_repository(
     name = "org_golang_x_sys",
-    commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
+    commit = "571f7bbbe08da2a8955aed9d4db316e78630e9a3",
     importpath = "golang.org/x/sys",
 )
 
