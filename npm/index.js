@@ -63,6 +63,15 @@ function main(args) {
 
   const binary = path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel');
   const ibazel = spawn(binary, args, {stdio: 'inherit'});
+
+  function shutdown() {
+    ibazel.kill("SIGTERM")
+    process.exit();
+  }
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
   ibazel.on('close', e => process.exitCode = e);
 }
 
