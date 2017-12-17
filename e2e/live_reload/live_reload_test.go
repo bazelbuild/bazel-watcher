@@ -20,10 +20,6 @@ type liveReloadHello struct {
 
 const printLivereload = `printf "Live reload url: ${IBAZEL_LIVERELOAD_URL}"`
 
-func sleep() {
-	time.Sleep(5 * time.Second)
-}
-
 func must(t *testing.T, e error) {
 	if e != nil {
 		t.Errorf("Error: %s", e)
@@ -74,11 +70,11 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:live_reload")
 	defer ibazel.Kill()
 
-	sleep()
+	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 	url, err := url.ParseRequestURI(out[len("Live reload url: "):])
@@ -106,11 +102,13 @@ sh_binary(
 	verify(t, conn, `{"command":"hello","protocols":["http://livereload.com/protocols/official-7","http://livereload.com/protocols/official-8","http://livereload.com/protocols/official-9","http://livereload.com/protocols/2.x-origin-version-negotiation","http://livereload.com/protocols/2.x-remote-control"],"serverName":"live reload"}`)
 
 	must(t, b.ScratchFile("test.txt", "2"))
-	sleep()
+	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
+
 	verify(t, conn, `{"command":"reload","path":"reload","liveCSS":true}`)
 
 	must(t, b.ScratchFile("test.txt", "3"))
-	sleep()
+	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
+
 	verify(t, conn, `{"command":"reload","path":"reload","liveCSS":true}`)
 }
 
@@ -128,10 +126,10 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:no_live_reload")
 	defer ibazel.Kill()
 
-	sleep()
-	assertEqual(t, ibazel.GetOutput(), "Live reload url: ", "Expected there to be no output but got some")
+	// Expect there to not be a url since this is the negative test case.
+	ibazel.ExpectOutput("Live reload url: $")
 }
