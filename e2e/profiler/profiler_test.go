@@ -9,7 +9,6 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
-	"time"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
@@ -19,10 +18,6 @@ const printLivereload = `printf "Profiler url: ${IBAZEL_PROFILER_URL}"`
 
 type profileEvent struct {
 	Type string `json:"type"`
-}
-
-func sleep() {
-	time.Sleep(5 * time.Second)
 }
 
 func must(t *testing.T, e error) {
@@ -53,7 +48,7 @@ sh_binary(
 )
 `))
 
-	tempFile, err := ioutil.TempFile("", "ibazel_profiler_json");
+	tempFile, err := ioutil.TempFile("", "ibazel_profiler_json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +57,7 @@ sh_binary(
 	ibazel.RunWithProfiler("//:profiler", tempFile.Name())
 	defer ibazel.Kill()
 
-	sleep()
+	ibazel.ExpectOutput("Profiler url: http://.+:\\d+")
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 
@@ -150,8 +145,7 @@ sh_binary(
 	ibazel.Run("//:no_profiler")
 	defer ibazel.Kill()
 
-	sleep()
-	assertEqual(t, ibazel.GetOutput(), "Profiler url: ", "Expected there to be no output but got some")
+	ibazel.ExpectOutput("Profiler url: $")
 }
 
 func compact(a []string) []string {
