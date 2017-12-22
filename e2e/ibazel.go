@@ -41,23 +41,11 @@ func (i *IBazelTester) bazelPath() string {
 }
 
 func (i *IBazelTester) Run(target string) {
-	i.cmd = exec.Command(ibazelPath, "--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log", "run", target)
+	i.run(target, []string{})
+}
 
-	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
-	if errCode != 0 {
-		panic(fmt.Sprintf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", errCode, buildStdout, buildStderr))
-	}
-
-	i.stdoutBuffer = &bytes.Buffer{}
-	i.cmd.Stdout = i.stdoutBuffer
-
-	i.stderrBuffer = &bytes.Buffer{}
-	i.cmd.Stderr = i.stderrBuffer
-
-	if err := i.cmd.Start(); err != nil {
-		fmt.Printf("Command: %s", i.cmd)
-		panic(err)
-	}
+func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
+	i.run(target, []string{"--profile_dev="+profiler})
 }
 
 func (i *IBazelTester) GetOutput() string {
@@ -114,6 +102,30 @@ func (i *IBazelTester) GetSubprocessPid() int64 {
 
 func (i *IBazelTester) Kill() {
 	if err := i.cmd.Process.Kill(); err != nil {
+		panic(err)
+	}
+}
+
+func (i *IBazelTester) run(target string, additionalArgs []string) {
+	args := []string{"--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
+	args = append(args, additionalArgs...)
+	args = append(args, "run")
+	args = append(args, target)
+	i.cmd = exec.Command(ibazelPath, args...)
+
+	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
+	if errCode != 0 {
+		panic(fmt.Sprintf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", errCode, buildStdout, buildStderr))
+	}
+
+	i.stdoutBuffer = &bytes.Buffer{}
+	i.cmd.Stdout = i.stdoutBuffer
+
+	i.stderrBuffer = &bytes.Buffer{}
+	i.cmd.Stderr = i.stderrBuffer
+
+	if err := i.cmd.Start(); err != nil {
+		fmt.Printf("Command: %s", i.cmd)
 		panic(err)
 	}
 }

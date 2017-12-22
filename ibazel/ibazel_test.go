@@ -16,11 +16,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"reflect"
-	"regexp"
 	"runtime"
 	"runtime/debug"
 	"syscall"
@@ -103,11 +100,6 @@ func init() {
 						Attribute: []*blaze_query.Attribute{
 							&blaze_query.Attribute{
 								Name: proto.String("name"),
-							},
-							&blaze_query.Attribute{
-								Name:            proto.String("tags"),
-								Type:            blaze_query.Attribute_STRING_LIST.Enum(),
-								StringListValue: []string{"ibazel_live_reload"},
 							},
 						},
 					},
@@ -279,38 +271,6 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 
 	if !cmd.notifiedOfChanges {
 		t.Errorf("The previously running command was not notified of changes")
-	}
-}
-
-func TestIBazelRun_livereload(t *testing.T) {
-	i := newIBazel(t)
-	defer i.Cleanup()
-
-	i.run("//path/to:target")
-
-	livereloadUrl := os.Getenv("IBAZEL_LIVERELOAD_URL")
-	validUrl := regexp.MustCompile("^http\\:\\/\\/localhost\\:[0-9]+\\/livereload\\.js\\?snipver\\=1$")
-	if !validUrl.MatchString(livereloadUrl) {
-		t.Errorf("Invalid livereload URL '%s'", livereloadUrl)
-	}
-
-	client := new(http.Client)
-	resp, err := client.Get(livereloadUrl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	bodyString := string(body)
-	validBodyStart := regexp.MustCompile("^\\(function e\\(t\\,n\\,r\\)")
-	validBodyEnd := regexp.MustCompile("\\}\\,\\{\\}\\]\\}\\,\\{\\}\\,\\[8\\]\\)\\;$")
-	if !validBodyStart.MatchString(bodyString) || !validBodyEnd.MatchString(bodyString) {
-		t.Errorf("Invalid livereload.js")
 	}
 }
 
