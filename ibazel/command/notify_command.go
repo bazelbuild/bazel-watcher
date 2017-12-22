@@ -100,7 +100,7 @@ func (c *notifyCommand) NotifyOfChanges() {
 		fmt.Fprintf(os.Stderr, "SUCCESS\n")
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %v\n", err)
 		}
 	}
 }

@@ -29,14 +29,53 @@ import (
 var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
 
 type LiveReloadServer struct {
-	lrserver *lrserver.Server
+	lrserver       *lrserver.Server
+	eventListeners []Events
 }
 
 func New() *LiveReloadServer {
-	return &LiveReloadServer{}
+	l := &LiveReloadServer{}
+	l.eventListeners = []Events{}
+	return l
 }
 
-func (l *LiveReloadServer) Initialize() {}
+func (l *LiveReloadServer) AddEventsListener(listener Events) {
+	l.eventListeners = append(l.eventListeners, listener)
+}
+
+func (l *LiveReloadServer) Initialize(info *map[string]string) {}
+
+func (l *LiveReloadServer) Cleanup() {
+	if l.lrserver != nil {
+		l.lrserver.Close()
+	}
+}
+
+func (l *LiveReloadServer) TargetDecider(rule *blaze_query.Rule) {
+	for _, attr := range rule.Attribute {
+		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
+			if contains(attr.StringListValue, "ibazel_live_reload") {
+				if *noLiveReload {
+					fmt.Fprintf(os.Stderr, "Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.\n")
+					return
+				}
+				l.startLiveReloadServer()
+				return
+			}
+		}
+	}
+}
+
+func (l *LiveReloadServer) ChangeDetected(targets []string, changeType string, change string) {
+}
+
+func (l *LiveReloadServer) BeforeCommand(targets []string, command string) {}
+
+func (l *LiveReloadServer) AfterCommand(targets []string, command string, success bool) {
+	l.triggerReload(targets)
+}
+
+func (l *LiveReloadServer) ReloadTriggered(targets []string) {}
 
 func (l *LiveReloadServer) startLiveReloadServer() {
 	if l.lrserver != nil {
@@ -62,42 +101,14 @@ func (l *LiveReloadServer) startLiveReloadServer() {
 	}
 	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
 }
-func (l *LiveReloadServer) Cleanup() {
-	if l.lrserver != nil {
-		l.lrserver.Close()
-	}
-}
 
-func (l *LiveReloadServer) TargetDecider(rule *blaze_query.Rule) {
-	for _, attr := range rule.Attribute {
-		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
-			if contains(attr.StringListValue, "ibazel_live_reload") {
-				if *noLiveReload {
-					fmt.Fprintf(os.Stderr, "Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.\n")
-					return
-				}
-				l.startLiveReloadServer()
-				return
-			}
-		}
-	}
-}
-func contains(l []string, e string) bool {
-	for _, i := range l {
-		if i == e {
-			return true
-		}
-	}
-	return false
-}
-
-func (l *LiveReloadServer) ChangeDetected(changeType string) {}
-
-func (l *LiveReloadServer) BeforeCommand(command string) {}
-func (l *LiveReloadServer) AfterCommand(command string, success bool) {
+func (l *LiveReloadServer) triggerReload(targets []string) {
 	if l.lrserver != nil {
 		fmt.Fprintf(os.Stderr, "Triggering live reload\n")
 		l.lrserver.Reload("reload")
+		for _, e := range l.eventListeners {
+			e.ReloadTriggered(targets)
+		}
 	}
 }
 
@@ -111,4 +122,13 @@ func testPort(port uint16) bool {
 
 	ln.Close()
 	return true
+}
+
+func contains(l []string, e string) bool {
+	for _, i := range l {
+		if i == e {
+			return true
+		}
+	}
+	return false
 }

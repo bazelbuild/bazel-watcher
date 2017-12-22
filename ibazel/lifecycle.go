@@ -9,7 +9,7 @@ import (
 type Lifecycle interface {
 	// Initialize is called once it is known that this lifecycle client is going
 	// to be used.
-	Initialize()
+	Initialize(info *map[string]string)
 
 	// TargetDecider takes a protobuf rule and performs setup if it matches the
 	// listener's expectations.
@@ -17,16 +17,17 @@ type Lifecycle interface {
 
 	// ChangeDetected is called when a change is detected
 	// changeType: "source"|"graph"
-	ChangeDetected(changeType string)
+	ChangeDetected(targets []string, changeType string, change string)
 
 	// Cleanup is your opportunity to clean up open sockets or connections.
 	Cleanup()
 
 	// BeforeCommand is called before a blaze $COMMAND is run.
 	// command: "build"|"test"|"run"
-	BeforeCommand(command string)
+	BeforeCommand(targets []string, command string)
+
 	// AfterCommand is called after a blaze $COMMAND is run with the result of
 	// that command.
 	// command: "build"|"test"|"run"
-	AfterCommand(command string, success bool)
+	AfterCommand(targets []string, command string, success bool)
 }

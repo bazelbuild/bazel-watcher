@@ -27,6 +27,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
+	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -53,8 +54,6 @@ const sourceQuery = "kind('source file', deps(set(%s)))"
 const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
-	b *bazel.Bazel
-
 	debounceDuration time.Duration
 
 	cmd       command.Command
@@ -91,12 +90,19 @@ func New() (*IBazel, error) {
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
 
+	liveReload := live_reload.New()
+	profiler := profiler.New(Version)
+
+	liveReload.AddEventsListener(profiler)
+
 	i.lifecycleListeners = []Lifecycle{
-		live_reload.New(),
+		liveReload,
+		profiler,
 	}
 
+	info, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
-		l.Initialize()
+		l.Initialize(info)
 	}
 
 	go func() {
@@ -161,7 +167,7 @@ func (i *IBazel) Cleanup() {
 	}
 }
 
-func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
+func (i *IBazel) targetDecider(target string, rule *blaze_query.Rule) {
 	for _, l := range i.lifecycleListeners {
 		// TODO: As the name implies, it would be good to use this to make a
 		// determination about if future events should be routed to this listener.
@@ -178,14 +184,22 @@ func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
 		l.TargetDecider(rule)
 	}
 }
-func (i *IBazel) beforeCommand(name string) {
+
+func (i *IBazel) changeDetected(targets []string, changeType string, change string) {
 	for _, l := range i.lifecycleListeners {
-		l.BeforeCommand(name)
+		l.ChangeDetected(targets, changeType, change)
 	}
 }
-func (i *IBazel) afterCommand(name string, success bool) {
+
+func (i *IBazel) beforeCommand(targets []string, command string) {
 	for _, l := range i.lifecycleListeners {
-		l.AfterCommand(name, success)
+		l.BeforeCommand(targets, command)
+	}
+}
+
+func (i *IBazel) afterCommand(targets []string, command string, success bool) {
+	for _, l := range i.lifecycleListeners {
+		l.AfterCommand(targets, command, success)
 	}
 }
 
@@ -248,17 +262,22 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		case e := <-i.sourceEventHandler.SourceFileEvents:
 			if e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
+				i.changeDetected(targets, "source", e.Name)
 				i.state = DEBOUNCE_RUN
 			}
 		case e := <-i.buildFileWatcher.Events:
 			if e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
+				i.changeDetected(targets, "graph", e.Name)
 				i.state = DEBOUNCE_QUERY
 			}
 		}
 	case DEBOUNCE_QUERY:
 		select {
-		case <-i.buildFileWatcher.Events:
+		case e := <-i.buildFileWatcher.Events:
+			if e.Op&modifyingEvents != 0 {
+				i.changeDetected(targets, "graph", e.Name)
+			}
 			i.state = DEBOUNCE_QUERY
 		case <-time.After(i.debounceDuration):
 			i.state = QUERY
@@ -272,16 +291,19 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
-		case <-i.sourceEventHandler.SourceFileEvents:
+		case e := <-i.sourceEventHandler.SourceFileEvents:
+			if e.Op&modifyingEvents != 0 {
+				i.changeDetected(targets, "source", e.Name)
+			}
 			i.state = DEBOUNCE_RUN
 		case <-time.After(i.debounceDuration):
 			i.state = RUN
 		}
 	case RUN:
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
-		i.beforeCommand(command)
+		i.beforeCommand(targets, command)
 		err := commandToRun(targets...)
-		i.afterCommand(command, err == nil)
+		i.afterCommand(targets, command, err == nil)
 		i.state = WAIT
 	}
 }
@@ -326,10 +348,10 @@ func contains(l []string, e string) bool {
 func (i *IBazel) setupRun(target string) command.Command {
 	rule, err := i.queryRule(target)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
 
-	i.targetDecider(rule)
+	i.targetDecider(target, rule)
 
 	commandNotify := false
 	for _, attr := range rule.Attribute {
@@ -353,7 +375,11 @@ func (i *IBazel) run(targets ...string) error {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
 		i.cmd = i.setupRun(targets[0])
-		return i.cmd.Start()
+		err := i.cmd.Start()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Run start failed %v\n", err)
+		}
+		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "Notifying of changes\n")
@@ -366,7 +392,7 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 
 	res, err := b.Query(rule)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
 		osExit(4)
 	}
 
@@ -380,18 +406,30 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	return nil, errors.New("No information available")
 }
 
+func (i *IBazel) getInfo() (*map[string]string, error) {
+	b := i.newBazel()
+
+	res, err := b.Info()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting Bazel info %v\n", err)
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (i *IBazel) queryForSourceFiles(query string) []string {
 	b := i.newBazel()
 
 	res, err := b.Query(query)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
 		osExit(4)
 	}
 
 	workspacePath, err := i.workspaceFinder.FindWorkspace()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding workspace: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error finding workspace: %v\n", err)
 		osExit(5)
 	}
 

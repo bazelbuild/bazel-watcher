@@ -1,7 +1,9 @@
 package live_reload
 
 import (
+	"net/http"
 	"net/url"
+	"io/ioutil"
 	"reflect"
 	"runtime/debug"
 	"strings"
@@ -77,9 +79,39 @@ sh_binary(
 	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
-	url, err := url.ParseRequestURI(out[len("Live reload url: "):])
+
+	jsUrl := out[len("Live reload url: "):]
+	t.Logf("Livereload URL: '%s'", jsUrl)
+
+	url, err := url.ParseRequestURI(jsUrl)
 	if err != nil {
 		t.Error(err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Get(jsUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bodyString := string(body)
+
+	expectedStart := "(function e(t,n,r)"
+	actualStart := bodyString[0:len(expectedStart)]
+	if actualStart != expectedStart {
+		t.Errorf("Expected js to start with \"%s\" but got \"%s\".", expectedStart, actualStart)
+	}
+
+	expectedEnd := "},{}]},{},[8]);"
+	actualEnd := bodyString[len(bodyString)-len(expectedEnd):]
+	if actualEnd != expectedEnd {
+		t.Errorf("Expected js to end with \"%s\" but got \"%s\".", expectedEnd, actualEnd)
 	}
 
 	wsUrl := "ws://" + url.Hostname() + ":" + url.Port() + "/livereload"
