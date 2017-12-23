@@ -66,38 +66,36 @@ sh_binary(
 
 	_, err = url.ParseRequestURI(jsUrl)
 	if err != nil {
-		t.Error(err)
+		t.Errorf("Failed to parse: %v", err)
 	}
 
 	client := http.Client{}
 	resp, err := client.Get(jsUrl)
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("Failed to get: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("Failed to ReadAll: %v", err)
 	}
 
-	bodyString := string(body)
+	bodyString := strings.Trim(string(body), "\t \n\r")
 
 	expectedStart := "// Copyright 2017 The Bazel Authors. All rights reserved."
-	actualStart := bodyString[0:len(expectedStart)]
-	if actualStart != expectedStart {
-		t.Errorf("Expected js to start with \"%s\" but got \"%s\".", expectedStart, actualStart)
+	if !strings.HasPrefix(bodyString, expectedStart) {
+		t.Errorf("Expected js to start with \"%s\" but got \"%s\".", expectedStart, bodyString)
 	}
 
 	expectedEnd := "})();"
-	actualEnd := bodyString[len(bodyString)-len(expectedEnd):]
-	if actualEnd != expectedEnd {
-		t.Errorf("Expected js to end with \"%s\" but got \"%s\".", expectedEnd, actualEnd)
+	if !strings.HasSuffix(bodyString, expectedEnd) {
+		t.Errorf("Expected js to end with \"%s\" but got \"%s\".", expectedEnd, bodyString)
 	}
 
 	profileLog, err := ioutil.ReadFile(tempFile.Name())
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("Failed to ReadFile: %v", err)
 	}
 	events := compact(strings.Split(string(profileLog), "\n"))
 	t.Logf("Profile log: %v", events)
@@ -145,7 +143,7 @@ sh_binary(
 	ibazel.Run("//:no_profiler")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Profiler url: $")
+	ibazel.ExpectOutput("Profiler url:$")
 }
 
 func compact(a []string) []string {

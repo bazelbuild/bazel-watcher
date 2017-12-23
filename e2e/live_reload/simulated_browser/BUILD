@@ -4,11 +4,11 @@ load("@com_github_bazelbuild_bazel_integration_testing//go:bazel_integration_tes
 
 bazel_go_integration_test(
     name = "go_default_test",
-    srcs = ["live_reload_test.go"],
+    srcs = ["simulated_browser_test.go"],
     data = [
         "//ibazel",
     ],
-    importpath = "github.com/bazelbuild/bazel-watcher/e2e/live_reload",
+    importpath = "github.com/bazelbuild/bazel-watcher/e2e/live_reload/simulated_browser",
     deps = [
         "//e2e:go_default_library",
         "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",

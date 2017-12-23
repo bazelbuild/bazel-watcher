@@ -1,9 +1,9 @@
-package live_reload
+package simulated_browser
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"io/ioutil"
 	"reflect"
 	"runtime/debug"
 	"strings"

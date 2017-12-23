@@ -8,6 +8,8 @@ import (
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 )
 
+var _ = runtime.GOOS
+
 func GetPath(p string) string {
 	path, err := bazel.Runfile(p)
 	if err != nil {
@@ -25,9 +27,5 @@ func GetPath(p string) string {
 var ibazelPath string
 
 func init() {
-	var err error
 	ibazelPath = GetPath(fmt.Sprintf("ibazel/%s_%s_pure_stripped/ibazel", runtime.GOOS, runtime.GOARCH))
-	if err != nil {
-		panic(err)
-	}
 }

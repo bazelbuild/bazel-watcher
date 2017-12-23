@@ -1,5 +1,25 @@
+# Set build variables.
 build --workspace_status_command=tools/workplace_status.sh
 
-# Flags used during releases
+# Pass Sauce Labs environment variables through.
+build --action_env=SAUCE_USERNAME
+build --action_env=SAUCE_ACCESS_KEY
+build --action_env=TUNNEL_IDENTIFIER
+build --action_env=BUILD_TAG
+
+# Flags used during releases.
 build:release --stamp
 test:release --stamp
+
+# This file contains options passed to Bazel when running tests.
+build:ci --verbose_failures
+build:ci --test_output=errors
+test:ci --test_tag_filters=-noci
+
+# These are used by Travis CI and by non-Bazel test scripts.
+build:travis --spawn_strategy=standalone
+build:travis --genrule_strategy=standalone
+test:travis --test_strategy=standalone
+test:travis --local_resources=400,1,1.0
+test:ci --test_tag_filters=-notravis
+

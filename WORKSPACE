@@ -59,11 +59,34 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 
 go_rules_dependencies()
 
 go_register_toolchains()
+
+git_repository(
+    name = "io_bazel_rules_webtesting",
+    commit = "4b613da8ea1bdc859336f6eb2f796cb5bcf4fdec",
+    remote = "https://github.com/bazelbuild/rules_webtesting.git",
+)
+
+load(
+    "@io_bazel_rules_webtesting//web:repositories.bzl",
+    "browser_repositories",
+    "web_test_repositories",
+)
+
+web_test_repositories()
+
+# Load repositories for example browser definitions.
+# You should create your own browser definitions and link
+# to the specific browser versions you are interested in
+# testing with.
+browser_repositories(
+    chromium = True,
+    sauce = True,
+)
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
@@ -93,8 +116,6 @@ go_repository(
     importpath = "golang.org/x/sys",
 )
 
-# NOTE: this must match rules_go version located at
-# https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
 go_repository(
     name = "com_github_golang_protobuf",
     commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
@@ -105,6 +126,25 @@ go_repository(
     name = "com_github_gorilla_websocket",
     commit = "c55883f97322b4bcbf48f734e23d6ab3af1ea488",
     importpath = "github.com/gorilla/websocket",
+)
+
+go_repository(
+    name = "com_github_tebeka_selenium",
+    commit = "4bc91b5ff036f1cd12f315fd6042ecff6d94e512",
+    importpath = "github.com/tebeka/selenium",
+)
+
+go_repository(
+    name = "com_github_bazelbuild_rules_webtesting",
+    commit = "ca7b8062d9cf4ef2fde9193c7d37a0764c4262d7",
+    importpath = "github.com/bazelbuild/rules_webtesting",
+)
+
+# NOTE: this must match rules_go version above, currently set to 0.15.3
+go_repository(
+    name = "com_github_bazelbuild_rules_go",
+    commit = "0f0d007c89dc67a5a34490acafc5195b191f5045",
+    importpath = "github.com/bazelbuild/rules_go",
 )
 
 # NOTE: this must match rules_go version above, currently set to 0.15.3
