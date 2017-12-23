@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,7 +46,7 @@ func (i *IBazelTester) Run(target string) {
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
-	i.run(target, []string{"--profile_dev="+profiler})
+	i.run(target, []string{"--profile_dev=" + profiler})
 }
 
 func (i *IBazelTester) GetOutput() string {
@@ -67,8 +68,9 @@ func (i *IBazelTester) ExpectOutput(want string) {
 		}
 	}
 
-	if match, err := regexp.MatchString(want, i.GetOutput()); match == false || err != nil {
-		i.t.Errorf("Expected iBazel output after %v to be:\nWanted [%v], got [%v]", delay, want, i.GetOutput())
+	output := strings.Trim(i.GetOutput(), " \t\n\x00")
+	if match, err := regexp.MatchString(want, output); match == false || err != nil {
+		i.t.Errorf("Expected iBazel output after %v to match:\nMatch [%v], got [%v]\nAs bytes: [%v]", delay, want, output, []byte(output))
 		debug.PrintStack()
 
 		// In order to prevent cascading errors where the first result failing to
@@ -107,7 +109,7 @@ func (i *IBazelTester) Kill() {
 }
 
 func (i *IBazelTester) run(target string, additionalArgs []string) {
-	args := []string{"--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
+	args := []string{"--bazel_path=" + i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
 	args = append(args, target)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_embed_data", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_embed_data")
 
 go_embed_data(
     name = "js",
