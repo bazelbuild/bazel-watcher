@@ -13,12 +13,12 @@
 # limitations under the License.
 
 git_repository(
-    name = "com_github_bazelbuild_bazel_integration_testing",
+    name = "build_bazel_integration_testing",
     commit = "55a6a70dbcc2cc7699ee715746fb1452788f8d3c",
     remote = "https://github.com/bazelbuild/bazel-integration-testing",
 )
 
-load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
+load("@build_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
 
 bazel_binaries()
 
@@ -76,4 +76,11 @@ go_repository(
     name = "com_github_gorilla_websocket",
     commit = "c55883f97322b4bcbf48f734e23d6ab3af1ea488",
     importpath = "github.com/gorilla/websocket",
+)
+
+# Needed for skylint
+http_archive(
+    name = "io_bazel",
+    url = "https://github.com/bazelbuild/bazel/releases/download/0.9.0/bazel-0.9.0-dist.zip",
+    sha256 = "efb28fed4ffcfaee653e0657f6500fc4cbac61e32104f4208da385676e76312a",
 )
