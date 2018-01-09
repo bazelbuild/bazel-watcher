@@ -28,6 +28,7 @@ import (
 )
 
 var bazelPath = flag.String("bazel_path", "bazel", "Path to the bazel binary to use for actions")
+var config = flag.String("config", "", "Config flag passed to bazel")
 
 type Bazel interface {
 	SetArguments([]string)
@@ -72,6 +73,9 @@ func (b *bazel) WriteToStdout(v bool) {
 func (b *bazel) newCommand(command string, args ...string) {
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 
+	if *config != "" {
+		args = append([]string{"--config="+(*config)}, args...)
+	}
 	args = append([]string{command}, args...)
 	b.cmd = exec.CommandContext(b.ctx, *bazelPath, args...)
 	if b.writeToStderr {
