@@ -26,6 +26,7 @@ var Version = "Development"
 
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
+	"--config=",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
