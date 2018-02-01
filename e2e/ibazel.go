@@ -7,57 +7,82 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime/debug"
 	"strconv"
+	"testing"
+	"time"
+
+	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 )
 
-type iBazelTester struct {
-	target  string
-	binPath string
+// Maximum amount of time to wait before failing a test for not matching your expectations.
+var delay = 10 * time.Second
+
+type IBazelTester struct {
+	bazel *bazel.TestingBazel
+	t     *testing.T
 
 	cmd          *exec.Cmd
 	stderrBuffer *bytes.Buffer
 	stdoutBuffer *bytes.Buffer
+	stdoutOld    string
 }
 
-func IBazelTester(target, binPath string) *iBazelTester {
-	return &iBazelTester{
-		target:  target,
-		binPath: binPath,
+func NewIBazelTester(t *testing.T, bazel *bazel.TestingBazel) *IBazelTester {
+	return &IBazelTester{
+		bazel: bazel,
+		t:     t,
 	}
 }
 
-func (i *iBazelTester) Run() {
-	i.cmd = exec.Command(ibazelPath, "--bazel_path="+bazelPath, "--log_to_file=/tmp/output.log", "run", i.target)
-
-	i.stdoutBuffer = &bytes.Buffer{}
-	i.cmd.Stdout = i.stdoutBuffer
-
-	i.stderrBuffer = &bytes.Buffer{}
-	i.cmd.Stderr = i.stderrBuffer
-
-	launcherPath := filepath.Join(os.TempDir(), "ibazel_e2e_subprocess_launcher")
-	// Try to delete the file. Sometimes the file won't be overwritten properly
-	// but if it is deleted there is no risk for that problem. Investigate that.
-	os.Remove(launcherPath)
-	launcher := fmt.Sprintf("#! /usr/bin/env bash\nexec %s", i.binPath)
-	err := ioutil.WriteFile(launcherPath, []byte(launcher), 0755)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := i.cmd.Start(); err != nil {
-		fmt.Printf("Command: %s", i.cmd)
-		panic(err)
-	}
+func (i *IBazelTester) bazelPath() string {
+	return i.bazel.GetBazel()
 }
 
-func (i *iBazelTester) GetOutput() string {
+func (i *IBazelTester) Run(target string) {
+	i.run(target, []string{})
+}
+
+func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
+	i.run(target, []string{"--profile_dev="+profiler})
+}
+
+func (i *IBazelTester) GetOutput() string {
 	return string(i.stdoutBuffer.Bytes())
 }
-func (i *iBazelTester) GetError() string {
+
+func (i *IBazelTester) ExpectOutput(want string) {
+	stopAt := time.Now().Add(delay)
+	for time.Now().Before(stopAt) {
+		time.Sleep(5 * time.Millisecond)
+
+		// Grab the output and strip output that was available last time we passed
+		// a test.
+		out := i.GetOutput()[len(i.stdoutOld):]
+		if match, err := regexp.MatchString(want, out); match == true && err == nil {
+			// Save the current output value for the next iteratinog.
+			i.stdoutOld = i.GetOutput()
+			return
+		}
+	}
+
+	if match, err := regexp.MatchString(want, i.GetOutput()); match == false || err != nil {
+		i.t.Errorf("Expected iBazel output after %v to be:\nWanted [%v], got [%v]", delay, want, i.GetOutput())
+		debug.PrintStack()
+
+		// In order to prevent cascading errors where the first result failing to
+		// match ruins the error output for the rest of the runs, persist the old
+		// stdout.
+		i.stdoutOld = i.GetOutput()
+	}
+}
+
+func (i *IBazelTester) GetError() string {
 	return string(i.stderrBuffer.Bytes())
 }
-func (i *iBazelTester) GetSubprocessPid() int64 {
+
+func (i *IBazelTester) GetSubprocessPid() int64 {
 	f, err := os.Open(filepath.Join(os.TempDir(), "ibazel_e2e_subprocess_launcher.pid"))
 	if err != nil {
 		panic(err)
@@ -74,8 +99,33 @@ func (i *iBazelTester) GetSubprocessPid() int64 {
 	}
 	return pid
 }
-func (i *iBazelTester) Kill() {
+
+func (i *IBazelTester) Kill() {
 	if err := i.cmd.Process.Kill(); err != nil {
+		panic(err)
+	}
+}
+
+func (i *IBazelTester) run(target string, additionalArgs []string) {
+	args := []string{"--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
+	args = append(args, additionalArgs...)
+	args = append(args, "run")
+	args = append(args, target)
+	i.cmd = exec.Command(ibazelPath, args...)
+
+	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
+	if errCode != 0 {
+		panic(fmt.Sprintf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", errCode, buildStdout, buildStderr))
+	}
+
+	i.stdoutBuffer = &bytes.Buffer{}
+	i.cmd.Stdout = i.stdoutBuffer
+
+	i.stderrBuffer = &bytes.Buffer{}
+	i.cmd.Stderr = i.stderrBuffer
+
+	if err := i.cmd.Start(); err != nil {
+		fmt.Printf("Command: %s", i.cmd)
 		panic(err)
 	}
 }

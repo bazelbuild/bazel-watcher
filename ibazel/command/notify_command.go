@@ -56,7 +56,7 @@ func (c *notifyCommand) Terminate() {
 	c.cmd = nil
 }
 
-func (c *notifyCommand) Start() {
+func (c *notifyCommand) Start() error {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
@@ -69,14 +69,17 @@ func (c *notifyCommand) Start() {
 	c.stdin, err = c.cmd.StdinPipe()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting stdin pipe: %v\n", err)
+		return err
 	}
 
 	c.cmd.Env = append(os.Environ(), "IBAZEL_NOTIFY_CHANGES=y")
 
 	if err = c.cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
+		return err
 	}
 	fmt.Fprintf(os.Stderr, "Starting...")
+	return nil
 }
 
 func (c *notifyCommand) NotifyOfChanges() {
@@ -97,7 +100,7 @@ func (c *notifyCommand) NotifyOfChanges() {
 		fmt.Fprintf(os.Stderr, "SUCCESS\n")
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %v\n", err)
 		}
 	}
 }

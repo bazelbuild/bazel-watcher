@@ -28,16 +28,16 @@ go_library(
 
 go_test(
     name = "go_default_test",
+    size = "small",
     srcs = [
         "command_test.go",
         "default_command_test.go",
         "notify_command_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
-    library = ":go_default_library",
     deps = [
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
     ],
-    size = "small",
 )

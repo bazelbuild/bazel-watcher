@@ -13,21 +13,25 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_embed_data")
+
+go_embed_data(
+  name = "js",
+  src = "profiler.js",
+  package = "profiler",
+  var = "js",
+)
 
 go_library(
     name = "go_default_library",
-    srcs = ["bazel.go"],
-    importpath = "github.com/bazelbuild/bazel-watcher/bazel",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
+    srcs = [
+        "profiler.go",
+        ":js", # keep
     ],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["bazel_test.go"],
-    embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-watcher/bazel",
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/profiler",
+    visibility = ["//ibazel:__subpackages__"],
+    deps = [
+      "//third_party/bazel/master/src/main/protobuf:go_default_library",
+      "//bazel:go_default_library",
+    ],
 )

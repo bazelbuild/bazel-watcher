@@ -16,23 +16,33 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_binary")
 
 go_binary(
     name = "ibazel",
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    library = ":go_default_library",
+    # Since we don't have any cgo dependencies, force build to be pure
+    # golang. This will make multi-os compatability *MUCH* easier.
+    pure = "on",
     visibility = ["//visibility:public"],
+    x_defs = {
+        "main.Version": "{STABLE_GIT_VERSION}",
+    },
 )
 
 go_library(
     name = "go_default_library",
     srcs = [
         "ibazel.go",
+        "lifecycle.go",
         "main.go",
         "source_event_handler.go",
+        "workspace_finder.go"
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     visibility = ["//visibility:private"],
     deps = [
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
+        "//ibazel/profiler:go_default_library",
+        "//ibazel/live_reload:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
@@ -44,8 +54,8 @@ go_test(
         "ibazel_test.go",
         "main_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    library = ":go_default_library",
     deps = [
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",

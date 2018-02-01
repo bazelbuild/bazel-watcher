@@ -51,11 +51,12 @@ type mockCommand struct {
 	terminated        bool
 }
 
-func (m *mockCommand) Start() {
+func (m *mockCommand) Start() error {
 	if m.started {
 		panic("Can't run command twice")
 	}
 	m.started = true
+	return nil
 }
 func (m *mockCommand) NotifyOfChanges() {
 	m.notifiedOfChanges = true
@@ -117,12 +118,19 @@ func init() {
 	}
 }
 
-func TestIBazelLifecycle(t *testing.T) {
+func newIBazel(t *testing.T) *IBazel {
 	i, err := New()
 	if err != nil {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
 
+	i.workspaceFinder = &FakeWorkspaceFinder{}
+
+	return i
+}
+
+func TestIBazelLifecycle(t *testing.T) {
+	i := newIBazel(t)
 	i.Cleanup()
 
 	// Now inspect private API. If things weren't closed properly this will block
@@ -132,10 +140,7 @@ func TestIBazelLifecycle(t *testing.T) {
 }
 
 func TestIBazelLoop(t *testing.T) {
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
-	}
+	i := newIBazel(t)
 
 	// Replace the file watching channel with one that has a buffer.
 	i.buildFileWatcher.Events = make(chan fsnotify.Event, 1)
@@ -149,8 +154,9 @@ func TestIBazelLoop(t *testing.T) {
 
 	// First let's consume all the events from all the channels we care about
 	called := false
-	command := func(targets ...string) {
+	command := func(targets ...string) error {
 		called = true
+		return nil
 	}
 
 	i.state = QUERY
@@ -205,11 +211,7 @@ func TestIBazelLoop(t *testing.T) {
 }
 
 func TestIBazelBuild(t *testing.T) {
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
-	}
-
+	i := newIBazel(t)
 	defer i.Cleanup()
 
 	i.build("//path/to:target")
@@ -224,11 +226,7 @@ func TestIBazelBuild(t *testing.T) {
 }
 
 func TestIBazelTest(t *testing.T) {
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
-	}
-
+	i := newIBazel(t)
 	defer i.Cleanup()
 
 	i.test("//path/to:target")
@@ -243,14 +241,10 @@ func TestIBazelTest(t *testing.T) {
 }
 
 func TestIBazelRun_firstPass(t *testing.T) {
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
-	}
+	i := newIBazel(t)
 	defer i.Cleanup()
 
 	i.run("//path/to:target")
-
 }
 
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
@@ -262,10 +256,7 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 	}
 	defer func() { commandDefaultCommand = oldCommandDefaultCommand }()
 
-	i, err := New()
-	if err != nil {
-		t.Errorf("Error creating IBazel: %s", err)
-	}
+	i := newIBazel(t)
 	defer i.Cleanup()
 
 	i.args = []string{"--do_it"}
@@ -279,7 +270,7 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 	i.run(path)
 
 	if !cmd.notifiedOfChanges {
-		t.Errorf("The preiously running command was not notified of changes")
+		t.Errorf("The previously running command was not notified of changes")
 	}
 }
 

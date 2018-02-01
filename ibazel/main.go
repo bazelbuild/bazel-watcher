@@ -22,22 +22,24 @@ import (
 	"time"
 )
 
+var Version = "Development"
+
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
 }
 
-var debounceDuration = flag.Duration("debounce", 100 * time.Millisecond, "Debounce duration")
+var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
 var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file instead of os.Stderr")
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `iBazel
+	fmt.Fprintf(os.Stderr, `iBazel - Version %s
 
 A file watcher for Bazel. Whenever a source file used in a specified
 target, run, build, or test the specified targets.
 
 Usage:
 
-ibazel build|test|run targets...
+ibazel [flags] build|test|run targets...
 
 Example:
 
@@ -47,7 +49,7 @@ ibazel run //path/to/my/runnable:target -- --arguments --for_your=binary
 ibazel build //path/to/my/buildable:target
 
 iBazel flags:
-`)
+`, Version)
 	flag.PrintDefaults()
 }
 

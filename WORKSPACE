@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rules_go_commit = "0bd97fc6ae48d4124e1a8506bcb397be766f8b83"
+git_repository(
+    name = "com_github_bazelbuild_bazel_integration_testing",
+    commit = "55a6a70dbcc2cc7699ee715746fb1452788f8d3c",
+    remote = "https://github.com/bazelbuild/bazel-integration-testing",
+)
+
+load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
+
+bazel_binaries()
+
+rules_go_commit = "74d8ad8f9f59a1d9a7cf066d0980f9e394acccd7"
 
 git_repository(
     name = "io_bazel_rules_go",
@@ -33,6 +43,18 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_jaschaephraim_lrserver",
+    commit = "50d19f603f71e0a914f23eea33124ba9717e7873",
+    importpath = "github.com/jaschaephraim/lrserver",
+)
+
+go_repository(
+    name = "com_github_gorilla_websocket",
+    commit = "7ca4275b84a9d500f68971c8c4a97f0ec18eb889",
+    importpath = "github.com/gorilla/websocket",
+)
+
+go_repository(
     name = "org_golang_x_sys",
     commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
     importpath = "golang.org/x/sys",
@@ -48,4 +70,10 @@ go_repository(
     name = "com_github_golang_protobuf",
     commit = "130e6b02ab059e7b717a096f397c5b60111cae74",
     importpath = "github.com/golang/protobuf",
+)
+
+go_repository(
+    name = "com_github_gorilla_websocket",
+    commit = "c55883f97322b4bcbf48f734e23d6ab3af1ea488",
+    importpath = "github.com/gorilla/websocket",
 )

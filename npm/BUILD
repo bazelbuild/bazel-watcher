@@ -12,22 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
-go_library(
-    name = "go_default_library",
-    srcs = ["bazel.go"],
-    importpath = "github.com/bazelbuild/bazel-watcher/bazel",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
+genrule(
+    name = "package",
+    srcs = [
+        "//:CONTRIBUTORS",
+    ],
+    outs = ["package.json"],
+    cmd = "$(location :npm) $(location //:CONTRIBUTORS) > $@",
+    stamp = 1,
+    tools = [
+        ":npm",
     ],
 )
 
-go_test(
-    name = "go_default_test",
-    srcs = ["bazel_test.go"],
+go_library(
+    name = "go_default_library",
+    srcs = ["generate_package.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/npm",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "npm",
     embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-watcher/bazel",
+    importpath = "github.com/bazelbuild/bazel-watcher/npm",
+    visibility = ["//visibility:public"],
+    x_defs = {
+        "main.Version": "{STABLE_GIT_VERSION}",
+    },
 )

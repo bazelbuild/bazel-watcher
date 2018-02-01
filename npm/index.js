@@ -16,6 +16,7 @@
 
 // This package inspired by
 // https://github.com/angular/clang-format/blob/master/index.js
+const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const spawn = require('child_process').spawn;
@@ -38,8 +39,39 @@ function main(args) {
     return Promise.resolve(1);
   }
 
-  const binary = path.join(__dirname, 'bin', `${platform}_${arch}`, 'ibazel');
+  // By default, use the ibazel binary underneath this script
+  var basePath = __dirname;
+
+  const dirs = process.cwd().split(path.sep);
+
+  // Walk up the cwd, looking for a local ibazel installation
+  for (var i = dirs.length; i > 0; i--) {
+    var attemptedBasePath = [...dirs.slice(0, i), 'node_modules', '@bazel', 'ibazel'].join(path.sep);
+
+    // If we find a local installation, use that one instead
+    if (fs.existsSync(path.join(attemptedBasePath, 'bin', `${platform}_${arch}`, 'ibazel'))) {
+      basePath = attemptedBasePath;
+      break;
+    }
+  }
+  if (basePath === __dirname) {
+    console.error(`WARNING: no ibazel version found in your node_modules.
+        We recommend installing a devDependency on ibazel so you use the same
+        version as other engineers on this project.
+        Using the globally installed version at ${__dirname}`);
+  }
+
+  const binary = path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel');
   const ibazel = spawn(binary, args, {stdio: 'inherit'});
+
+  function shutdown() {
+    ibazel.kill("SIGTERM")
+    process.exit();
+  }
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
   ibazel.on('close', e => process.exitCode = e);
 }
 

@@ -54,7 +54,7 @@ func (c *defaultCommand) Terminate() {
 	c.cmd = nil
 }
 
-func (c *defaultCommand) Start() {
+func (c *defaultCommand) Start() error {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
@@ -63,11 +63,15 @@ func (c *defaultCommand) Start() {
 
 	c.cmd = start(b, c.target, c.args)
 
+	c.cmd.Env = os.Environ()
+
 	var err error
 	if err = c.cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
+		return err
 	}
 	fmt.Fprintf(os.Stderr, "Starting...")
+	return nil
 }
 
 func (c *defaultCommand) NotifyOfChanges() {
