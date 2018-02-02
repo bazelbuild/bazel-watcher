@@ -2,6 +2,7 @@ container:
   image: cirrusci/bazel:0.10.0
 
 test_task:
+  pull_tags_script: git pull --tags
   test_script: |
     bazel \
       --output_base=$HOME/.cache/bazel \
