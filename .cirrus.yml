@@ -1,0 +1,14 @@
+container:
+  image: cirrusci/bazel:0.10.0
+
+test_task:
+  test_script: |
+    bazel \
+      --output_base=$HOME/.cache/bazel \
+      --batch \
+      --bazelrc=.cirrus-bazelrc \
+      test \
+      --experimental_repository_cache="$HOME/.bazel_repository_cache" \
+      --remote_rest_cache=http://$CIRRUS_HTTP_CACHE_HOST \
+      --test_tag_filters=-dev \
+      //...

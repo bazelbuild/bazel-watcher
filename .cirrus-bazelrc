@@ -1,0 +1,4 @@
+# This file contains options passed to Bazel when running tests.
+# They are used by Cirrus CI.
+build --verbose_failures --sandbox_debug --test_output=errors --spawn_strategy=remote --genrule_strategy=remote
+test --test_strategy=standalone
