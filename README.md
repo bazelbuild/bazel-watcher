@@ -1,6 +1,6 @@
 # Bazel watcher
 
-[![Build status](https://badge.buildkite.com/7694a2e22dcb7ea2e2ec80bb7e8e0380c700079e761394096f.svg)](https://buildkite.com/bazel/bazel-watcher-postsubmit)
+[![Build status](https://badge.buildkite.com/7694a2e22dcb7ea2e2ec80bb7e8e0380c700079e761394096f.svg?branch=master)](https://buildkite.com/bazel/bazel-watcher-postsubmit)
 
 Note: This is not an official Google product.
 
