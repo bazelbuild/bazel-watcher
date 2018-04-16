@@ -15,6 +15,7 @@
 package live_reload
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -71,7 +72,7 @@ func (l *LiveReloadServer) ChangeDetected(targets []string, changeType string, c
 
 func (l *LiveReloadServer) BeforeCommand(targets []string, command string) {}
 
-func (l *LiveReloadServer) AfterCommand(targets []string, command string, success bool) {
+func (l *LiveReloadServer) AfterCommand(targets []string, command string, success bool, output *bytes.Buffer) {
 	l.triggerReload(targets)
 }
 

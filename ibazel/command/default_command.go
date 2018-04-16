@@ -15,6 +15,7 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -54,29 +55,31 @@ func (c *defaultCommand) Terminate() {
 	c.cmd = nil
 }
 
-func (c *defaultCommand) Start() error {
+func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	c.cmd = start(b, c.target, c.args)
+	outputBuffer, foo := start(b, c.target, c.args)
+	c.cmd = foo
 
 	c.cmd.Env = os.Environ()
 
 	var err error
 	if err = c.cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
 	fmt.Fprintf(os.Stderr, "Starting...")
-	return nil
+	return outputBuffer, nil
 }
 
-func (c *defaultCommand) NotifyOfChanges() {
+func (c *defaultCommand) NotifyOfChanges() *bytes.Buffer {
 	c.Terminate()
 	c.Start()
+	return nil
 }
 
 func (c *defaultCommand) IsSubprocessRunning() bool {

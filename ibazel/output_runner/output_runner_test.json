@@ -1,0 +1,17 @@
+[
+	{
+		"regex": "^(buildozer) '(.*)'\\s+(.*)$",
+		"command": "$1",
+		"args": ["$2", "$3"]
+	},
+	{
+		"regex": "WARNING",
+		"command": "warn",
+		"args": ["keep_calm", "dont_panic"]
+	},
+	{
+		"regex": "DANGER",
+		"command": "danger",
+		"args": ["be_careful", "why_so_serious"]
+	}
+]
