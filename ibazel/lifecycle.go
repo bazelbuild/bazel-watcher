@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
 
@@ -29,5 +31,5 @@ type Lifecycle interface {
 	// AfterCommand is called after a blaze $COMMAND is run with the result of
 	// that command.
 	// command: "build"|"test"|"run"
-	AfterCommand(targets []string, command string, success bool)
+	AfterCommand(targets []string, command string, success bool, output *bytes.Buffer)
 }

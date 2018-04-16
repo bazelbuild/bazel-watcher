@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"reflect"
@@ -26,6 +27,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -51,15 +53,16 @@ type mockCommand struct {
 	terminated        bool
 }
 
-func (m *mockCommand) Start() error {
+func (m *mockCommand) Start() (*bytes.Buffer, error) {
 	if m.started {
 		panic("Can't run command twice")
 	}
 	m.started = true
-	return nil
+	return nil, nil
 }
-func (m *mockCommand) NotifyOfChanges() {
+func (m *mockCommand) NotifyOfChanges() *bytes.Buffer {
 	m.notifiedOfChanges = true
+	return nil
 }
 func (m *mockCommand) Terminate() {
 	if !m.started {
@@ -124,7 +127,7 @@ func newIBazel(t *testing.T) *IBazel {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
 
-	i.workspaceFinder = &FakeWorkspaceFinder{}
+	i.workspaceFinder = &workspace_finder.FakeWorkspaceFinder{}
 
 	return i
 }
@@ -154,9 +157,9 @@ func TestIBazelLoop(t *testing.T) {
 
 	// First let's consume all the events from all the channels we care about
 	called := false
-	command := func(targets ...string) error {
+	command := func(targets ...string) (*bytes.Buffer, error) {
 		called = true
-		return nil
+		return nil, nil
 	}
 
 	i.state = QUERY

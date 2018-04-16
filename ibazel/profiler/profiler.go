@@ -15,6 +15,7 @@
 package profiler
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -142,7 +143,7 @@ func (i *Profiler) BeforeCommand(targets []string, command string) {
 	}
 }
 
-func (i *Profiler) AfterCommand(targets []string, command string, success bool) {
+func (i *Profiler) AfterCommand(targets []string, command string, success bool, output *bytes.Buffer) {
 	if i.file == nil {
 		return
 	}
