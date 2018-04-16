@@ -15,6 +15,7 @@
 package testing
 
 import (
+	"bytes"
 	"os/exec"
 	"regexp"
 	"testing"
@@ -62,20 +63,20 @@ func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 
 	return res, nil
 }
-func (b *MockBazel) Build(args ...string) error {
+func (b *MockBazel) Build(args ...string) (*bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Build"}, args...))
-	return b.buildError
+	return nil, b.buildError
 }
 func (b *MockBazel) BuildError(e error) {
 	b.buildError = e
 }
-func (b *MockBazel) Test(args ...string) error {
+func (b *MockBazel) Test(args ...string) (*bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Test"}, args...))
-	return nil
-}
-func (b *MockBazel) Run(args ...string) (*exec.Cmd, error) {
-	b.actions = append(b.actions, append([]string{"Run"}, args...))
 	return nil, nil
+}
+func (b *MockBazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
+	b.actions = append(b.actions, append([]string{"Run"}, args...))
+	return nil, nil, nil
 }
 func (b *MockBazel) WaitError(e error) {
 	b.waitError = e
