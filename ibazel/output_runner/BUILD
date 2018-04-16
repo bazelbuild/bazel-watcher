@@ -1,4 +1,4 @@
-# Copyright 2017 The Bazel Authors. All rights reserved.
+# Copyright 2018 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,49 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_binary")
-
-go_binary(
-    name = "ibazel",
-    embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    # Since we don't have any cgo dependencies, force build to be pure
-    # golang. This will make multi-os compatability *MUCH* easier.
-    pure = "on",
-    visibility = ["//visibility:public"],
-    x_defs = {
-        "main.Version": "{STABLE_GIT_VERSION}",
-    },
-)
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
-        "ibazel.go",
-        "lifecycle.go",
-        "main.go",
-        "source_event_handler.go",
+        "output_runner.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    visibility = ["//visibility:private"],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/output_runner",
+    visibility = ["//ibazel:__subpackages__"],
     deps = [
         "//bazel:go_default_library",
-        "//ibazel/command:go_default_library",
-        "//ibazel/output_runner:go_default_library",
-        "//ibazel/profiler:go_default_library",
-        "//ibazel/live_reload:go_default_library",
-        "//ibazel/workspace_finder:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
-        "@com_github_fsnotify_fsnotify//:go_default_library",
+        "//ibazel/workspace_finder:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
     srcs = [
-        "ibazel_test.go",
-        "main_test.go",
+        "output_runner_test.go",
     ],
+    data = ["output_runner_test.json"],
     embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     deps = [

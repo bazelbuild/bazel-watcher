@@ -28,6 +28,7 @@ var Version = "Development"
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
 	"--config=",
+	"--curses=no",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
@@ -114,7 +115,7 @@ func main() {
 
 	i, err := New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating iBazel", err)
+		fmt.Fprintf(os.Stderr, "Error creating iBazel: %s\n", err)
 		os.Exit(1)
 	}
 	i.SetDebounceDuration(*debounceDuration)

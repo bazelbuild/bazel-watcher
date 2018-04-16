@@ -15,6 +15,8 @@
 package bazel
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"reflect"
 	"testing"
@@ -49,36 +51,38 @@ KEY3: value`)
 
 func TestWriteToStderrAndStdout(t *testing.T) {
 	b := &bazel{}
+	stdoutBuffer := new(bytes.Buffer)
+	stderrBuffer := new(bytes.Buffer)
 
 	// By default it should write to its own pipe.
 	b.newCommand("version")
-	if b.cmd.Stdout == os.Stdout {
-		t.Errorf("Set stdout to os.Stdout")
+	if reflect.DeepEqual(b.cmd.Stdout, io.MultiWriter(os.Stdout, stderrBuffer)) {
+		t.Errorf("Set stdout to os.Stdout and stderrBuffer")
 	}
-	if b.cmd.Stderr == os.Stderr {
-		t.Errorf("Set stderr to os.Stderr")
+	if reflect.DeepEqual(b.cmd.Stderr, io.MultiWriter(os.Stderr, stdoutBuffer)) {
+		t.Errorf("Set stderr to os.Stderr and stdoutBuffer")
 	}
 
 	// If set to true it should write to the os version
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 	b.newCommand("version")
-	if b.cmd.Stdout != os.Stdout {
-		t.Errorf("Didn't set stdout to os.Stdout")
+	if !reflect.DeepEqual(b.cmd.Stdout, io.MultiWriter(os.Stdout, stderrBuffer)) {
+		t.Errorf("Didn't set stdout to os.Stdout and stderrBuffer")
 	}
-	if b.cmd.Stderr != os.Stderr {
-		t.Errorf("Didn't set stderr to os.Stderr")
+	if !reflect.DeepEqual(b.cmd.Stderr, io.MultiWriter(os.Stderr, stdoutBuffer)) {
+		t.Errorf("Didn't set stderr to os.Stderr and stdoutBuffer")
 	}
 
 	// If set to false it should not write to the os version
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 	b.newCommand("version")
-	if b.cmd.Stdout == os.Stdout {
-		t.Errorf("Set stdout to os.Stdout")
+	if reflect.DeepEqual(b.cmd.Stdout, io.MultiWriter(os.Stdout, stderrBuffer)) {
+		t.Errorf("Set stdout to os.Stdout and stderrBuffer")
 	}
-	if b.cmd.Stderr == os.Stderr {
-		t.Errorf("Set stderr to os.Stderr")
+	if reflect.DeepEqual(b.cmd.Stderr, io.MultiWriter(os.Stderr, stdoutBuffer)) {
+		t.Errorf("Set stderr to os.Stderr and stdoutBuffer")
 	}
 }
 
