@@ -25,19 +25,28 @@ func TestParsingArgs(t *testing.T) {
 		targets   []string
 		bazelArgs []string
 		args      []string
+		debugArgs [][]string
 	}{
 		// Empty case.
-		{[]string{}, nil, nil, nil},
+		{[]string{}, nil, nil, nil, nil},
+		// Only one target.
+		{[]string{"//my/target"}, []string{"//my/target"}, nil, nil, [][]string{{}}},
 		// Only targets.
-		{[]string{"//my/target"}, []string{"//my/target"}, nil, nil},
+		{[]string{"//my/target1", "//my/target2"}, []string{"//my/target1", "//my/target2"}, nil, nil, [][]string{{},{}}},
 		// arguments after a --.
-		{[]string{"--", "--my_program_flag"}, nil, nil, []string{"--my_program_flag"}},
+		{[]string{"--", "--my_program_flag"}, nil, nil, []string{"--my_program_flag"}, nil},
 		// Whitelisted bazel flag.
-		{[]string{"--test_output=streaming"}, nil, []string{"--test_output=streaming"}, nil},
+		{[]string{"--test_output=streaming"}, nil, []string{"--test_output=streaming"}, nil, nil},
 		// Whitelisted bazel flag, arg, and target.
-		{[]string{"--test_output=streaming", "--", "--my_program_flag"}, nil, []string{"--test_output=streaming"}, []string{"--my_program_flag"}},
+		{[]string{"--test_output=streaming", "--", "--my_program_flag"}, nil, []string{"--test_output=streaming"}, []string{"--my_program_flag"}, nil},
+		// Multiple targets with multiple arguments.
+		{[]string{"//my/target1", "--arg=t1_arg1", "--arg=t1_arg2", "//my/target2"}, []string{"//my/target1", "//my/target2"}, nil, nil, [][]string{{"t1_arg1", "t1_arg2"},{}}},
+		// Multiple targets with single argument.
+		{[]string{"//my/target1", "--arg=t1_arg1", "//my/target2", "--arg=t2_arg1", "//my/target3", "--arg=t3_arg1"}, []string{"//my/target1", "//my/target2", "//my/target3"}, nil, nil, [][]string{{"t1_arg1"}, {"t2_arg1"}, {"t3_arg1"}}},
+		// Multiple targets with argument with whitespace.
+		{[]string{"//my/target1", "--arg=t1 arg1", "//my/target2", "--arg=t2 arg1", "//my/target3"}, []string{"//my/target1", "//my/target2", "//my/target3"}, nil, nil, [][]string{{"\"t1 arg1\""}, {"\"t2 arg1\""}, {}}},
 	} {
-		targets, bazelArgs, args := parseArgs(c.in)
+		targets, bazelArgs, args, debugArgs := parseArgs(c.in)
 		if !reflect.DeepEqual(c.targets, targets) {
 			t.Errorf("Targets not equal for args: %v\nGot:  %v\nWant: %v",
 				c.in, targets, c.targets)
@@ -49,6 +58,10 @@ func TestParsingArgs(t *testing.T) {
 		if !reflect.DeepEqual(c.args, args) {
 			t.Errorf("Additional args not equal for args: %v\nGot:  %v\nWant: %v",
 				c.in, args, c.args)
+		}
+		if !reflect.DeepEqual(c.debugArgs, debugArgs) {
+			t.Errorf("Debug args not equal for debugArgs: %v\nGot:  %v\nWant: %v",
+				c.in, debugArgs, c.debugArgs)
 		}
 	}
 }
