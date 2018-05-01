@@ -213,6 +213,77 @@ func TestIBazelLoop(t *testing.T) {
 	assertState(WAIT)
 }
 
+func TestIBazelLoopMultiple(t *testing.T) {
+	i := newIBazel(t)
+
+	// Replace the file watching channel with one that has a buffer.
+	i.buildFileWatcher.Events = make(chan fsnotify.Event, 1)
+	i.sourceEventHandler.SourceFileEvents = make(chan fsnotify.Event, 1)
+
+	defer i.Cleanup()
+
+	// The process for testing this is going to be to emit events to the channels
+	// that are associated with these objects and walk the state transition
+	// graph.
+
+	// First let's consume all the events from all the channels we care about
+	called := false
+	command := func(targets []string, debugArgs [][]string, argsLength int) ([]*bytes.Buffer, error) {
+		called = true
+		return nil, nil
+	}
+
+	i.state = QUERY
+	step := func() {
+		i.iterationMultiple("demo", command, []string{}, [][]string{}, 0)
+	}
+	assertRun := func() {
+		if called == false {
+			_, file, line, _ := runtime.Caller(1) // decorate + log + public function.
+			t.Errorf("%s:%v Should have run the provided comand", file, line)
+		}
+		called = false
+	}
+	assertState := func(state State) {
+		if i.state != state {
+			_, file, line, _ := runtime.Caller(1) // decorate + log + public function.
+			t.Errorf("%s:%v Expected state to be %s but was %s", file, line, state, i.state)
+		}
+	}
+
+	// Pretend a fairly normal event chain happens.
+	// Start, run the program, write a source file, run, write a build file, run.
+
+	assertState(QUERY)
+	step()
+	assertState(RUN)
+	step() // Actually run the command
+	assertRun()
+	assertState(WAIT)
+	// Source file change.
+	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{Op: fsnotify.Write}
+	step()
+	assertState(DEBOUNCE_RUN)
+	step()
+	// Don't send another event in to test the timer
+	assertState(RUN)
+	step() // Actually run the command
+	assertRun()
+	assertState(WAIT)
+	// Build file change.
+	i.buildFileWatcher.Events <- fsnotify.Event{Op: fsnotify.Write}
+	step()
+	assertState(DEBOUNCE_QUERY)
+	// Don't send another event in to test the timer
+	step()
+	assertState(QUERY)
+	step()
+	assertState(RUN)
+	step() // Actually run the command
+	assertRun()
+	assertState(WAIT)
+}
+
 func TestIBazelBuild(t *testing.T) {
 	i := newIBazel(t)
 	defer i.Cleanup()
