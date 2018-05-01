@@ -55,14 +55,14 @@ func (c *defaultCommand) Terminate() {
 	c.cmd = nil
 }
 
-func (c *defaultCommand) Start() (*bytes.Buffer, error) {
+func (c *defaultCommand) Start(logFile *os.File) (*bytes.Buffer, error) {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	outputBuffer, foo := start(b, c.target, c.args)
+	outputBuffer, foo := start(b, c.target, c.args, logFile)
 	c.cmd = foo
 
 	c.cmd.Env = os.Environ()
@@ -76,10 +76,10 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 	return outputBuffer, nil
 }
 
-func (c *defaultCommand) NotifyOfChanges() *bytes.Buffer {
+func (c *defaultCommand) NotifyOfChanges(logFile *os.File) *bytes.Buffer {
 	c.Terminate()
-	c.Start()
-	return nil
+	outputBuffer, _ := c.Start(logFile)
+	return outputBuffer
 }
 
 func (c *defaultCommand) IsSubprocessRunning() bool {

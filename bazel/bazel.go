@@ -207,7 +207,7 @@ func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
 func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	stdoutBuffer, stderrBuffer := b.newCommand("run", args...)
+	stdoutBuffer, stderrBuffer := b.newCommand("run", append(b.args, args...)...)
 	b.cmd.Stdin = os.Stdin
 
 	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
