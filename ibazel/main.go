@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -118,6 +119,13 @@ func main() {
 	i.SetDebounceDuration(*debounceDuration)
 	defer i.Cleanup()
 
+	// increase the number of files that this process can
+	// have open.
+	err = setUlimit()
+	if err != nil {
+		fmt.Fprint(os.Stderr, "error setting higher file descriptor limit for this process: ", err)
+	}
+
 	handle(i, command, args)
 }
 
@@ -138,4 +146,25 @@ func handle(i *IBazel, command string, args []string) {
 		usage()
 		return
 	}
+}
+
+func setUlimit() error {
+	var lim syscall.Rlimit
+
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
+	if err != nil {
+		return err
+	}
+
+	// set the "soft" file descriptor to the maximum
+	// allowed by a userspace program.
+	// http://man7.org/linux/man-pages/man2/getrlimit.2.html
+	lim.Cur = lim.Max
+
+	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
