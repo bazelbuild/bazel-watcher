@@ -1,6 +1,6 @@
 # Bazel watcher
 
-[![Build Status](https://ci.bazel.io/buildStatus/icon?job=Global%2Fbazel-watcher)](https://ci.bazel.io/blue/organizations/jenkins/Global%2Fbazel-watcher/activity/)
+[![Build status](https://badge.buildkite.com/7694a2e22dcb7ea2e2ec80bb7e8e0380c700079e761394096f.svg?branch=master)](https://buildkite.com/bazel/bazel-watcher-postsubmit)
 
 Note: This is not an official Google product.
 
