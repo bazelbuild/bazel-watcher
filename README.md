@@ -206,4 +206,9 @@ watcher does, but instead queries the file system for a list of files that have
 been invalidated since last build and will require reinspection by the Bazel
 server.
 
+### Big thanks
+
+ * [Google](http://opensource.google.com) for cross-platform build/test CI instances.
+ * [Sauce Labs](https://saucelabs.com) for cross-browser testing.
+
 Copyright 2017 The Bazel Authors. All right reserved.
