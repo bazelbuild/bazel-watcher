@@ -255,19 +255,18 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
 
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
-	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
 	switch i.state {
 	case WAIT:
 		select {
 		case e := <-i.sourceEventHandler.SourceFileEvents:
 			if e.Op&modifyingEvents != 0 {
-				fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
+				fmt.Fprintf(os.Stderr, "\nChanged: %q. Rebuilding...\n", e.Name)
 				i.changeDetected(targets, "source", e.Name)
 				i.state = DEBOUNCE_RUN
 			}
 		case e := <-i.buildFileWatcher.Events:
 			if e.Op&modifyingEvents != 0 {
-				fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
+				fmt.Fprintf(os.Stderr, "\nBuild graph changed: %q. Requerying...\n", e.Name)
 				i.changeDetected(targets, "graph", e.Name)
 				i.state = DEBOUNCE_QUERY
 			}
@@ -284,9 +283,8 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		}
 	case QUERY:
 		// Query for which files to watch.
-		fmt.Fprintf(os.Stderr, "Querying for BUILD files...\n")
+		fmt.Fprintf(os.Stderr, "Querying for files to watch...\n")
 		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
-		fmt.Fprintf(os.Stderr, "Querying for source files...\n")
 		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
 		i.state = RUN
 	case DEBOUNCE_RUN:
@@ -480,6 +478,5 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Watching: %d files\n", len(filesAdded))
 	i.filesWatched[watcher] = filesAdded
 }
