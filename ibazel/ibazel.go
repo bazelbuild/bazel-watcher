@@ -461,7 +461,10 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 	for _, line := range toWatch {
 		err := watcher.Add(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
+			// Special case for the "defaults package", see https://github.com/bazelbuild/bazel/issues/5533
+			if !strings.HasSuffix(filepath.ToSlash(line), "/tools/defaults/BUILD") {
+				fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
+			}
 			continue
 		} else {
 			filesAdded[line] = true
