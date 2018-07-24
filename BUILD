@@ -1,3 +1,5 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
 # Copyright 2017 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,10 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_prefix")
-
-go_prefix("github.com/bazelbuild/bazel-watcher")
 
 gazelle(
     name = "gazelle",

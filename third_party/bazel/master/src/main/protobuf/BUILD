@@ -11,3 +11,8 @@ go_proto_library(
     name = "go_default_library",
     srcs = ["build.proto"],
 )
+
+filegroup(
+    name = "go_default_library_protos",
+    srcs = ["build.proto"],
+)
