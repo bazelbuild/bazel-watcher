@@ -60,8 +60,8 @@ func TestWriteToStderrAndStdout(t *testing.T) {
 	}
 
 	// If set to true it should write to the os version
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
+	// b.WriteToStderr(true)
+	// b.WriteToStdout(true)
 	b.newCommand("version")
 	if b.cmd.Stdout != os.Stdout {
 		t.Errorf("Didn't set stdout to os.Stdout")
@@ -71,8 +71,8 @@ func TestWriteToStderrAndStdout(t *testing.T) {
 	}
 
 	// If set to false it should not write to the os version
-	b.WriteToStderr(false)
-	b.WriteToStdout(false)
+	// b.WriteToStderr(false)
+	// b.WriteToStdout(false)
 	b.newCommand("version")
 	if b.cmd.Stdout == os.Stdout {
 		t.Errorf("Set stdout to os.Stdout")

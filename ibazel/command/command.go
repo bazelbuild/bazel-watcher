@@ -15,6 +15,7 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,15 +31,15 @@ var bazelNew = bazel.New
 // Command is an object that wraps the logic of running a task in Bazel and
 // manipulating it.
 type Command interface {
-	Start() error
+	Start(logFile *os.File) (*bytes.Buffer, error)
 	Terminate()
-	NotifyOfChanges()
+	NotifyOfChanges(logFile *os.File) *bytes.Buffer
 	IsSubprocessRunning() bool
 }
 
 // start will be called by most implementations since this logic is extremely
 // common.
-func start(b bazel.Bazel, target string, args []string) *exec.Cmd {
+func start(b bazel.Bazel, target string, args []string, logFile *os.File) (*bytes.Buffer, *exec.Cmd) {
 	tmpfile, err := ioutil.TempFile("", "bazel_script_path")
 	if err != nil {
 		fmt.Print(err)
@@ -49,20 +50,25 @@ func start(b bazel.Bazel, target string, args []string) *exec.Cmd {
 	}
 
 	// Start by building the binary
-	b.Run("--script_path="+tmpfile.Name(), target)
+	_, outputBuffer, _ := b.Run("--script_path="+tmpfile.Name(), target)
 
 	runScriptPath := tmpfile.Name()
 
 	// Now that we have built the target, construct a executable form of it for
 	// execution in a go routine.
 	cmd := execCommand(runScriptPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if logFile != nil {
+		cmd.Stdout = logFile
+		cmd.Stderr = logFile
+	} else {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	// Set a process group id (PGID) on the subprocess. This is
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	return cmd
+	return outputBuffer, cmd
 }
 
 func subprocessRunning(cmd *exec.Cmd) bool {
