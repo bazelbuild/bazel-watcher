@@ -28,6 +28,7 @@ var Version = "Development"
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
 	"--config=",
+	"--curses=no",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
@@ -64,7 +65,7 @@ func isOverrideableBazelFlag(arg string) bool {
 	return false
 }
 
-func parseArgs(in []string) (targets, bazelArgs, args []string) {
+func parseArgs(in []string) (targets, bazelArgs, args []string, debugArgs [][]string) {
 	afterDoubleDash := false
 	for _, arg := range in {
 		if afterDoubleDash {
@@ -84,7 +85,16 @@ func parseArgs(in []string) (targets, bazelArgs, args []string) {
 			}
 
 			// If none of those things then it's probably a target.
-			targets = append(targets, arg)
+			if strings.HasPrefix(arg, "--arg") {
+				parsedArg := strings.Replace(arg, "--arg=", "", -1)
+				if strings.Contains(parsedArg, " ") {
+					parsedArg = "\"" + parsedArg + "\""
+				}
+				debugArgs[len(debugArgs)-1] = append(debugArgs[len(debugArgs)-1], parsedArg)
+			} else {
+				targets = append(targets, arg)
+				debugArgs = append(debugArgs, []string{})
+			}
 		}
 	}
 	return
@@ -114,7 +124,7 @@ func main() {
 
 	i, err := New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating iBazel", err)
+		fmt.Fprintf(os.Stderr, "Error creating iBazel: %s\n", err)
 		os.Exit(1)
 	}
 	i.SetDebounceDuration(*debounceDuration)
@@ -131,7 +141,7 @@ func main() {
 }
 
 func handle(i *IBazel, command string, args []string) {
-	targets, bazelArgs, args := parseArgs(args)
+	targets, bazelArgs, args, debugArgs := parseArgs(args)
 	i.SetBazelArgs(bazelArgs)
 
 	switch command {
@@ -141,7 +151,9 @@ func handle(i *IBazel, command string, args []string) {
 		i.Test(targets...)
 	case "run":
 		// Run only takes one argument
-		i.Run(targets[0], args)
+		i.Run(targets, args)
+	case "mrun":
+		i.RunMultiple(targets, args, debugArgs)
 	default:
 		fmt.Fprintf(os.Stderr, "Asked me to perform %s. I don't know how to do that.", command)
 		usage()
