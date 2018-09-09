@@ -16,32 +16,19 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "output_runner.go",
-    ],
+    srcs = ["output_runner.go"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/output_runner",
     visibility = ["//ibazel:__subpackages__"],
     deps = [
-        "//bazel:go_default_library",
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "//ibazel/workspace_finder:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
-    srcs = [
-        "output_runner_test.go",
-    ],
+    srcs = ["output_runner_test.go"],
     data = ["output_runner_test.json"],
     embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    deps = [
-        "//bazel:go_default_library",
-        "//bazel/testing:go_default_library",
-        "//ibazel/command:go_default_library",
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
-        "@com_github_fsnotify_fsnotify//:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-    ],
 )

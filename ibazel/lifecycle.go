@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 
-	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
 
 // Lifecycle is an object that listens to the lifecycle events of iBazel and
