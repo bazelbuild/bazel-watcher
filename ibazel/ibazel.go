@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -27,7 +28,9 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
+	"github.com/bazelbuild/bazel-watcher/ibazel/output_runner"
 	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -39,7 +42,7 @@ var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 
 type State string
-type runnableCommand func(...string) error
+type runnableCommand func(...string) (*bytes.Buffer, error)
 
 const (
 	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
@@ -63,7 +66,7 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
-	workspaceFinder WorkspaceFinder
+	workspaceFinder workspace_finder.WorkspaceFinder
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
@@ -85,19 +88,21 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
-	i.workspaceFinder = &MainWorkspaceFinder{}
+	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
 
 	i.sigs = make(chan os.Signal, 1)
-	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	liveReload := live_reload.New()
 	profiler := profiler.New(Version)
+	outputRunner := output_runner.New()
 
 	liveReload.AddEventsListener(profiler)
 
 	i.lifecycleListeners = []Lifecycle{
 		liveReload,
 		profiler,
+		outputRunner,
 	}
 
 	info, _ := i.getInfo()
@@ -115,7 +120,7 @@ func New() (*IBazel, error) {
 }
 
 func (i *IBazel) handleSignals() {
-	// Got an OS signal (SIGINT, SIGTERM).
+	// Got an OS signal (SIGINT, SIGTERM, SIGHUP).
 	sig := <-i.sigs
 
 	switch sig {
@@ -130,6 +135,13 @@ func (i *IBazel) handleSignals() {
 	case syscall.SIGTERM:
 		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
 			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGTERM\n")
+			i.cmd.Terminate()
+		}
+		osExit(3)
+		return
+	case syscall.SIGHUP:
+		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
+			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGHUP\n")
 			i.cmd.Terminate()
 		}
 		osExit(3)
@@ -197,9 +209,9 @@ func (i *IBazel) beforeCommand(targets []string, command string) {
 	}
 }
 
-func (i *IBazel) afterCommand(targets []string, command string, success bool) {
+func (i *IBazel) afterCommand(targets []string, command string, success bool, output *bytes.Buffer) {
 	for _, l := range i.lifecycleListeners {
-		l.AfterCommand(targets, command, success)
+		l.AfterCommand(targets, command, success, output)
 	}
 }
 
@@ -300,38 +312,38 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case RUN:
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
 		i.beforeCommand(targets, command)
-		err := commandToRun(targets...)
-		i.afterCommand(targets, command, err == nil)
+		outputBuffer, err := commandToRun(targets...)
+		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.state = WAIT
 	}
 }
 
-func (i *IBazel) build(targets ...string) error {
+func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	err := b.Build(targets...)
+	outputBuffer, err := b.Build(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
-	return nil
+	return outputBuffer, nil
 }
 
-func (i *IBazel) test(targets ...string) error {
+func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	err := b.Test(targets...)
+	outputBuffer, err := b.Test(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
-	return nil
+	return outputBuffer, err
 }
 
 func contains(l []string, e string) bool {
@@ -368,21 +380,21 @@ func (i *IBazel) setupRun(target string) command.Command {
 	}
 }
 
-func (i *IBazel) run(targets ...string) error {
+func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 	if i.cmd == nil {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
 		i.cmd = i.setupRun(targets[0])
-		err := i.cmd.Start()
+		outputBuffer, err := i.cmd.Start()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Run start failed %v\n", err)
 		}
-		return err
+		return outputBuffer, err
 	}
 
 	fmt.Fprintf(os.Stderr, "Notifying of changes\n")
-	i.cmd.NotifyOfChanges()
-	return nil
+	outputBuffer := i.cmd.NotifyOfChanges()
+	return outputBuffer, nil
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {

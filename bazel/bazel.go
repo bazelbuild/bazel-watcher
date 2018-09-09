@@ -15,10 +15,12 @@
 package bazel
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -35,9 +37,9 @@ type Bazel interface {
 	WriteToStdout(v bool)
 	Info() (map[string]string, error)
 	Query(args ...string) (*blaze_query.QueryResult, error)
-	Build(args ...string) error
-	Test(args ...string) error
-	Run(args ...string) (*exec.Cmd, error)
+	Build(args ...string) (*bytes.Buffer, error)
+	Test(args ...string) (*bytes.Buffer, error)
+	Run(args ...string) (*exec.Cmd, *bytes.Buffer, error)
 	Wait() error
 	Cancel()
 }
@@ -69,17 +71,38 @@ func (b *bazel) WriteToStdout(v bool) {
 	b.writeToStdout = v
 }
 
-func (b *bazel) newCommand(command string, args ...string) {
+func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *bytes.Buffer) {
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 
 	args = append([]string{command}, args...)
+
+	if b.writeToStderr || b.writeToStdout {
+		containsColor := false
+		for _, arg := range args {
+			if strings.HasPrefix(arg, "--color") {
+				containsColor = true
+			}
+		}
+		if !containsColor {
+			args = append(args, "--color=yes")
+		}
+	}
 	b.cmd = exec.CommandContext(b.ctx, *bazelPath, args...)
+
+	stdoutBuffer := new(bytes.Buffer)
+	stderrBuffer := new(bytes.Buffer)
 	if b.writeToStderr {
-		b.cmd.Stderr = os.Stderr
+		b.cmd.Stderr = io.MultiWriter(os.Stderr, stdoutBuffer)
+	} else {
+		b.cmd.Stderr = stdoutBuffer
 	}
 	if b.writeToStdout {
-		b.cmd.Stdout = os.Stdout
+		b.cmd.Stdout = io.MultiWriter(os.Stdout, stderrBuffer)
+	} else {
+		b.cmd.Stdout = stderrBuffer
 	}
+
+	return stdoutBuffer, stderrBuffer
 }
 
 // Displays information about the state of the bazel process in the
@@ -99,13 +122,13 @@ func (b *bazel) newCommand(command string, args ...string) {
 func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
-	b.newCommand("info")
+	stdoutBuffer, _ := b.newCommand("info")
 
-	info, err := b.cmd.Output()
+	err := b.cmd.Run()
 	if err != nil {
 		return nil, err
 	}
-	return b.processInfo(string(info))
+	return b.processInfo(stdoutBuffer.String())
 }
 
 func (b *bazel) processInfo(info string) (map[string]string, error) {
@@ -139,58 +162,62 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 //
 //   res, err := b.Query('somepath(//path/to/package:target, //dependency)')
 func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
-	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no")
+	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
 
-        b.WriteToStderr(true)
-        b.WriteToStdout(false)
-	b.newCommand("query", blazeArgs...)
+	b.WriteToStderr(true)
+	b.WriteToStdout(false)
+	_, stderrBuffer := b.newCommand("query", blazeArgs...)
 
-	out, err := b.cmd.Output()
+	err := b.cmd.Run()
+
 	if err != nil {
 		return nil, err
 	}
-	return b.processQuery(out)
+	return b.processQuery(stderrBuffer.Bytes())
 }
 
 func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
 	var qr blaze_query.QueryResult
 	if err := proto.Unmarshal(out, &qr); err != nil {
-		fmt.Printf("Could not read blaze query response: %s %s", err, out)
+		fmt.Fprintf(os.Stderr, "Could not read blaze query response. Error: %s\nOutput: %s\n", err, out)
 		return nil, err
 	}
+
 	return &qr, nil
 }
 
-func (b *bazel) Build(args ...string) error {
-	b.newCommand("build", append(b.args, args...)...)
-
+func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
+	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
 	err := b.cmd.Run()
 
-	return err
+	_, _= stdoutBuffer.Write(stderrBuffer.Bytes())
+	return stdoutBuffer, err
 }
 
-func (b *bazel) Test(args ...string) error {
-	b.newCommand("test", append(b.args, args...)...)
-
+func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
+	stdoutBuffer, stderrBuffer := b.newCommand("test", append(b.args, args...)...)
 	err := b.cmd.Run()
 
-	return err
+	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+	return stdoutBuffer, err
 }
 
 // Build the specified target (singular) and run it with the given arguments.
-func (b *bazel) Run(args ...string) (*exec.Cmd, error) {
+func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.WriteToStderr(true)
-        b.WriteToStdout(true)
-        b.newCommand("run", args...)
+	b.WriteToStdout(true)
+	stdoutBuffer, stderrBuffer := b.newCommand("run", args...)
 	b.cmd.Stdin = os.Stdin
+
+	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
 
 	err := b.cmd.Run()
 	if err != nil {
-		return nil, err
+		return nil, stdoutBuffer, err
 	}
 
-	return b.cmd, err
+	return b.cmd, stdoutBuffer, err
 }
 
 func (b *bazel) Wait() error {

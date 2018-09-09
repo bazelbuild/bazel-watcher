@@ -63,7 +63,7 @@ func TestDefaultCommand_Start(t *testing.T) {
 
 	b := &mock_bazel.MockBazel{}
 
-	cmd := start(b, "//path/to:target", []string{"moo"})
+	_, cmd := start(b, "//path/to:target", []string{"moo"})
 	cmd.Start()
 
 	if cmd.Stdout != os.Stdout {
