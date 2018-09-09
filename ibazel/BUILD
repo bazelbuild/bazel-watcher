@@ -34,6 +34,7 @@ go_library(
         "lifecycle.go",
         "main.go",
         "source_event_handler.go",
+        "workspace_finder.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     visibility = ["//visibility:private"],
