@@ -12,26 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("@io_bazel_rules_go//go:def.bzl", "go_embed_data")
+load("@io_bazel_rules_go//go:def.bzl", "go_embed_data", "go_library")
 
 go_embed_data(
-  name = "js",
-  src = "profiler.js",
-  package = "profiler",
-  var = "js",
+    name = "js",
+    src = "profiler.js",
+    package = "profiler",
+    var = "js",
 )
 
 go_library(
     name = "go_default_library",
     srcs = [
         "profiler.go",
-        ":js", # keep
+        ":js",  # keep
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/profiler",
     visibility = ["//ibazel:__subpackages__"],
-    deps = [
-      "//third_party/bazel/master/src/main/protobuf:go_default_library",
-      "//bazel:go_default_library",
-    ],
+    deps = ["//third_party/bazel/master/src/main/protobuf:go_default_library"],
 )

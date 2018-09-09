@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "workspace_finder.go",
-    ],
+    srcs = ["workspace_finder.go"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder",
     visibility = ["//ibazel:__subpackages__"],
-    deps = [
-      "//third_party/bazel/master/src/main/protobuf:go_default_library",
-      "//bazel:go_default_library",
-    ],
 )
