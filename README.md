@@ -22,6 +22,40 @@ Hack hack hack. Save and your target will be rebuilt.
 
 Right now this repo supports `build`, `test`, and `run`.
 
+## Installation
+
+There are currently 3 ways to install iBazel
+
+### Mac (Homebrew)
+
+If you run a mac you can install it from [homebrew](https://brew.sh).
+
+```
+$ brew tap bazelbuild/tap
+$ brew tap-pin bazelbuild/tap
+$ brew install ibazel
+```
+
+### NPM
+
+If you're a JS developer you can install it as a `devDependency` or by calling `npm install` directly in your project
+
+```
+npm install @bazel/ibazel
+```
+
+### Compiling yourself
+
+You can, of course, build iBazel using Bazel.
+
+```
+git clone git@github.com/bazelbuild/bazel-watcher
+cd bazel-watcher
+bazel build //ibazel
+```
+
+Now copy the generated binary onto your path.
+
 ## Running a target
 
 By default, a target started with `ibazel run` will be terminated and restarted
