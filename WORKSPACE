@@ -14,11 +14,11 @@
 
 http_archive(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    sha256 = "c1591d7cf7f209916d8a40b5f714788f4f915187444b8f1b46a55651d4bbd382",
-    strip_prefix = "bazel-integration-testing-44d8e9716f3415e92f5ddc0215a63fa39e46134d",
+    sha256 = "81a2ad3a8ec5a9d1d91b9aca0b4f1f3a0b094f30c48d582e5226defccd714bb9",
+    strip_prefix = "bazel-integration-testing-404010b3763262526d3a0e09073d8a8f22ed3d4b",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-integration-testing/archive/44d8e9716f3415e92f5ddc0215a63fa39e46134d.tar.gz",
-        "https://github.com/bazelbuild/bazel-integration-testing/archive/44d8e9716f3415e92f5ddc0215a63fa39e46134d.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-integration-testing/archive/404010b3763262526d3a0e09073d8a8f22ed3d4b.tar.gz",
+        "https://github.com/bazelbuild/bazel-integration-testing/archive/404010b3763262526d3a0e09073d8a8f22ed3d4b.tar.gz",
     ],
 )
 
