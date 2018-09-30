@@ -14,7 +14,9 @@
 
 package main
 
-import "github.com/fsnotify/fsnotify"
+import (
+  "github.com/fsnotify/fsnotify"
+)
 
 type SourceEventHandler struct {
 	SourceFileEvents  chan fsnotify.Event
@@ -28,8 +30,8 @@ func (s *SourceEventHandler) Listen() {
 			s.SourceFileEvents <- event
 
 			switch event.Op {
-			case fsnotify.Remove:
-				s.SourceFileWatcher.Add(event.Name)
+			case fsnotify.Remove, fsnotify.Rename:
+					s.SourceFileWatcher.Add(event.Name)
 			}
 		}
 	}
