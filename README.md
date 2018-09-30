@@ -9,10 +9,7 @@ A source file watcher for [Bazel](https://Bazel.build) projects
 Ever wanted to save a file and have your tests automatically run? How about
 restart your webserver when one of the source files change? Look no further.
 
-Compile the `//ibazel` target inside this repo and copy the source file onto
-your `$PATH`.
-
-Then:
+Install `ibazel` using one of the 3 methods [described below](#installation). Then:
 
 ```bash
 # ibazel build //path/to/my:target
@@ -54,7 +51,13 @@ cd bazel-watcher
 bazel build //ibazel
 ```
 
-Now copy the generated binary onto your path.
+Now copy the generated binary onto your path:
+
+```bash
+export PATH=$PATH:$PWD/bazel-bin/ibazel/$GOOS_$GOARCH_pure_stripped/ibazel
+```
+
+where `$GOOS` and `$GOARCH` are your host OS (e.g., `darwin` or `linux`) and architecture (e.g., `amd64`).
 
 ## Running a target
 
