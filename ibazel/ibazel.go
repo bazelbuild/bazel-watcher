@@ -126,7 +126,7 @@ func (i *IBazel) handleSignals() {
 	switch sig {
 	case syscall.SIGINT:
 		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGINT\n")
+			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)\n")
 			i.cmd.Terminate()
 		} else {
 			osExit(3)
