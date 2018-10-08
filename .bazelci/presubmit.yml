@@ -21,3 +21,8 @@ platforms:
     - "--features=race"
     test_targets:
     - "..."
+  windows:
+    build_targets:
+    - "..."
+    test_targets:
+    - "..."
