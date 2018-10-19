@@ -37,5 +37,6 @@ platforms:
     - "..."
     test_flags:
     - "--test_tag_filters=-nowindows"
+    - "--experimental_enable_runfiles"
     test_targets:
     - "..."
