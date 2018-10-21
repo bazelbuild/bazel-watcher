@@ -46,7 +46,7 @@ npm install @bazel/ibazel
 You can, of course, build iBazel using Bazel.
 
 ```
-git clone git@github.com/bazelbuild/bazel-watcher
+git clone git@github.com:bazelbuild/bazel-watcher
 cd bazel-watcher
 bazel build //ibazel
 ```
