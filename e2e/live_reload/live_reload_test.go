@@ -79,6 +79,10 @@ sh_binary(
 	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
+	
+	if out == "" {
+		t.Fatal("Output was empty. Expected at least some output")
+	}
 
 	jsUrl := out[len("Live reload url: "):]
 	t.Logf("Livereload URL: '%s'", jsUrl)
