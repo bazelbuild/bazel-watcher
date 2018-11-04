@@ -1,4 +1,4 @@
-build --workspace_status_command=tools/workplace_status.sh
+build --workspace_status_command=tools/workplace_status.py
 
 # Flags used during releases
 build:release --stamp
