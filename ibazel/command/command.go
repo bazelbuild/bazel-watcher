@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
@@ -40,7 +41,13 @@ type Command interface {
 // start will be called by most implementations since this logic is extremely
 // common.
 func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cmd) {
-	tmpfile, err := ioutil.TempFile("", "bazel_script_path")
+	var filePattern strings.Buffer
+	filePattern.WriteString("bazel_script_path")
+	if runtime.GOOS == "windows" {
+		filePattern.WriteString(".bat")
+	}
+	
+	tmpfile, err := ioutil.TempFile("", filePattern.String())
 	if err != nil {
 		fmt.Print(err)
 	}
