@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,32 @@ sh_binary(
 	srcs = ["test.sh"],
 )
 `))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Run("//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("Started!")
+}
+
+func TestSimpleRunAfterShutdown(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "Started!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	errCode, _, _ := b.RunBazel([]string{"shutdown"})
+	if errCode != 0 {
+		t.Fatal(errors.New("bazel failed to shut down"))
+	}
 
 	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:test")
