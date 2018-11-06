@@ -135,11 +135,11 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 	lines := strings.Split(info, "\n")
 	output := make(map[string]string, 0)
 	for _, line := range lines {
-		if line == "" {
+		if line == "" || strings.Contains(line, "Starting local Bazel server and connecting to it...") {
 			continue
 		}
 		data := strings.SplitN(line, ": ", 2)
-		if len(data) != 2 {
+		if len(data) < 2 {
 			return nil, errors.New("Bazel info returned a non key-value pair")
 		}
 		output[data[0]] = data[1]
@@ -191,7 +191,7 @@ func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
 	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
 	err := b.cmd.Run()
 
-	_, _= stdoutBuffer.Write(stderrBuffer.Bytes())
+	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
 	return stdoutBuffer, err
 }
 
