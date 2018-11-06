@@ -42,7 +42,7 @@ type Command interface {
 // start will be called by most implementations since this logic is extremely
 // common.
 func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cmd) {
-	var filePattern strings.Buffer
+	var filePattern strings.Builder
 	filePattern.WriteString("bazel_script_path")
 	if runtime.GOOS == "windows" {
 		filePattern.WriteString(".bat")
