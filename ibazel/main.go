@@ -32,6 +32,7 @@ var overrideableBazelFlags []string = []string{
 	"--output_groups=",
 	"--keep_going",
 	"-k",
+	"--strategy",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
