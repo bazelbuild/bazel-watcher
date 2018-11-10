@@ -195,10 +195,10 @@ func (pg *winProcessGroup) Start() error {
 
 		// Get next thread
 		ret, _, errno = syscall.Syscall(thread32Next, 2, uintptr(snapshot), uintptr(unsafe.Pointer(thread)), 0)
-		if errno != 0 {
-			return errno
-		} else if int(ret) == 0 {
+		if int(ret) == 0 && errno == syscall.ERROR_NO_MORE_FILES {
 			break
+		} else if errno != 0 {
+			return errno
 		}
 	}
 
