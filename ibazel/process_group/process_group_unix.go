@@ -44,3 +44,11 @@ func (pg *unixProcessGroup) Start() error {
 func (pg *unixProcessGroup) Kill() error {
 	return syscall.Kill(-pg.root.Process.Pid, syscall.SIGKILL)
 }
+
+func (pg *unixProcessGroup) Wait() error {
+	return pg.root.Wait()
+}
+
+func (pg *unixProcessGroup) CombinedOutput() ([]byte, error) {
+	return pg.root.CombinedOutput()
+}

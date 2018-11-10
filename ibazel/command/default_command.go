@@ -51,7 +51,7 @@ func (c *defaultCommand) Terminate() {
 	// Normally I would do this by calling c.cmd.Process.Signal, but that
 	// only goes to the PID not the PGID.
 	c.pg.Kill()
-	c.pg.RootProcess().Wait()
+	c.pg.Wait()
 	c.pg = nil
 }
 

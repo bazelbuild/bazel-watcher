@@ -72,7 +72,7 @@ func TestNotifyCommand(t *testing.T) {
 		t.Error(err)
 	}
 
-	out, err := pg.RootProcess().CombinedOutput()
+	out, err := pg.CombinedOutput()
 	if err != nil {
 		t.Error(err)
 	}
