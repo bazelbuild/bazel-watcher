@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"syscall"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 type notifyCommand struct {
@@ -28,7 +28,7 @@ type notifyCommand struct {
 	bazelArgs []string
 	args      []string
 
-	cmd   *exec.Cmd
+	pg    process_group.ProcessGroup
 	stdin io.WriteCloser
 }
 
@@ -43,7 +43,7 @@ func NotifyCommand(bazelArgs []string, target string, args []string) Command {
 }
 
 func (c *notifyCommand) Terminate() {
-	if !subprocessRunning(c.cmd) {
+	if c.pg != nil && !subprocessRunning(c.pg.RootProcess()) {
 		return
 	}
 
@@ -52,9 +52,9 @@ func (c *notifyCommand) Terminate() {
 	// send to the PGID, send the signal to the negative of the process PID.
 	// Normally I would do this by calling c.cmd.Process.Signal, but that
 	// only goes to the PID not the PGID.
-	syscall.Kill(-c.cmd.Process.Pid, syscall.SIGKILL)
-	c.cmd.Wait()
-	c.cmd = nil
+	c.pg.Kill()
+	c.pg.RootProcess().Wait()
+	c.pg = nil
 }
 
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
@@ -65,18 +65,18 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	b.WriteToStdout(true)
 
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.cmd = start(b, c.target, c.args)
+	outputBuffer, c.pg = start(b, c.target, c.args)
 	// Keep the writer around.
 	var err error
-	c.stdin, err = c.cmd.StdinPipe()
+	c.stdin, err = c.pg.RootProcess().StdinPipe()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting stdin pipe: %v\n", err)
 		return outputBuffer, err
 	}
 
-	c.cmd.Env = append(os.Environ(), "IBAZEL_NOTIFY_CHANGES=y")
+	c.pg.RootProcess().Env = append(os.Environ(), "IBAZEL_NOTIFY_CHANGES=y")
 
-	if err = c.cmd.Start(); err != nil {
+	if err = c.pg.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
 		return outputBuffer, err
 	}
@@ -109,5 +109,5 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 }
 
 func (c *notifyCommand) IsSubprocessRunning() bool {
-	return subprocessRunning(c.cmd)
+	return c.pg != nil && subprocessRunning(c.pg.RootProcess())
 }

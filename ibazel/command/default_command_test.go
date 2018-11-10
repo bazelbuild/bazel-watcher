@@ -16,18 +16,16 @@ package command
 
 import (
 	"os"
-	"os/exec"
-	"syscall"
 	"testing"
 
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
+	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 func TestDefaultCommand(t *testing.T) {
-	toKill := exec.Command("sleep", "10s")
-	toKill.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	toKill := process_group.Command("sleep", "10s")
 
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(name string, args ...string) process_group.ProcessGroup {
 		return oldExecCommand("ls") // Every system has ls.
 	}
 	defer func() { execCommand = oldExecCommand }()
@@ -35,45 +33,42 @@ func TestDefaultCommand(t *testing.T) {
 	c := &defaultCommand{
 		args:      []string{"moo"},
 		bazelArgs: []string{},
-		cmd:       toKill,
+		pg:        toKill,
 		target:    "//path/to:target",
 	}
 
 	if c.IsSubprocessRunning() {
-		t.Errorf("New subprocess shouldn't have been started yet. State: %v", toKill.ProcessState)
+		t.Errorf("New subprocess shouldn't have been started yet. State: %v", toKill.RootProcess().ProcessState)
 	}
 
 	toKill.Start()
 
 	if !c.IsSubprocessRunning() {
-		t.Errorf("New subprocess was never started. State: %v", toKill.ProcessState)
+		t.Errorf("New subprocess was never started. State: %v", toKill.RootProcess().ProcessState)
 	}
 
 	// This is synonymous with killing the job so use it to kill the job and test everything.
 	c.NotifyOfChanges()
-	assertKilled(t, toKill)
+	assertKilled(t, toKill.RootProcess())
 }
 
 func TestDefaultCommand_Start(t *testing.T) {
 	// Set up mock execCommand and prep it to be returned
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(name string, args ...string) process_group.ProcessGroup {
 		return oldExecCommand("ls") // Every system has ls.
 	}
 	defer func() { execCommand = oldExecCommand }()
 
 	b := &mock_bazel.MockBazel{}
 
-	_, cmd := start(b, "//path/to:target", []string{"moo"})
-	cmd.Start()
+	_, pg := start(b, "//path/to:target", []string{"moo"})
+	pg.Start()
 
-	if cmd.Stdout != os.Stdout {
+	if pg.RootProcess().Stdout != os.Stdout {
 		t.Errorf("Didn't set Stdout correctly")
 	}
-	if cmd.Stderr != os.Stderr {
+	if pg.RootProcess().Stderr != os.Stderr {
 		t.Errorf("Didn't set Stderr correctly")
-	}
-	if cmd.SysProcAttr.Setpgid != true {
-		t.Errorf("Never set PGID (will prevent killing process trees -- see notes in ibazel.go")
 	}
 
 	b.AssertActions(t, [][]string{
