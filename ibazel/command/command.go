@@ -16,12 +16,8 @@ package command
 
 import (
 	"bytes"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"runtime"
-	"strings"
 	"syscall"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
@@ -42,36 +38,17 @@ type Command interface {
 // start will be called by most implementations since this logic is extremely
 // common.
 func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cmd) {
-	var filePattern strings.Builder
-	filePattern.WriteString("bazel_script_path")
-	if runtime.GOOS == "windows" {
-		filePattern.WriteString(".bat")
-	}
-	
-	tmpfile, err := ioutil.TempFile("", filePattern.String())
-	if err != nil {
-		fmt.Print(err)
-	}
-	// Close the file so bazel can write over it
-	if err := tmpfile.Close(); err != nil {
-		fmt.Print(err)
-	}
-
-	// Start by building the binary
-	_, outputBuffer, _ := b.Run("--script_path="+tmpfile.Name(), target)
-
-	runScriptPath := tmpfile.Name()
-
-	// Now that we have built the target, construct a executable form of it for
-	// execution in a go routine.
-	cmd := execCommand(runScriptPath, args...)
+	// Build and run the target in a go routine with bazel. Since the direct_run
+	// functionaliy was made default that works fine.
+	args = append([]string{"run", target}, args...)
+	cmd := execCommand(*bazel.BazelPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	// Set a process group id (PGID) on the subprocess. This is
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	return outputBuffer, cmd
+	return nil, cmd
 }
 
 func subprocessRunning(cmd *exec.Cmd) bool {
