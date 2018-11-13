@@ -493,5 +493,9 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 		}
 	}
 
+	if len(filesAdded) == 0 {
+		fmt.Fprintf(os.Stderr, "Didn't find any files to watch from query %s\n", query)
+	}
+
 	i.filesWatched[watcher] = filesAdded
 }
