@@ -37,7 +37,7 @@ type Command interface {
 
 // start will be called by most implementations since this logic is extremely
 // common.
-func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cmd) {
+func start(target string, args []string) (*bytes.Buffer, *exec.Cmd) {
 	// Build and run the target in a go routine with bazel. Since the direct_run
 	// functionaliy was made default that works fine.
 	args = append([]string{"run", target}, args...)

@@ -19,8 +19,6 @@ import (
 	"os/exec"
 	"syscall"
 	"testing"
-
-	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 )
 
 func TestDefaultCommand(t *testing.T) {
@@ -61,9 +59,7 @@ func TestDefaultCommand_Start(t *testing.T) {
 	}
 	defer func() { execCommand = oldExecCommand }()
 
-	b := &mock_bazel.MockBazel{}
-
-	_, cmd := start(b, "//path/to:target", []string{"moo"})
+	_, cmd := start("//path/to:target", []string{"moo"})
 	cmd.Start()
 
 	if cmd.Stdout != os.Stdout {
@@ -75,8 +71,4 @@ func TestDefaultCommand_Start(t *testing.T) {
 	if cmd.SysProcAttr.Setpgid != true {
 		t.Errorf("Never set PGID (will prevent killing process trees -- see notes in ibazel.go")
 	}
-
-	b.AssertActions(t, [][]string{
-		[]string{"Run", "--script_path=.*", "//path/to:target"},
-	})
 }

@@ -58,14 +58,8 @@ func (c *notifyCommand) Terminate() {
 }
 
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
-	b := bazelNew()
-	b.SetArguments(c.bazelArgs)
-
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.cmd = start(b, c.target, c.args)
+	outputBuffer, c.cmd = start(c.target, c.args)
 	// Keep the writer around.
 	var err error
 	c.stdin, err = c.cmd.StdinPipe()
