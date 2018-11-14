@@ -19,6 +19,27 @@ func must(t *testing.T, e error) {
 	}
 }
 
+func TestSimpleBuildWithoutSourceFiles(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"], # test.sh doesn't exist
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Build("//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectError("Didn't find any files to watch from query " +
+                           "kind\\('source file', deps\\(set\\(//:test\\)\\)\\)")
+}
+
 func TestSimpleRun(t *testing.T) {
 	b, err := bazel.New()
 	if err != nil {

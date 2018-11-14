@@ -71,7 +71,7 @@ gazelle_dependencies()
 
 go_repository(
     name = "com_github_fsnotify_fsnotify",
-    commit = "7d7316ed6e1ed2de075aab8dfc76de5d158d66e1",
+    commit = "ccc981bf80385c528a65fbfdd49bf2d8da22aa23",
     importpath = "github.com/fsnotify/fsnotify",
 )
 
@@ -83,7 +83,7 @@ go_repository(
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    commit = "7ca4275b84a9d500f68971c8c4a97f0ec18eb889",
+    commit = "483fb8d7c32fcb4b5636cd293a92e3935932e2f4",
     importpath = "github.com/gorilla/websocket",
 )
 
@@ -97,7 +97,7 @@ go_repository(
 # https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
 go_repository(
     name = "com_github_golang_protobuf",
-    commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
+    commit = "951a149f90371fb8858c6c979d03bb2583611052",
     importpath = "github.com/golang/protobuf",
 )
 
@@ -110,6 +110,6 @@ go_repository(
 # NOTE: this must match rules_go version above, currently set to 0.15.3
 go_repository(
     name = "com_github_bazelbuild_rules_go",
-    commit = "0f0d007c89dc67a5a34490acafc5195b191f5045",
+    commit = "109c520465fcb418f2c4be967f3744d959ad66d3",
     importpath = "github.com/bazelbuild/rules_go",
 )
