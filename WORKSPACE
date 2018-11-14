@@ -71,7 +71,7 @@ gazelle_dependencies()
 
 go_repository(
     name = "com_github_fsnotify_fsnotify",
-    commit = "7d7316ed6e1ed2de075aab8dfc76de5d158d66e1",
+    commit = "ccc981bf80385c528a65fbfdd49bf2d8da22aa23",
     importpath = "github.com/fsnotify/fsnotify",
 )
 
