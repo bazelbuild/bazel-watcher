@@ -110,6 +110,6 @@ go_repository(
 # NOTE: this must match rules_go version above, currently set to 0.15.3
 go_repository(
     name = "com_github_bazelbuild_rules_go",
-    commit = "0f0d007c89dc67a5a34490acafc5195b191f5045",
+    commit = "109c520465fcb418f2c4be967f3744d959ad66d3",
     importpath = "github.com/bazelbuild/rules_go",
 )
