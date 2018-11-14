@@ -97,7 +97,7 @@ go_repository(
 # https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
 go_repository(
     name = "com_github_golang_protobuf",
-    commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
+    commit = "951a149f90371fb8858c6c979d03bb2583611052",
     importpath = "github.com/golang/protobuf",
 )
 
