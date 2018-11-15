@@ -1,4 +1,4 @@
-# Copyright 2017 The Bazel Authors. All rights reserved.
+# Copyright 2018 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-gazelle(
-    name = "gazelle",
-    prefix = "github.com/bazelbuild/bazel-watcher",
+go_library(
+    name = "go_default_library",
+    srcs = ["workspace_finder.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder",
+    visibility = ["//ibazel:__subpackages__"],
 )
-
-exports_files(["CONTRIBUTORS"])

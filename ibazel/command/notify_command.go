@@ -15,6 +15,7 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -56,40 +57,41 @@ func (c *notifyCommand) Terminate() {
 	c.cmd = nil
 }
 
-func (c *notifyCommand) Start() error {
+func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	c.cmd = start(b, c.target, c.args)
+	var outputBuffer *bytes.Buffer
+	outputBuffer, c.cmd = start(b, c.target, c.args)
 	// Keep the writer around.
 	var err error
 	c.stdin, err = c.cmd.StdinPipe()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting stdin pipe: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
 
 	c.cmd.Env = append(os.Environ(), "IBAZEL_NOTIFY_CHANGES=y")
 
 	if err = c.cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
 	fmt.Fprintf(os.Stderr, "Starting...")
-	return nil
+	return outputBuffer, nil
 }
 
-func (c *notifyCommand) NotifyOfChanges() {
+func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 	b := bazelNew()
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	res := b.Build(c.target)
+	outputBuffer, res := b.Build(c.target)
 	if res != nil {
 		fmt.Fprintf(os.Stderr, "FAILURE: %v\n", res)
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))
@@ -100,9 +102,10 @@ func (c *notifyCommand) NotifyOfChanges() {
 		fmt.Fprintf(os.Stderr, "SUCCESS\n")
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %v\n", err)
 		}
 	}
+	return outputBuffer
 }
 
 func (c *notifyCommand) IsSubprocessRunning() bool {

@@ -12,11 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_rules_go//go:def.bzl", "go_embed_data", "go_library")
 
-gazelle(
-    name = "gazelle",
-    prefix = "github.com/bazelbuild/bazel-watcher",
+go_embed_data(
+    name = "js",
+    src = "profiler.js",
+    package = "profiler",
+    var = "js",
 )
 
-exports_files(["CONTRIBUTORS"])
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "profiler.go",
+        ":js",  # keep
+    ],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/profiler",
+    visibility = ["//ibazel:__subpackages__"],
+    deps = ["//third_party/bazel/master/src/main/protobuf:go_default_library"],
+)

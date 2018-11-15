@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+if [ $# -ne "1" ]; then
+  cat <<EOF
+This script prepares a release for NPM and codifies all the steps required
+for tagging a binary.
+
+Usage:
+
+./release.sh tag
+
+Example:
+
+./release.sh v1.0.0
+
+That should tag at version 
+EOF
+  exit 1
+fi
+
 set -ex
 
 GIT_TAG=$1; shift
@@ -35,8 +53,10 @@ git commit -m "Generating CHANGELOG.md for release ${GIT_TAG}"
 # Tag the release.
 git tag "${GIT_TAG}"
 
-# Push the tag out to GitHub.
-git push origin "${GIT_TAG}"
-
-# Release to NPM
-./npm/publish.sh
+if ./npm/publish.sh; then
+  # Success! Publish the tag to GitHub
+  git push upstream "${VERSION}"
+else
+  # Clean up in the event of failure.
+  git tag -d "${VERSION}"
+fi

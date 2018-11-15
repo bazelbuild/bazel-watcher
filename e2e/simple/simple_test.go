@@ -1,11 +1,12 @@
 package simple
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"os"
-	"reflect"
 	"runtime/debug"
 	"testing"
-	"time"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
@@ -18,17 +19,25 @@ func must(t *testing.T, e error) {
 	}
 }
 
-func assertNotEqual(t *testing.T, want, got interface{}, msg string) {
-	if reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
-		debug.PrintStack()
+func TestSimpleBuildWithoutSourceFiles(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-func assertEqual(t *testing.T, want, got interface{}, msg string) {
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
-		debug.PrintStack()
-	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"], # test.sh doesn't exist
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Build("//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectError("Didn't find any files to watch from query " +
+                           "kind\\('source file', deps\\(set\\(//:test\\)\\)\\)")
 }
 
 func TestSimpleRun(t *testing.T) {
@@ -45,13 +54,37 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:test")
 	defer ibazel.Kill()
-	time.Sleep(2 * time.Second)
-	res := ibazel.GetOutput()
 
-	assertEqual(t, "Started!", res, "Output was unequal")
+	ibazel.ExpectOutput("Started!")
+}
+
+func TestSimpleRunAfterShutdown(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "Started!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	errCode, _, _ := b.RunBazel([]string{"shutdown"})
+	if errCode != 0 {
+		t.Fatal(errors.New("bazel failed to shut down"))
+	}
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Run("//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("Started!")
 }
 
 func TestSimpleRunUnderSubdir(t *testing.T) {
@@ -69,7 +102,7 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 
 	err = os.Chdir("subdir")
 	if err != nil {
@@ -78,16 +111,13 @@ sh_binary(
 
 	ibazel.Run("test")
 	defer ibazel.Kill()
-	
+
 	err = os.Chdir("..")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(2 * time.Second)
-	res := ibazel.GetOutput()
-
-	assertEqual(t, "Started!", res, "Output was unequal")
+	ibazel.ExpectOutput("Started!")
 }
 
 func TestSimpleRunWithModifiedFile(t *testing.T) {
@@ -104,24 +134,17 @@ sh_binary(
 )
 `))
 
-	ibazel := e2e.NewIBazelTester(b)
+	ibazel := e2e.NewIBazelTester(t, b)
 	ibazel.Run("//:test")
 	defer ibazel.Kill()
 
-	expectedOut := ""
-	verify := func(startedString string) {
-		expectedOut += startedString
-		time.Sleep(5 * time.Second)
-		assertEqual(t, expectedOut, ibazel.GetOutput(), "Output was unequal")
-	}
-
 	// Give it time to start up and query.
 	must(t, b.ScratchFileWithMode("test.sh", `printf "Started2!"`, 0777))
-	verify("Started2!")
+	ibazel.ExpectOutput("Started2!")
 
 	// Manipulate a source file and sleep past the debounce.
 	must(t, b.ScratchFileWithMode("test.sh", `printf "Started3!"`, 0777))
-	verify("Started3!")
+	ibazel.ExpectOutput("Started3!")
 
 	// Now a BUILD file.
 	must(t, b.ScratchFile("BUILD", `
@@ -131,5 +154,111 @@ sh_binary(
 	srcs = ["test.sh"],
 )
 `))
-	verify("Started3!")
+	ibazel.ExpectOutput("Started3!")
+}
+
+func renameAndWriteNewFile(t *testing.T, fname, content string) {
+	// write a file in the same manner as vim with backupcopy=no;
+	// this will rename the original file to a file with a backup extension
+	// and write the new file contents to the original filename
+
+	fnameBackup := fmt.Sprintf("%s~", fname)
+	must(t, os.Rename(fname, fnameBackup))
+	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.Write([]byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, f.Close())
+	must(t, os.Remove(fnameBackup))
+}
+
+func copyAndTruncWriteFile(t *testing.T, fname string, content string) {
+	// write a file in the same manner as vim with backupcopy=yes;
+	// this will copy the file to a suffixed backup file,
+	// truncate the existing file and write the new content
+	fnameBackup := fmt.Sprintf("%s~", fname)
+
+	f, err := os.Open(fname)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fBackup, err := os.OpenFile(fnameBackup, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = io.Copy(fBackup, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, fBackup.Close())
+	must(t, f.Close())
+
+	f, err = os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.Write([]byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, f.Sync())
+	must(t, f.Close())
+	must(t, os.Remove(fnameBackup))
+}
+
+func TestSimpleRunWithModifiedFile_RenameAndWrite(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "Started!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Run("//:test")
+	defer ibazel.Kill()
+	ibazel.ExpectOutput("Started!")
+
+	renameAndWriteNewFile(t, "test.sh", `printf "Started2!"`)
+	ibazel.ExpectOutput("Started2!")
+
+	renameAndWriteNewFile(t, "test.sh", `printf "Started3!"`)
+	ibazel.ExpectOutput("Started3!")
+}
+
+func TestSimpleRunWithModifiedFile_CopyAndTruncWrite(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "Started!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Run("//:test")
+	defer ibazel.Kill()
+	ibazel.ExpectOutput("Started!")
+
+	copyAndTruncWriteFile(t, "test.sh", `printf "Started2!"`)
+	ibazel.ExpectOutput("Started2!")
+
+	copyAndTruncWriteFile(t, "test.sh", `printf "Started3!"`)
+	ibazel.ExpectOutput("Started3!")
 }

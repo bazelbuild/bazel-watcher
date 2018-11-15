@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +28,9 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
+	"github.com/bazelbuild/bazel-watcher/ibazel/output_runner"
+	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -38,7 +42,7 @@ var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 
 type State string
-type runnableCommand func(...string) error
+type runnableCommand func(...string) (*bytes.Buffer, error)
 
 const (
 	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
@@ -53,8 +57,6 @@ const sourceQuery = "kind('source file', deps(set(%s)))"
 const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
-	b *bazel.Bazel
-
 	debounceDuration time.Duration
 
 	cmd       command.Command
@@ -64,7 +66,7 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
-	workspaceFinder WorkspaceFinder
+	workspaceFinder workspace_finder.WorkspaceFinder
 
 	buildFileWatcher  *fsnotify.Watcher
 	sourceFileWatcher *fsnotify.Watcher
@@ -86,17 +88,26 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
-	i.workspaceFinder = &MainWorkspaceFinder{}
+	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
 
 	i.sigs = make(chan os.Signal, 1)
-	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	liveReload := live_reload.New()
+	profiler := profiler.New(Version)
+	outputRunner := output_runner.New()
+
+	liveReload.AddEventsListener(profiler)
 
 	i.lifecycleListeners = []Lifecycle{
-		live_reload.New(),
+		liveReload,
+		profiler,
+		outputRunner,
 	}
 
+	info, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
-		l.Initialize()
+		l.Initialize(info)
 	}
 
 	go func() {
@@ -109,13 +120,13 @@ func New() (*IBazel, error) {
 }
 
 func (i *IBazel) handleSignals() {
-	// Got an OS signal (SIGINT, SIGTERM).
+	// Got an OS signal (SIGINT, SIGTERM, SIGHUP).
 	sig := <-i.sigs
 
 	switch sig {
 	case syscall.SIGINT:
 		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGINT\n")
+			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)\n")
 			i.cmd.Terminate()
 		} else {
 			osExit(3)
@@ -124,6 +135,13 @@ func (i *IBazel) handleSignals() {
 	case syscall.SIGTERM:
 		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
 			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGTERM\n")
+			i.cmd.Terminate()
+		}
+		osExit(3)
+		return
+	case syscall.SIGHUP:
+		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
+			fmt.Fprintf(os.Stderr, "\nSubprocess killed from getting SIGHUP\n")
 			i.cmd.Terminate()
 		}
 		osExit(3)
@@ -161,7 +179,7 @@ func (i *IBazel) Cleanup() {
 	}
 }
 
-func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
+func (i *IBazel) targetDecider(target string, rule *blaze_query.Rule) {
 	for _, l := range i.lifecycleListeners {
 		// TODO: As the name implies, it would be good to use this to make a
 		// determination about if future events should be routed to this listener.
@@ -178,14 +196,22 @@ func (i *IBazel) targetDecider(rule *blaze_query.Rule) {
 		l.TargetDecider(rule)
 	}
 }
-func (i *IBazel) beforeCommand(name string) {
+
+func (i *IBazel) changeDetected(targets []string, changeType string, change string) {
 	for _, l := range i.lifecycleListeners {
-		l.BeforeCommand(name)
+		l.ChangeDetected(targets, changeType, change)
 	}
 }
-func (i *IBazel) afterCommand(name string, success bool) {
+
+func (i *IBazel) beforeCommand(targets []string, command string) {
 	for _, l := range i.lifecycleListeners {
-		l.AfterCommand(name, success)
+		l.BeforeCommand(targets, command)
+	}
+}
+
+func (i *IBazel) afterCommand(targets []string, command string, success bool, output *bytes.Buffer) {
+	for _, l := range i.lifecycleListeners {
+		l.AfterCommand(targets, command, success, output)
 	}
 }
 
@@ -241,77 +267,83 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
 
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
-	fmt.Fprintf(os.Stderr, "State: %s\n", i.state)
 	switch i.state {
 	case WAIT:
 		select {
 		case e := <-i.sourceEventHandler.SourceFileEvents:
 			if e.Op&modifyingEvents != 0 {
-				fmt.Fprintf(os.Stderr, "Changed: %q. Rebuilding...\n", e.Name)
+				fmt.Fprintf(os.Stderr, "\nChanged: %q. Rebuilding...\n", e.Name)
+				i.changeDetected(targets, "source", e.Name)
 				i.state = DEBOUNCE_RUN
 			}
 		case e := <-i.buildFileWatcher.Events:
 			if e.Op&modifyingEvents != 0 {
-				fmt.Fprintf(os.Stderr, "Build graph changed: %q. Requerying...\n", e.Name)
+				fmt.Fprintf(os.Stderr, "\nBuild graph changed: %q. Requerying...\n", e.Name)
+				i.changeDetected(targets, "graph", e.Name)
 				i.state = DEBOUNCE_QUERY
 			}
 		}
 	case DEBOUNCE_QUERY:
 		select {
-		case <-i.buildFileWatcher.Events:
+		case e := <-i.buildFileWatcher.Events:
+			if e.Op&modifyingEvents != 0 {
+				i.changeDetected(targets, "graph", e.Name)
+			}
 			i.state = DEBOUNCE_QUERY
 		case <-time.After(i.debounceDuration):
 			i.state = QUERY
 		}
 	case QUERY:
 		// Query for which files to watch.
-		fmt.Fprintf(os.Stderr, "Querying for BUILD files...\n")
+		fmt.Fprintf(os.Stderr, "Querying for files to watch...\n")
 		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
-		fmt.Fprintf(os.Stderr, "Querying for source files...\n")
 		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
-		case <-i.sourceEventHandler.SourceFileEvents:
+		case e := <-i.sourceEventHandler.SourceFileEvents:
+			if e.Op&modifyingEvents != 0 {
+				i.changeDetected(targets, "source", e.Name)
+			}
 			i.state = DEBOUNCE_RUN
 		case <-time.After(i.debounceDuration):
 			i.state = RUN
 		}
 	case RUN:
 		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
-		i.beforeCommand(command)
-		err := commandToRun(targets...)
-		i.afterCommand(command, err == nil)
+		i.beforeCommand(targets, command)
+		outputBuffer, err := commandToRun(targets...)
+		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.state = WAIT
 	}
 }
 
-func (i *IBazel) build(targets ...string) error {
+func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	err := b.Build(targets...)
+	outputBuffer, err := b.Build(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
-	return nil
+	return outputBuffer, nil
 }
 
-func (i *IBazel) test(targets ...string) error {
+func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	err := b.Test(targets...)
+	outputBuffer, err := b.Test(targets...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Build error: %v\n", err)
-		return err
+		return outputBuffer, err
 	}
-	return nil
+	return outputBuffer, err
 }
 
 func contains(l []string, e string) bool {
@@ -326,10 +358,10 @@ func contains(l []string, e string) bool {
 func (i *IBazel) setupRun(target string) command.Command {
 	rule, err := i.queryRule(target)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
 
-	i.targetDecider(rule)
+	i.targetDecider(target, rule)
 
 	commandNotify := false
 	for _, attr := range rule.Attribute {
@@ -348,17 +380,21 @@ func (i *IBazel) setupRun(target string) command.Command {
 	}
 }
 
-func (i *IBazel) run(targets ...string) error {
+func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 	if i.cmd == nil {
 		// If the command is empty, we are in our first pass through the state
 		// machine and we need to make a command object.
 		i.cmd = i.setupRun(targets[0])
-		return i.cmd.Start()
+		outputBuffer, err := i.cmd.Start()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Run start failed %v\n", err)
+		}
+		return outputBuffer, err
 	}
 
 	fmt.Fprintf(os.Stderr, "Notifying of changes\n")
-	i.cmd.NotifyOfChanges()
-	return nil
+	outputBuffer := i.cmd.NotifyOfChanges()
+	return outputBuffer, nil
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
@@ -366,7 +402,7 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 
 	res, err := b.Query(rule)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
 		osExit(4)
 	}
 
@@ -380,18 +416,30 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	return nil, errors.New("No information available")
 }
 
+func (i *IBazel) getInfo() (*map[string]string, error) {
+	b := i.newBazel()
+
+	res, err := b.Info()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting Bazel info %v\n", err)
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (i *IBazel) queryForSourceFiles(query string) []string {
 	b := i.newBazel()
 
 	res, err := b.Query(query)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
 		osExit(4)
 	}
 
 	workspacePath, err := i.workspaceFinder.FindWorkspace()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding workspace: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error finding workspace: %v\n", err)
 		osExit(5)
 	}
 
@@ -425,7 +473,10 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 	for _, line := range toWatch {
 		err := watcher.Add(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
+			// Special case for the "defaults package", see https://github.com/bazelbuild/bazel/issues/5533
+			if !strings.HasSuffix(filepath.ToSlash(line), "/tools/defaults/BUILD") {
+				fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
+			}
 			continue
 		} else {
 			filesAdded[line] = true
@@ -442,6 +493,9 @@ func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Watching: %d files\n", len(filesAdded))
+	if len(filesAdded) == 0 {
+		fmt.Fprintf(os.Stderr, "Didn't find any files to watch from query %s\n", query)
+	}
+
 	i.filesWatched[watcher] = filesAdded
 }

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_binary(
     name = "ibazel",
@@ -34,7 +34,6 @@ go_library(
         "lifecycle.go",
         "main.go",
         "source_event_handler.go",
-        "workspace_finder.go"
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     visibility = ["//visibility:private"],
@@ -42,6 +41,9 @@ go_library(
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
         "//ibazel/live_reload:go_default_library",
+        "//ibazel/output_runner:go_default_library",
+        "//ibazel/profiler:go_default_library",
+        "//ibazel/workspace_finder:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
@@ -59,6 +61,7 @@ go_test(
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
         "//ibazel/command:go_default_library",
+        "//ibazel/workspace_finder:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",

@@ -15,12 +15,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"reflect"
-	"regexp"
 	"runtime"
 	"runtime/debug"
 	"syscall"
@@ -29,6 +27,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -54,15 +53,16 @@ type mockCommand struct {
 	terminated        bool
 }
 
-func (m *mockCommand) Start() error {
+func (m *mockCommand) Start() (*bytes.Buffer, error) {
 	if m.started {
 		panic("Can't run command twice")
 	}
 	m.started = true
-	return nil
+	return nil, nil
 }
-func (m *mockCommand) NotifyOfChanges() {
+func (m *mockCommand) NotifyOfChanges() *bytes.Buffer {
 	m.notifiedOfChanges = true
+	return nil
 }
 func (m *mockCommand) Terminate() {
 	if !m.started {
@@ -104,11 +104,6 @@ func init() {
 							&blaze_query.Attribute{
 								Name: proto.String("name"),
 							},
-							&blaze_query.Attribute{
-								Name:            proto.String("tags"),
-								Type:            blaze_query.Attribute_STRING_LIST.Enum(),
-								StringListValue: []string{"ibazel_live_reload"},
-							},
 						},
 					},
 				},
@@ -132,7 +127,7 @@ func newIBazel(t *testing.T) *IBazel {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
 
-	i.workspaceFinder = &FakeWorkspaceFinder{}
+	i.workspaceFinder = &workspace_finder.FakeWorkspaceFinder{}
 
 	return i
 }
@@ -162,9 +157,9 @@ func TestIBazelLoop(t *testing.T) {
 
 	// First let's consume all the events from all the channels we care about
 	called := false
-	command := func(targets ...string) error {
+	command := func(targets ...string) (*bytes.Buffer, error) {
 		called = true
-		return nil
+		return nil, nil
 	}
 
 	i.state = QUERY
@@ -279,38 +274,6 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 
 	if !cmd.notifiedOfChanges {
 		t.Errorf("The previously running command was not notified of changes")
-	}
-}
-
-func TestIBazelRun_livereload(t *testing.T) {
-	i := newIBazel(t)
-	defer i.Cleanup()
-
-	i.run("//path/to:target")
-
-	livereloadUrl := os.Getenv("IBAZEL_LIVERELOAD_URL")
-	validUrl := regexp.MustCompile("^http\\:\\/\\/localhost\\:[0-9]+\\/livereload\\.js\\?snipver\\=1$")
-	if !validUrl.MatchString(livereloadUrl) {
-		t.Errorf("Invalid livereload URL '%s'", livereloadUrl)
-	}
-
-	client := new(http.Client)
-	resp, err := client.Get(livereloadUrl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	bodyString := string(body)
-	validBodyStart := regexp.MustCompile("^\\(function e\\(t\\,n\\,r\\)")
-	validBodyEnd := regexp.MustCompile("\\}\\,\\{\\}\\]\\}\\,\\{\\}\\,\\[8\\]\\)\\;$")
-	if !validBodyStart.MatchString(bodyString) || !validBodyEnd.MatchString(bodyString) {
-		t.Errorf("Invalid livereload.js")
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -26,6 +27,12 @@ var Version = "Development"
 
 var overrideableBazelFlags []string = []string{
 	"--test_output=",
+	"--config=",
+	"--curses=no",
+	"--output_groups=",
+	"--keep_going",
+	"-k",
+	"--strategy",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
@@ -112,11 +119,18 @@ func main() {
 
 	i, err := New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating iBazel", err)
+		fmt.Fprintf(os.Stderr, "Error creating iBazel: %s\n", err)
 		os.Exit(1)
 	}
 	i.SetDebounceDuration(*debounceDuration)
 	defer i.Cleanup()
+
+	// increase the number of files that this process can
+	// have open.
+	err = setUlimit()
+	if err != nil {
+		fmt.Fprint(os.Stderr, "error setting higher file descriptor limit for this process: ", err)
+	}
 
 	handle(i, command, args)
 }
@@ -138,4 +152,25 @@ func handle(i *IBazel, command string, args []string) {
 		usage()
 		return
 	}
+}
+
+func setUlimit() error {
+	var lim syscall.Rlimit
+
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
+	if err != nil {
+		return err
+	}
+
+	// set the "soft" file descriptor to the maximum
+	// allowed by a userspace program.
+	// http://man7.org/linux/man-pages/man2/getrlimit.2.html
+	lim.Cur = lim.Max
+
+	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

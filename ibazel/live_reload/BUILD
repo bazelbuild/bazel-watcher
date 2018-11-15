@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["server.go"],
+    srcs = [
+        "events.go",
+        "server.go",
+    ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/live_reload",
     visibility = ["//visibility:public"],
     deps = [
