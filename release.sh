@@ -13,7 +13,7 @@ Example:
 
 ./release.sh v1.0.0
 
-That should tag at version 
+That should tag at version
 EOF
   exit 1
 fi
@@ -55,8 +55,8 @@ git tag "${GIT_TAG}"
 
 if ./npm/publish.sh; then
   # Success! Publish the tag to GitHub
-  git push upstream "${VERSION}"
+  git push upstream "${GIT_TAG}"
 else
   # Clean up in the event of failure.
-  git tag -d "${VERSION}"
+  git tag -d "${GIT_TAG}"
 fi
