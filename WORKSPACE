@@ -77,13 +77,13 @@ go_repository(
 
 go_repository(
     name = "com_github_jaschaephraim_lrserver",
-    commit = "50d19f603f71e0a914f23eea33124ba9717e7873",
+    tag = "3.0.1",
     importpath = "github.com/jaschaephraim/lrserver",
 )
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    commit = "483fb8d7c32fcb4b5636cd293a92e3935932e2f4",
+    tag = "v1.4.0",
     importpath = "github.com/gorilla/websocket",
 )
 
@@ -97,19 +97,19 @@ go_repository(
 # https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
 go_repository(
     name = "com_github_golang_protobuf",
-    commit = "951a149f90371fb8858c6c979d03bb2583611052",
+    tag = "v1.2.0",
     importpath = "github.com/golang/protobuf",
 )
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    commit = "c55883f97322b4bcbf48f734e23d6ab3af1ea488",
+    tag = "v1.4.0",
     importpath = "github.com/gorilla/websocket",
 )
 
-# NOTE: this must match rules_go version above, currently set to 0.15.3
+# NOTE: this must match rules_go version above
 go_repository(
     name = "com_github_bazelbuild_rules_go",
-    commit = "109c520465fcb418f2c4be967f3744d959ad66d3",
+    tag = "0.16.2",
     importpath = "github.com/bazelbuild/rules_go",
 )
