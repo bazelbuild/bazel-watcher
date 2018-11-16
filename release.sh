@@ -55,7 +55,7 @@ git tag "${GIT_TAG}"
 
 if ./npm/publish.sh; then
   # Success! Publish the tag to GitHub
-  git push upstream "${GIT_TAG}"
+  git push git@github.com:bazelbuild/bazel-watcher "${GIT_TAG}"
 else
   # Clean up in the event of failure.
   git tag -d "${GIT_TAG}"
