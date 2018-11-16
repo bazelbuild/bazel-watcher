@@ -71,20 +71,20 @@ gazelle_dependencies()
 
 go_repository(
     name = "com_github_fsnotify_fsnotify",
-    commit = "ccc981bf80385c528a65fbfdd49bf2d8da22aa23",
     importpath = "github.com/fsnotify/fsnotify",
+    tag = "v1.4.7",
 )
 
 go_repository(
     name = "com_github_jaschaephraim_lrserver",
-    tag = "3.0.1",
     importpath = "github.com/jaschaephraim/lrserver",
+    tag = "3.0.1",
 )
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    tag = "v1.4.0",
     importpath = "github.com/gorilla/websocket",
+    tag = "v1.4.0",
 )
 
 go_repository(
@@ -97,19 +97,19 @@ go_repository(
 # https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
 go_repository(
     name = "com_github_golang_protobuf",
-    tag = "v1.2.0",
     importpath = "github.com/golang/protobuf",
+    tag = "v1.2.0",
 )
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    tag = "v1.4.0",
     importpath = "github.com/gorilla/websocket",
+    tag = "v1.4.0",
 )
 
 # NOTE: this must match rules_go version above
 go_repository(
     name = "com_github_bazelbuild_rules_go",
-    tag = "0.16.2",
     importpath = "github.com/bazelbuild/rules_go",
+    tag = "0.16.2",
 )
