@@ -35,6 +35,8 @@ var overrideableBazelFlags []string = []string{
 	"--strategy",
 	"--define",
 	"--override_repository",
+	"--features=",
+	"--test_arg",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")

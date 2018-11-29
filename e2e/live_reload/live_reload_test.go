@@ -1,9 +1,9 @@
 package live_reload
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"io/ioutil"
 	"reflect"
 	"runtime/debug"
 	"strings"
@@ -24,21 +24,21 @@ const printLivereload = `printf "Live reload url: ${IBAZEL_LIVERELOAD_URL}"`
 
 func must(t *testing.T, e error) {
 	if e != nil {
-		t.Errorf("Error: %s", e)
-		debug.PrintStack()
+		t.Fatalf("Error: %s", e)
+		t.Logf("Stack trace:\n%s", debug.Stack())
 	}
 }
 
 func assertNotEqual(t *testing.T, want, got interface{}, msg string) {
 	if reflect.DeepEqual(want, got) {
 		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
-		debug.PrintStack()
+		t.Logf("Stack trace:\n%s", debug.Stack())
 	}
 }
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
-		debug.PrintStack()
+		t.Logf("Stack trace:\n%s", debug.Stack())
 	}
 }
 
@@ -79,7 +79,7 @@ sh_binary(
 	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
-	
+
 	if out == "" {
 		t.Fatal("Output was empty. Expected at least some output")
 	}
