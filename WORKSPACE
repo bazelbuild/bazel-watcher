@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-http_archive(
+git_repository(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    sha256 = "81a2ad3a8ec5a9d1d91b9aca0b4f1f3a0b094f30c48d582e5226defccd714bb9",
-    strip_prefix = "bazel-integration-testing-404010b3763262526d3a0e09073d8a8f22ed3d4b",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-integration-testing/archive/404010b3763262526d3a0e09073d8a8f22ed3d4b.tar.gz",
-        "https://github.com/bazelbuild/bazel-integration-testing/archive/404010b3763262526d3a0e09073d8a8f22ed3d4b.tar.gz",
-    ],
+    commit = "15273d8b0d01ce040800d172dbde3a88509d0c3d",
+    remote = "https://github.com/bazelbuild/bazel-integration-testing",
 )
 
 load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
