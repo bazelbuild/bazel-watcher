@@ -68,10 +68,10 @@ type IBazel struct {
 
 	workspaceFinder workspace_finder.WorkspaceFinder
 
-	buildFileWatcher  *fsnotify.Watcher
-	sourceFileWatcher *fsnotify.Watcher
+	buildFileWatcher  fSNotifyWatcher
+	sourceFileWatcher fSNotifyWatcher
 
-	filesWatched map[*fsnotify.Watcher]map[string]struct{} // Inner map is a surrogate for a set
+	filesWatched map[fSNotifyWatcher]map[string]struct{} // Inner map is a surrogate for a set
 
 	sourceEventHandler *SourceEventHandler
 	lifecycleListeners []Lifecycle
@@ -87,7 +87,7 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
-	i.filesWatched = map[*fsnotify.Watcher]map[string]struct{}{}
+	i.filesWatched = map[fSNotifyWatcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
 
 	i.sigs = make(chan os.Signal, 1)
@@ -220,17 +220,17 @@ func (i *IBazel) setup() error {
 
 	// Even though we are going to recreate this when the query happens, create
 	// the pointer we will use to refer to the watchers right now.
-	i.buildFileWatcher, err = fsnotify.NewWatcher()
+	i.buildFileWatcher, err = wrapWatcher(fsnotify.NewWatcher())
 	if err != nil {
 		return err
 	}
 
-	i.sourceFileWatcher, err = fsnotify.NewWatcher()
+	i.sourceFileWatcher, err = wrapWatcher(fsnotify.NewWatcher())
 	if err != nil {
 		return err
 	}
 
-	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher)
+	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher.Watcher())
 
 	return nil
 }
@@ -276,7 +276,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 				i.changeDetected(targets, "source", e.Name)
 				i.state = DEBOUNCE_RUN
 			}
-		case e := <-i.buildFileWatcher.Events:
+		case e := <-i.buildFileWatcher.Events():
 			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "\nBuild graph changed: %q. Requerying...\n", e.Name)
 				i.changeDetected(targets, "graph", e.Name)
@@ -285,7 +285,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		}
 	case DEBOUNCE_QUERY:
 		select {
-		case e := <-i.buildFileWatcher.Events:
+		case e := <-i.buildFileWatcher.Events():
 			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "graph", e.Name)
 			}
@@ -466,7 +466,7 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 	return toWatch
 }
 
-func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
+func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
 	toWatch := i.queryForSourceFiles(query)
 	filesFound := map[string]struct{}{}
 	filesWatched := map[string]struct{}{}
