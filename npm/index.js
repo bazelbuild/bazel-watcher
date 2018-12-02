@@ -41,6 +41,7 @@ function main(args) {
 
   // By default, use the ibazel binary underneath this script
   var basePath = __dirname;
+  var foundLocalInstallation = false;
 
   const dirs = process.cwd().split(path.sep);
 
@@ -51,10 +52,12 @@ function main(args) {
     // If we find a local installation, use that one instead
     if (fs.existsSync(path.join(attemptedBasePath, 'bin', `${platform}_${arch}`, 'ibazel'))) {
       basePath = attemptedBasePath;
+      foundLocalInstallation = true;
       break;
     }
   }
-  if (basePath === __dirname) {
+
+  if (!foundLocalInstallation) {
     console.error(`WARNING: no ibazel version found in your node_modules.
         We recommend installing a devDependency on ibazel so you use the same
         version as other engineers on this project.
