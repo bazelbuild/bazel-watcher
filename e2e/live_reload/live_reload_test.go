@@ -25,20 +25,20 @@ const printLivereload = `printf "Live reload url: ${IBAZEL_LIVERELOAD_URL}"`
 func must(t *testing.T, e error) {
 	if e != nil {
 		t.Fatalf("Error: %s", e)
-		t.Logf("Stack trace:\n%s", debug.Stack())
+		t.Logf("Stack trace:\n%s", string(debug.Stack()))
 	}
 }
 
 func assertNotEqual(t *testing.T, want, got interface{}, msg string) {
 	if reflect.DeepEqual(want, got) {
 		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
-		t.Logf("Stack trace:\n%s", debug.Stack())
+		t.Logf("Stack trace:\n%s", string(debug.Stack()))
 	}
 }
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
-		t.Logf("Stack trace:\n%s", debug.Stack())
+		t.Logf("Stack trace:\n%s", string(debug.Stack()))
 	}
 }
 
