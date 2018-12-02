@@ -59,8 +59,14 @@ ibazel test //path/to/my/testing/targets/...
 ibazel run //path/to/my/runnable:target -- --arguments --for_your=binary
 ibazel build //path/to/my/buildable:target
 
+Supported Bazel flags:
+  %s
+
+To add to this list, edit
+https://github.com/bazelbuild/bazel-watcher/blob/master/ibazel/main.go
+
 iBazel flags:
-`, Version)
+`, Version, strings.Join(overrideableBazelFlags, "\n  "))
 	flag.PrintDefaults()
 }
 
