@@ -167,14 +167,14 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(false)
-	_, stderrBuffer := b.newCommand("query", blazeArgs...)
+	stdoutBuffer, _ := b.newCommand("query", blazeArgs...)
 
 	err := b.cmd.Run()
 
 	if err != nil {
 		return nil, err
 	}
-	return b.processQuery(stderrBuffer.Bytes())
+	return b.processQuery(stdoutBuffer.Bytes())
 }
 
 func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
