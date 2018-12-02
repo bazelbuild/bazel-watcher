@@ -1,5 +1,31 @@
 # Change Log
 
+## [v0.8.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.8.1) (2018-12-02)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.8.0...v0.8.1)
+
+**Implemented enhancements:**
+
+- Too many files error [\#109](https://github.com/bazelbuild/bazel-watcher/issues/109)
+
+**Closed issues:**
+
+- Correct order of stdout/stdin [\#136](https://github.com/bazelbuild/bazel-watcher/issues/136)
+- Deceptive warning message when running iBazel from npm dist [\#106](https://github.com/bazelbuild/bazel-watcher/issues/106)
+- query for tags doesn't read through alias [\#100](https://github.com/bazelbuild/bazel-watcher/issues/100)
+- Likely leaking file descriptors [\#96](https://github.com/bazelbuild/bazel-watcher/issues/96)
+- installs error [\#90](https://github.com/bazelbuild/bazel-watcher/issues/90)
+- ibazel not exiting on Ctrl-C on Mac OS after shutting down child process [\#50](https://github.com/bazelbuild/bazel-watcher/issues/50)
+- publish gh release binaries [\#15](https://github.com/bazelbuild/bazel-watcher/issues/15)
+
+**Merged pull requests:**
+
+- Create a top level release dir [\#186](https://github.com/bazelbuild/bazel-watcher/pull/186) ([achew22](https://github.com/achew22))
+- Fix npm warning logic [\#185](https://github.com/bazelbuild/bazel-watcher/pull/185) ([dougkoch](https://github.com/dougkoch))
+- Update dependency io\_bazel\_rules\_go to v0.16.3 [\#183](https://github.com/bazelbuild/bazel-watcher/pull/183) ([renovate[bot]](https://github.com/apps/renovate))
+- Extract an interface for fsnotify [\#182](https://github.com/bazelbuild/bazel-watcher/pull/182) ([achew22](https://github.com/achew22))
+- Clean up tests a little [\#181](https://github.com/bazelbuild/bazel-watcher/pull/181) ([achew22](https://github.com/achew22))
+- Uncross stdout and stderr buffers [\#138](https://github.com/bazelbuild/bazel-watcher/pull/138) ([dougkoch](https://github.com/dougkoch))
+
 ## [v0.8.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.8.0) (2018-11-28)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.7.0...v0.8.0)
 
