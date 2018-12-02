@@ -20,18 +20,15 @@ set -o pipefail
 # cd to the root of the project so that relative paths work.
 cd "$(git rev-parse --show-toplevel)"
 
-# Clean the repo to make sure nothing strange is happening.
-bazel clean --expunge
-
 # Make a temporary directory to stage the release in.
 readonly STAGING="$(mktemp -d)"
 echo "Staging into ${STAGING}"
 
 # Copy over the base files required for NPM
 cp "README.md" "${STAGING}/README.md"
-cp "npm/index.js" "${STAGING}/index.js"
-bazel build --config=release "//npm:package.json"
-cp "$(bazel info bazel-genfiles)/npm/package.json" "${STAGING}/package.json"
+cp "release/npm/index.js" "${STAGING}/index.js"
+bazel build --config=release "//release/npm:package.json"
+cp "$(bazel info bazel-genfiles)/release/npm/package.json" "${STAGING}/package.json"
 
 compile() {
   export GOOS=$1; shift
