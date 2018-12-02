@@ -21,6 +21,7 @@ go_binary(
     # Since we don't have any cgo dependencies, force build to be pure
     # golang. This will make multi-os compatability *MUCH* easier.
     pure = "on",
+    race = "on",
     visibility = ["//visibility:public"],
     x_defs = {
         "main.Version": "{STABLE_GIT_VERSION}",

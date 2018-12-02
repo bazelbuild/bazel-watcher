@@ -9,10 +9,7 @@ A source file watcher for [Bazel](https://Bazel.build) projects
 Ever wanted to save a file and have your tests automatically run? How about
 restart your webserver when one of the source files change? Look no further.
 
-Compile the `//ibazel` target inside this repo and copy the source file onto
-your `$PATH`.
-
-Then:
+Install `ibazel` using one of the 3 methods [described below](#installation). Then:
 
 ```bash
 # ibazel build //path/to/my:target
@@ -21,6 +18,46 @@ Then:
 Hack hack hack. Save and your target will be rebuilt.
 
 Right now this repo supports `build`, `test`, and `run`.
+
+## Installation
+
+There are currently 3 ways to install iBazel
+
+### Mac (Homebrew)
+
+If you run a mac you can install it from [homebrew](https://brew.sh).
+
+```
+$ brew tap bazelbuild/tap
+$ brew tap-pin bazelbuild/tap
+$ brew install ibazel
+```
+
+### NPM
+
+If you're a JS developer you can install it as a `devDependency` or by calling `npm install` directly in your project
+
+```
+npm install @bazel/ibazel
+```
+
+### Compiling yourself
+
+You can, of course, build iBazel using Bazel.
+
+```
+git clone git@github.com:bazelbuild/bazel-watcher
+cd bazel-watcher
+bazel build //ibazel
+```
+
+Now copy the generated binary onto your path:
+
+```bash
+export PATH=$PATH:$PWD/bazel-bin/ibazel/$GOOS_$GOARCH_pure_stripped
+```
+
+where `$GOOS` and `$GOARCH` are your host OS (e.g., `darwin` or `linux`) and architecture (e.g., `amd64`).
 
 ## Running a target
 

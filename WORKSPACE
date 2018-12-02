@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-http_archive(
+git_repository(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    sha256 = "c1591d7cf7f209916d8a40b5f714788f4f915187444b8f1b46a55651d4bbd382",
-    strip_prefix = "bazel-integration-testing-44d8e9716f3415e92f5ddc0215a63fa39e46134d",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-integration-testing/archive/44d8e9716f3415e92f5ddc0215a63fa39e46134d.tar.gz",
-        "https://github.com/bazelbuild/bazel-integration-testing/archive/44d8e9716f3415e92f5ddc0215a63fa39e46134d.tar.gz",
-    ],
+    commit = "15273d8b0d01ce040800d172dbde3a88509d0c3d",
+    remote = "https://github.com/bazelbuild/bazel-integration-testing",
 )
 
 load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
@@ -43,19 +39,19 @@ http_archive(
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "97cf62bdef33519412167fd1e4b0810a318a7c234f5f8dc4f53e2da86241c492",
+    sha256 = "b7a62250a3a73277ade0ce306d22f122365b513f5402222403e507f2f997d421",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/0.15.3/rules_go-0.15.3.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/0.15.3/rules_go-0.15.3.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/0.16.3/rules_go-0.16.3.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/0.16.3/rules_go-0.16.3.tar.gz",
     ],
 )
 
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "c0a5739d12c6d05b6c1ad56f2200cb0b57c5a70e03ebd2f7b87ce88cabf09c7b",
+    sha256 = "6e875ab4b6bf64a38c352887760f21203ab054676d9c1b274963907e0768740d",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/0.14.0/bazel-gazelle-0.14.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.14.0/bazel-gazelle-0.14.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/0.15.0/bazel-gazelle-0.15.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.15.0/bazel-gazelle-0.15.0.tar.gz",
     ],
 )
 
@@ -71,25 +67,25 @@ gazelle_dependencies()
 
 go_repository(
     name = "com_github_fsnotify_fsnotify",
-    commit = "7d7316ed6e1ed2de075aab8dfc76de5d158d66e1",
     importpath = "github.com/fsnotify/fsnotify",
+    tag = "v1.4.7",
 )
 
 go_repository(
     name = "com_github_jaschaephraim_lrserver",
-    commit = "50d19f603f71e0a914f23eea33124ba9717e7873",
     importpath = "github.com/jaschaephraim/lrserver",
+    tag = "3.0.1",
 )
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    commit = "7ca4275b84a9d500f68971c8c4a97f0ec18eb889",
     importpath = "github.com/gorilla/websocket",
+    tag = "v1.4.0",
 )
 
 go_repository(
     name = "org_golang_x_sys",
-    commit = "99f16d856c9836c42d24e7ab64ea72916925fa97",
+    commit = "66b7b1311ac80bbafcd2daeef9a5e6e2cd1e2399",
     importpath = "golang.org/x/sys",
 )
 
@@ -97,19 +93,19 @@ go_repository(
 # https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
 go_repository(
     name = "com_github_golang_protobuf",
-    commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
     importpath = "github.com/golang/protobuf",
+    tag = "v1.2.0",
 )
 
 go_repository(
     name = "com_github_gorilla_websocket",
-    commit = "c55883f97322b4bcbf48f734e23d6ab3af1ea488",
     importpath = "github.com/gorilla/websocket",
+    tag = "v1.4.0",
 )
 
-# NOTE: this must match rules_go version above, currently set to 0.15.3
+# NOTE: this must match rules_go version above
 go_repository(
     name = "com_github_bazelbuild_rules_go",
-    commit = "0f0d007c89dc67a5a34490acafc5195b191f5045",
     importpath = "github.com/bazelbuild/rules_go",
+    tag = "0.16.2",
 )

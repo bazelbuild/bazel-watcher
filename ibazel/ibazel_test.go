@@ -185,12 +185,14 @@ func TestIBazelLoop(t *testing.T) {
 
 	assertState(QUERY)
 	step()
+	i.filesWatched[i.buildFileWatcher] = map[string]struct{}{"/path/to/BUILD": struct{}{}}
+	i.filesWatched[i.sourceFileWatcher] = map[string]struct{}{"/path/to/foo": struct{}{}}
 	assertState(RUN)
 	step() // Actually run the command
 	assertRun()
 	assertState(WAIT)
 	// Source file change.
-	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{Op: fsnotify.Write}
+	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{Op: fsnotify.Write, Name: "/path/to/foo"}
 	step()
 	assertState(DEBOUNCE_RUN)
 	step()
@@ -200,7 +202,7 @@ func TestIBazelLoop(t *testing.T) {
 	assertRun()
 	assertState(WAIT)
 	// Build file change.
-	i.buildFileWatcher.Events <- fsnotify.Event{Op: fsnotify.Write}
+	i.buildFileWatcher.Events <- fsnotify.Event{Op: fsnotify.Write, Name: "/path/to/BUILD"}
 	step()
 	assertState(DEBOUNCE_QUERY)
 	// Don't send another event in to test the timer
