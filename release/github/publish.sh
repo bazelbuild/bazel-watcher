@@ -59,4 +59,7 @@ compile "darwin"  "amd64"
 #compile "windows" "amd64"
 echo "Build successful."
 
-ghr -t "${CHANGELOG_GITHUB_TOKEN}" "${TAG}" "${STAGING}"
+readonly GHR_BINARY="$(mktemp /tmp/ghr.XXXXXX)"
+go get -u github.com/tcnksm/ghr
+go build -o "${GHR_BINARY}" github.com/tcnksm/ghr
+"${GHR_BINARY}" -t "${CHANGELOG_GITHUB_TOKEN}" "${TAG}" "${STAGING}"
