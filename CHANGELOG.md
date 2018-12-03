@@ -1,5 +1,14 @@
 # Change Log
 
+## [v0.8.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.8.2) (2018-12-03)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.8.1...v0.8.2)
+
+**Merged pull requests:**
+
+- Updates WORKSPACE file to work with bazel 0.20.0 [\#188](https://github.com/bazelbuild/bazel-watcher/pull/188) ([Jdban](https://github.com/Jdban))
+- Print the list of supported Bazel flags [\#187](https://github.com/bazelbuild/bazel-watcher/pull/187) ([achew22](https://github.com/achew22))
+- Update org\_golang\_x\_sys commit hash to 4ed8d59 [\#174](https://github.com/bazelbuild/bazel-watcher/pull/174) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [v0.8.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.8.1) (2018-12-02)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.8.0...v0.8.1)
 
