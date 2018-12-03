@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 git_repository(
     name = "com_github_bazelbuild_bazel_integration_testing",
     commit = "15273d8b0d01ce040800d172dbde3a88509d0c3d",
