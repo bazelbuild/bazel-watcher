@@ -3,15 +3,21 @@ platforms:
   ubuntu1404:
     build_targets:
     - "..."
+    test_flags:
+    - "--features=race"
     test_targets:
     - "..."
   ubuntu1604:
     build_targets:
     - "..."
+    test_flags:
+    - "--features=race"
     test_targets:
     - "..."
   macos:
     build_targets:
     - "..."
+    test_flags:
+    - "--features=race"
     test_targets:
     - "..."

@@ -30,6 +30,7 @@ go_binary(
 go_library(
     name = "go_default_library",
     srcs = [
+        "fsnotfy.go",
         "ibazel.go",
         "lifecycle.go",
         "main.go",

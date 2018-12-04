@@ -91,15 +91,15 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)
-	if b.writeToStderr {
-		b.cmd.Stderr = io.MultiWriter(os.Stderr, stdoutBuffer)
-	} else {
-		b.cmd.Stderr = stdoutBuffer
-	}
 	if b.writeToStdout {
-		b.cmd.Stdout = io.MultiWriter(os.Stdout, stderrBuffer)
+		b.cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuffer)
 	} else {
-		b.cmd.Stdout = stderrBuffer
+		b.cmd.Stdout = stdoutBuffer
+	}
+	if b.writeToStderr {
+		b.cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuffer)
+	} else {
+		b.cmd.Stderr = stderrBuffer
 	}
 
 	return stdoutBuffer, stderrBuffer
@@ -167,14 +167,14 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(false)
-	_, stderrBuffer := b.newCommand("query", blazeArgs...)
+	stdoutBuffer, _ := b.newCommand("query", blazeArgs...)
 
 	err := b.cmd.Run()
 
 	if err != nil {
 		return nil, err
 	}
-	return b.processQuery(stderrBuffer.Bytes())
+	return b.processQuery(stdoutBuffer.Bytes())
 }
 
 func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {

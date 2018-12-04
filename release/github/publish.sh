@@ -17,28 +17,22 @@ set -o errtrace
 set -o noclobber
 set -o pipefail
 
-# cd to the root of the project so that relative paths work.
-cd "$(git rev-parse --show-toplevel)"
+readonly TAG="$1"; shift
 
-# Clean the repo to make sure nothing strange is happening.
-bazel clean --expunge
+if !git rev-parse "${TAG}" >/dev/null 2>&1; then
+  echo "The provided tag doesn't exist. First create, then push the tag"
+  exit 1
+fi
 
 # Make a temporary directory to stage the release in.
 readonly STAGING="$(mktemp -d)"
 echo "Staging into ${STAGING}"
 
-# Copy over the base files required for NPM
-cp "README.md" "${STAGING}/README.md"
-cp "npm/index.js" "${STAGING}/index.js"
-bazel build --config=release "//npm:package.json"
-cp "$(bazel info bazel-genfiles)/npm/package.json" "${STAGING}/package.json"
-
 compile() {
   export GOOS=$1; shift
   export GOARCH=$1; shift
 
-  mkdir -p "${STAGING}/bin/${GOOS}_${GOARCH}/"
-  DESTINATION="${STAGING}/bin/${GOOS}_${GOARCH}/ibazel"
+  DESTINATION="${STAGING}/ibazel_${GOOS}_${GOARCH}"
   if [[ "${GOOS}" == "windows" ]]; then
     DESTINATION="${DESTINATION}.exe"
   fi
@@ -65,8 +59,7 @@ compile "darwin"  "amd64"
 #compile "windows" "amd64"
 echo "Build successful."
 
-echo -n "Publishing ${STAGING} to NPM as "
-grep "version" < "${STAGING}/package.json"
-
-# Everything is staged now, actually upload the package.
-cd "$STAGING" && npm publish
+readonly GHR_BINARY="$(mktemp /tmp/ghr.XXXXXX)"
+go get -u github.com/tcnksm/ghr
+go build -o "${GHR_BINARY}" github.com/tcnksm/ghr
+"${GHR_BINARY}" -t "${CHANGELOG_GITHUB_TOKEN}" "${TAG}" "${STAGING}"

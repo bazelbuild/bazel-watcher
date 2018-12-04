@@ -68,10 +68,10 @@ type IBazel struct {
 
 	workspaceFinder workspace_finder.WorkspaceFinder
 
-	buildFileWatcher  *fsnotify.Watcher
-	sourceFileWatcher *fsnotify.Watcher
+	buildFileWatcher  fSNotifyWatcher
+	sourceFileWatcher fSNotifyWatcher
 
-	filesWatched map[*fsnotify.Watcher]map[string]bool // Inner map is a surrogate for a set
+	filesWatched map[fSNotifyWatcher]map[string]struct{} // Inner map is a surrogate for a set
 
 	sourceEventHandler *SourceEventHandler
 	lifecycleListeners []Lifecycle
@@ -87,7 +87,7 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
-	i.filesWatched = map[*fsnotify.Watcher]map[string]bool{}
+	i.filesWatched = map[fSNotifyWatcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
 
 	i.sigs = make(chan os.Signal, 1)
@@ -220,17 +220,17 @@ func (i *IBazel) setup() error {
 
 	// Even though we are going to recreate this when the query happens, create
 	// the pointer we will use to refer to the watchers right now.
-	i.buildFileWatcher, err = fsnotify.NewWatcher()
+	i.buildFileWatcher, err = wrapWatcher(fsnotify.NewWatcher())
 	if err != nil {
 		return err
 	}
 
-	i.sourceFileWatcher, err = fsnotify.NewWatcher()
+	i.sourceFileWatcher, err = wrapWatcher(fsnotify.NewWatcher())
 	if err != nil {
 		return err
 	}
 
-	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher)
+	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher.Watcher())
 
 	return nil
 }
@@ -263,7 +263,7 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 }
 
 // fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
-// to avoid triggering builds on file acccesses (e.g. due to your IDE checking modified status).
+// to avoid triggering builds on file accesses (e.g. due to your IDE checking modified status).
 const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
 
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
@@ -271,13 +271,13 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case WAIT:
 		select {
 		case e := <-i.sourceEventHandler.SourceFileEvents:
-			if e.Op&modifyingEvents != 0 {
+			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "\nChanged: %q. Rebuilding...\n", e.Name)
 				i.changeDetected(targets, "source", e.Name)
 				i.state = DEBOUNCE_RUN
 			}
-		case e := <-i.buildFileWatcher.Events:
-			if e.Op&modifyingEvents != 0 {
+		case e := <-i.buildFileWatcher.Events():
+			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				fmt.Fprintf(os.Stderr, "\nBuild graph changed: %q. Requerying...\n", e.Name)
 				i.changeDetected(targets, "graph", e.Name)
 				i.state = DEBOUNCE_QUERY
@@ -285,8 +285,8 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		}
 	case DEBOUNCE_QUERY:
 		select {
-		case e := <-i.buildFileWatcher.Events:
-			if e.Op&modifyingEvents != 0 {
+		case e := <-i.buildFileWatcher.Events():
+			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "graph", e.Name)
 			}
 			i.state = DEBOUNCE_QUERY
@@ -302,7 +302,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case DEBOUNCE_RUN:
 		select {
 		case e := <-i.sourceEventHandler.SourceFileEvents:
-			if e.Op&modifyingEvents != 0 {
+			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "source", e.Name)
 			}
 			i.state = DEBOUNCE_RUN
@@ -466,36 +466,52 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 	return toWatch
 }
 
-func (i *IBazel) watchFiles(query string, watcher *fsnotify.Watcher) {
+func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
 	toWatch := i.queryForSourceFiles(query)
-	filesAdded := map[string]bool{}
+	filesFound := map[string]struct{}{}
+	filesWatched := map[string]struct{}{}
+	uniqueDirectories := map[string]struct{}{}
 
-	for _, line := range toWatch {
-		err := watcher.Add(line)
-		if err != nil {
-			// Special case for the "defaults package", see https://github.com/bazelbuild/bazel/issues/5533
-			if !strings.HasSuffix(filepath.ToSlash(line), "/tools/defaults/BUILD") {
-				fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", line, err)
-			}
-			continue
+	for _, file := range toWatch {
+		if _, err := os.Stat(file); !os.IsNotExist(err) {
+			filesFound[file] = struct{}{}
+		}
+
+		parentDirectory, _ := filepath.Split(file)
+
+		// Add a watch to the file's parent directory, unless it's one we've already watched
+		if _, ok := uniqueDirectories[parentDirectory]; ok {
+			filesWatched[file] = struct{}{}
 		} else {
-			filesAdded[line] = true
-		}
-	}
-
-	for line, _ := range i.filesWatched[watcher] {
-		_, ok := filesAdded[line]
-		if !ok {
-			err := watcher.Remove(line)
+			err := watcher.Add(parentDirectory)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error unwatching file %v\nError: %v\n", line, err)
+				// Special case for the "defaults package", see https://github.com/bazelbuild/bazel/issues/5533
+				if !strings.HasSuffix(filepath.ToSlash(file), "/tools/defaults/BUILD") {
+					fmt.Fprintf(os.Stderr, "Error watching file %v\nError: %v\n", file, err)
+				}
+				continue
+			} else {
+				filesWatched[file] = struct{}{}
+				uniqueDirectories[parentDirectory] = struct{}{}
 			}
 		}
 	}
 
-	if len(filesAdded) == 0 {
+	for file, _ := range i.filesWatched[watcher] {
+		parentDirectory, _ := filepath.Split(file)
+
+		// Remove the watch from the parent directory if it no longer contains any files returned by the latest query
+		if _, ok := uniqueDirectories[parentDirectory]; !ok {
+			err := watcher.Remove(parentDirectory)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error unwatching file %v\nError: %v\n", file, err)
+			}
+		}
+	}
+
+	if len(filesFound) == 0 {
 		fmt.Fprintf(os.Stderr, "Didn't find any files to watch from query %s\n", query)
 	}
 
-	i.filesWatched[watcher] = filesAdded
+	i.filesWatched[watcher] = filesWatched
 }

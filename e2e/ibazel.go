@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,16 +16,16 @@ import (
 )
 
 // Maximum amount of time to wait before failing a test for not matching your expectations.
-var delay = 10 * time.Second
+var delay = 20 * time.Second
 
 type IBazelTester struct {
 	bazel *bazel.TestingBazel
 	t     *testing.T
 
 	cmd          *exec.Cmd
-	stderrBuffer *bytes.Buffer
+	stderrBuffer *Buffer
 	stderrOld    string
-	stdoutBuffer *bytes.Buffer
+	stdoutBuffer *Buffer
 	stdoutOld    string
 }
 
@@ -50,11 +49,11 @@ func (i *IBazelTester) Run(target string) {
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
-	i.run(target, []string{"--profile_dev="+profiler})
+	i.run(target, []string{"--profile_dev=" + profiler})
 }
 
 func (i *IBazelTester) GetOutput() string {
-	return string(i.stdoutBuffer.Bytes())
+	return i.stdoutBuffer.String()
 }
 
 func (i *IBazelTester) ExpectOutput(want string) {
@@ -92,7 +91,7 @@ func (i *IBazelTester) Expect(want string, stream func() string, history *string
 }
 
 func (i *IBazelTester) GetError() string {
-	return string(i.stderrBuffer.Bytes())
+	return i.stderrBuffer.String()
 }
 
 func (i *IBazelTester) GetSubprocessPid() int64 {
@@ -126,10 +125,10 @@ func (i *IBazelTester) build(target string, additionalArgs []string) {
 	args = append(args, target)
 	i.cmd = exec.Command(ibazelPath, args...)
 
-	i.stdoutBuffer = &bytes.Buffer{}
+	i.stdoutBuffer = &Buffer{}
 	i.cmd.Stdout = i.stdoutBuffer
 
-	i.stderrBuffer = &bytes.Buffer{}
+	i.stderrBuffer = &Buffer{}
 	i.cmd.Stderr = i.stderrBuffer
 
 	if err := i.cmd.Start(); err != nil {
@@ -139,7 +138,7 @@ func (i *IBazelTester) build(target string, additionalArgs []string) {
 }
 
 func (i *IBazelTester) run(target string, additionalArgs []string) {
-	args := []string{"--bazel_path="+i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
+	args := []string{"--bazel_path=" + i.bazelPath(), "--log_to_file=/tmp/ibazel_output.log"}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
 	args = append(args, target)
@@ -150,10 +149,10 @@ func (i *IBazelTester) run(target string, additionalArgs []string) {
 		panic(fmt.Sprintf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", errCode, buildStdout, buildStderr))
 	}
 
-	i.stdoutBuffer = &bytes.Buffer{}
+	i.stdoutBuffer = &Buffer{}
 	i.cmd.Stdout = i.stdoutBuffer
 
-	i.stderrBuffer = &bytes.Buffer{}
+	i.stderrBuffer = &Buffer{}
 	i.cmd.Stderr = i.stderrBuffer
 
 	if err := i.cmd.Start(); err != nil {

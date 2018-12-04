@@ -34,6 +34,20 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+type fakeFSNotifyWatcher struct {
+	ErrorChan chan error
+	EventChan chan fsnotify.Event
+}
+
+var _ fSNotifyWatcher = &fakeFSNotifyWatcher{}
+
+func (w *fakeFSNotifyWatcher) Close() error                { return nil }
+func (w *fakeFSNotifyWatcher) Add(name string) error       { return nil }
+func (w *fakeFSNotifyWatcher) Remove(name string) error    { return nil }
+func (w *fakeFSNotifyWatcher) Events() chan fsnotify.Event { return w.EventChan }
+func (w *fakeFSNotifyWatcher) Errors() chan error          { return w.ErrorChan }
+func (w *fakeFSNotifyWatcher) Watcher() *fsnotify.Watcher  { return nil }
+
 var oldCommandDefaultCommand = command.DefaultCommand
 
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
@@ -138,15 +152,17 @@ func TestIBazelLifecycle(t *testing.T) {
 
 	// Now inspect private API. If things weren't closed properly this will block
 	// and the test will timeout.
-	<-i.sourceFileWatcher.Events
-	<-i.buildFileWatcher.Events
+	<-i.sourceFileWatcher.Events()
+	<-i.buildFileWatcher.Events()
 }
 
 func TestIBazelLoop(t *testing.T) {
 	i := newIBazel(t)
 
 	// Replace the file watching channel with one that has a buffer.
-	i.buildFileWatcher.Events = make(chan fsnotify.Event, 1)
+	i.buildFileWatcher = &fakeFSNotifyWatcher{
+		EventChan: make(chan fsnotify.Event, 1),
+	}
 	i.sourceEventHandler.SourceFileEvents = make(chan fsnotify.Event, 1)
 
 	defer i.Cleanup()
@@ -185,12 +201,14 @@ func TestIBazelLoop(t *testing.T) {
 
 	assertState(QUERY)
 	step()
+	i.filesWatched[i.buildFileWatcher] = map[string]struct{}{"/path/to/BUILD": struct{}{}}
+	i.filesWatched[i.sourceFileWatcher] = map[string]struct{}{"/path/to/foo": struct{}{}}
 	assertState(RUN)
 	step() // Actually run the command
 	assertRun()
 	assertState(WAIT)
 	// Source file change.
-	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{Op: fsnotify.Write}
+	i.sourceEventHandler.SourceFileEvents <- fsnotify.Event{Op: fsnotify.Write, Name: "/path/to/foo"}
 	step()
 	assertState(DEBOUNCE_RUN)
 	step()
@@ -200,7 +218,7 @@ func TestIBazelLoop(t *testing.T) {
 	assertRun()
 	assertState(WAIT)
 	// Build file change.
-	i.buildFileWatcher.Events <- fsnotify.Event{Op: fsnotify.Write}
+	i.buildFileWatcher.Events() <- fsnotify.Event{Op: fsnotify.Write, Name: "/path/to/BUILD"}
 	step()
 	assertState(DEBOUNCE_QUERY)
 	// Don't send another event in to test the timer

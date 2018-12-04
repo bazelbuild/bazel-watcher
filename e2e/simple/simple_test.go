@@ -14,8 +14,8 @@ import (
 
 func must(t *testing.T, e error) {
 	if e != nil {
-		t.Errorf("Error: %s", e)
-		debug.PrintStack()
+		t.Fatalf("Error: %s", e)
+		t.Logf("Stack trace:\n%s", debug.Stack())
 	}
 }
 
@@ -37,7 +37,7 @@ sh_binary(
 	defer ibazel.Kill()
 
 	ibazel.ExpectError("Didn't find any files to watch from query " +
-                           "kind\\('source file', deps\\(set\\(//:test\\)\\)\\)")
+		"kind\\('source file', deps\\(set\\(//:test\\)\\)\\)")
 }
 
 func TestSimpleRun(t *testing.T) {
