@@ -56,8 +56,14 @@ func (c *defaultCommand) Terminate() {
 }
 
 func (c *defaultCommand) Start() (*bytes.Buffer, error) {
+	b := bazelNew()
+	fmt.Printf("in func default command got args: %s", c.bazelArgs)
+	b.SetArguments(c.bazelArgs)
+
+	b.WriteToStderr(true)
+	b.WriteToStdout(true)
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.cmd = start(c.target, c.args)
+	outputBuffer, c.cmd = start(b, c.target, c.args)
 
 	c.cmd.Env = os.Environ()
 

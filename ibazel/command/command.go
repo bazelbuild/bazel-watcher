@@ -37,18 +37,22 @@ type Command interface {
 
 // start will be called by most implementations since this logic is extremely
 // common.
-func start(target string, args []string) (*bytes.Buffer, *exec.Cmd) {
-	// Build and run the target in a go routine with bazel. Since the direct_run
+func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cmd) {
+	// Build and run the target with Bazel directly. Since the direct_run
 	// functionaliy was made default that works fine.
-	args = append([]string{"run", target}, args...)
-	cmd := execCommand(*bazel.BazelPath, args...)
-	cmd.Stdout = os.Stdout
+	args = append([]string{target}, args...)
+	cmd, outputBuffer, _ := b.Run(args...)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// cmd := execCommand(*bazel.BazelPath, args...)
+	// cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	// Set a process group id (PGID) on the subprocess. This is
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	return nil, cmd
+	return outputBuffer, cmd
 }
 
 func subprocessRunning(cmd *exec.Cmd) bool {

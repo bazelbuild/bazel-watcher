@@ -29,7 +29,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-var BazelPath = flag.String("bazel_path", "bazel", "Path to the bazel binary to use for actions")
+var bazelPath = flag.String("bazel_path", "bazel", "Path to the bazel binary to use for actions")
 
 type Bazel interface {
 	SetArguments([]string)
@@ -87,7 +87,7 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 			args = append(args, "--color=yes")
 		}
 	}
-	b.cmd = exec.CommandContext(b.ctx, *BazelPath, args...)
+	b.cmd = exec.CommandContext(b.ctx, *bazelPath, args...)
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)
@@ -214,7 +214,7 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 
 	err := b.cmd.Run()
 	if err != nil {
-		return nil, stdoutBuffer, err
+		return b.cmd, stdoutBuffer, err
 	}
 
 	return b.cmd, stdoutBuffer, err
