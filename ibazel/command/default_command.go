@@ -63,7 +63,7 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 	b.WriteToStdout(true)
 
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.cmd  = start(b, c.target, c.args)
+	outputBuffer, c.cmd = start(b, c.target, c.args)
 
 	c.cmd.Env = os.Environ()
 

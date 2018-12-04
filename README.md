@@ -96,7 +96,7 @@ The profile outfile is in concatenated JSON format. Events are outputted one per
 | `TEST_FAILED` | A test operation failed | `type`, `iteration`, `time`, `targets`, `elapsed`, `changes`* |
 | `TEST_DONE` | A test operation completed successfully | `type`, `iteration`, `time`, `targets`, `elapsed`, `changes`* |
 | `REMOTE_EVENT` | A remote event was received from the browser | `type`, `iteration`, `time`, `targets`, `elapsed`, `remoteType`, `remoteTime`, `remoteElapsed`, `remoteData` |
-| `REMOTE_EVENT / PAGE_LOAD` | A remote event emitted by the profiler client-side script on the brower's `load` event. `remoteType` is `PAGE_LOAD`. | `type`, `iteration`, `time`, `targets`, `elapsed`, `remoteType`, `remoteTime`, `remoteElapsed`, `remoteData` |
+| `REMOTE_EVENT / PAGE_LOAD` | A remote event emitted by the profiler client-side script on the browser's `load` event. `remoteType` is `PAGE_LOAD`. | `type`, `iteration`, `time`, `targets`, `elapsed`, `remoteType`, `remoteTime`, `remoteElapsed`, `remoteData` |
 
 ### Event attributes
 

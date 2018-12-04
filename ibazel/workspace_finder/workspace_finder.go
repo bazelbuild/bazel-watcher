@@ -21,10 +21,10 @@ import (
 )
 
 type WorkspaceFinder interface {
-    FindWorkspace() (string, error)
+	FindWorkspace() (string, error)
 }
 
-type MainWorkspaceFinder struct {}
+type MainWorkspaceFinder struct{}
 
 func (m *MainWorkspaceFinder) FindWorkspace() (string, error) {
 	path, err := os.Getwd()
@@ -36,7 +36,7 @@ func (m *MainWorkspaceFinder) FindWorkspace() (string, error) {
 
 	for {
 		// filepath.Dir() includes a trailing separator if we're at the root
-		if path == volume + string(filepath.Separator) {
+		if path == volume+string(filepath.Separator) {
 			path = volume
 		}
 
@@ -55,8 +55,8 @@ func (m *MainWorkspaceFinder) FindWorkspace() (string, error) {
 	}
 }
 
-type FakeWorkspaceFinder struct {}
+type FakeWorkspaceFinder struct{}
 
 func (f *FakeWorkspaceFinder) FindWorkspace() (string, error) {
-    return "", nil
+	return "", nil
 }

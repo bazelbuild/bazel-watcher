@@ -106,7 +106,7 @@ func getMockCommand(i *IBazel) *mockCommand {
 }
 
 func init() {
-	// Replace the bazle object creation function with one that makes my mock.
+	// Replace the bazel object creation function with one that makes my mock.
 	bazelNew = func() bazel.Bazel {
 		mockBazel = &mock_bazel.MockBazel{}
 		mockBazel.AddQueryResponse("//path/to:target", &blaze_query.QueryResult{
@@ -304,7 +304,7 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	// But we want to simulate the subprocess not dieing
+	// But we want to simulate the subprocess not dying
 	attemptedExit := 0
 	osExit = func(i int) {
 		attemptedExit = i
@@ -328,7 +328,7 @@ func TestHandleSignals_SIGINT(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	// But we want to simulate the subprocess not dieing
+	// But we want to simulate the subprocess not dying
 	attemptedExit := 0
 	osExit = func(i int) {
 		attemptedExit = i
