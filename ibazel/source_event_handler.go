@@ -15,7 +15,7 @@
 package main
 
 import (
-  "github.com/fsnotify/fsnotify"
+	"github.com/fsnotify/fsnotify"
 )
 
 type SourceEventHandler struct {
@@ -31,7 +31,7 @@ func (s *SourceEventHandler) Listen() {
 
 			switch event.Op {
 			case fsnotify.Remove, fsnotify.Rename:
-					s.SourceFileWatcher.Add(event.Name)
+				s.SourceFileWatcher.Add(event.Name)
 			}
 		}
 	}
