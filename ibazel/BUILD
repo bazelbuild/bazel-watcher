@@ -19,7 +19,7 @@ go_binary(
     embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     # Since we don't have any cgo dependencies, force build to be pure
-    # golang. This will make multi-os compatability *MUCH* easier.
+    # golang. This will make multi-os compatibility *MUCH* easier.
     pure = "on",
     visibility = ["//visibility:public"],
     x_defs = {
@@ -30,7 +30,7 @@ go_binary(
 go_library(
     name = "go_default_library",
     srcs = [
-        "fsnotfy.go",
+        "fsnotify.go",
         "ibazel.go",
         "lifecycle.go",
         "main.go",

@@ -25,8 +25,8 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -44,9 +44,9 @@ var runOutputInteractive = flag.Bool(
 type OutputRunner struct{}
 
 type Optcmd struct {
-	Regex string `json:"regex"`
-	Command string `json:"command"`
-	Args []string `json:"args"`
+	Regex   string   `json:"regex"`
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
 }
 
 func New() *OutputRunner {
@@ -69,9 +69,9 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 
 	jsonCommandPath := ".bazel_fix_commands.json"
 	defaultRegex := Optcmd{
-		Regex: "^buildozer '(.*)'\\s+(.*)$",
+		Regex:   "^buildozer '(.*)'\\s+(.*)$",
 		Command: "buildozer",
-		Args: []string{"$1", "$2"},
+		Args:    []string{"$1", "$2"},
 	}
 
 	optcmd := readConfigs(jsonCommandPath)

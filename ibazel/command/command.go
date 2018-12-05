@@ -47,7 +47,7 @@ func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cm
 	if runtime.GOOS == "windows" {
 		filePattern.WriteString(".bat")
 	}
-	
+
 	tmpfile, err := ioutil.TempFile("", filePattern.String())
 	if err != nil {
 		fmt.Print(err)
