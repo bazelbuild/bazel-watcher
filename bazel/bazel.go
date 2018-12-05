@@ -214,10 +214,10 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 
 	err := b.cmd.Run()
 	if err != nil {
-		return nil, stdoutBuffer, err
+		return nil, stderrBuffer, err
 	}
 
-	return b.cmd, stdoutBuffer, err
+	return b.cmd, stderrBuffer, err
 }
 
 func (b *bazel) Wait() error {
