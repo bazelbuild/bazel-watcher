@@ -15,7 +15,7 @@ import (
 )
 
 // Maximum amount of time to wait before failing a test for not matching your expectations.
-var delay = 5 * time.Second
+var delay = 20 * time.Second
 
 type IBazelTester struct {
 	bazel *bazel.TestingBazel
