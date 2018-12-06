@@ -428,19 +428,19 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 	return &res, nil
 }
 
-func (i *IBazel) queryForSourceFiles(query string) []string {
+func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	b := i.newBazel()
 
 	res, err := b.Query(query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
-		osExit(4)
+		return []string{}, err
 	}
 
 	workspacePath, err := i.workspaceFinder.FindWorkspace()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding workspace: %v\n", err)
-		osExit(5)
+		return []string{}, err
 	}
 
 	toWatch := make([]string, 0, 10000)
@@ -463,11 +463,16 @@ func (i *IBazel) queryForSourceFiles(query string) []string {
 		}
 	}
 
-	return toWatch
+	return toWatch, nil
 }
 
 func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
-	toWatch := i.queryForSourceFiles(query)
+	toWatch, err := i.queryForSourceFiles(query)
+	if err != nil {
+		// If the query fails, just keep watching the same files as before
+		return
+	}
+
 	filesFound := map[string]struct{}{}
 	filesWatched := map[string]struct{}{}
 	uniqueDirectories := map[string]struct{}{}
