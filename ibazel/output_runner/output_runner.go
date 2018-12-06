@@ -101,7 +101,10 @@ func readConfigs(configPath string) []Optcmd {
 
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	var optcmd []Optcmd
-	json.Unmarshal(byteValue, &optcmd)
+	err = json.Unmarshal(byteValue, &optcmd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error in .bazel_fix_commands.json: %s\n", err)
+	}
 
 	return optcmd
 }
@@ -115,7 +118,7 @@ func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]
 		for _, oc := range optcmd {
 			re := regexp.MustCompile(oc.Regex)
 			matches := re.FindStringSubmatch(line)
-			if matches != nil && len(matches) >= 3 {
+			if matches != nil && len(matches) >= 0 {
 				commandLines = append(commandLines, matches[0])
 				commands = append(commands, convertArg(matches, oc.Command))
 				args = append(args, convertArgs(matches, oc.Args))

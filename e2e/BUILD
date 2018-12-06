@@ -11,6 +11,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",
-        "@com_github_bazelbuild_rules_go//go/tools/bazel:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
 )
