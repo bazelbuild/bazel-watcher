@@ -1,5 +1,23 @@
 # Change Log
 
+## [v0.9.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.9.0) (2018-12-07)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.8.2...v0.9.0)
+
+**Closed issues:**
+
+- How do we test if output\_runner is reading the output correctly [\#196](https://github.com/bazelbuild/bazel-watcher/issues/196)
+- ibazel should not crash if a build file change results in a syntax error [\#194](https://github.com/bazelbuild/bazel-watcher/issues/194)
+
+**Merged pull requests:**
+
+- Stay alive after source query failure [\#200](https://github.com/bazelbuild/bazel-watcher/pull/200) ([dougkoch](https://github.com/dougkoch))
+- Add e2e test to verify output runner functionality [\#198](https://github.com/bazelbuild/bazel-watcher/pull/198) ([achew22](https://github.com/achew22))
+- Fix the output runner [\#195](https://github.com/bazelbuild/bazel-watcher/pull/195) ([borkaehw](https://github.com/borkaehw))
+- Update org\_golang\_x\_sys commit hash to a5c9d58 [\#193](https://github.com/bazelbuild/bazel-watcher/pull/193) ([renovate[bot]](https://github.com/apps/renovate))
+- Add recent contributors [\#192](https://github.com/bazelbuild/bazel-watcher/pull/192) ([dougkoch](https://github.com/dougkoch))
+- Run gofmt and fix typos [\#191](https://github.com/bazelbuild/bazel-watcher/pull/191) ([dougkoch](https://github.com/dougkoch))
+- Update github publish script to build ghr [\#190](https://github.com/bazelbuild/bazel-watcher/pull/190) ([achew22](https://github.com/achew22))
+
 ## [v0.8.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.8.2) (2018-12-03)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.8.1...v0.8.2)
 
