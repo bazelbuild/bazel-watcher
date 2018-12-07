@@ -15,7 +15,7 @@ import (
 func must(t *testing.T, e error) {
 	if e != nil {
 		t.Fatalf("Error: %s", e)
-		t.Logf("Stack trace:\n%s", debug.Stack())
+		t.Logf("Stack trace:\n%s", string(debug.Stack()))
 	}
 }
 
