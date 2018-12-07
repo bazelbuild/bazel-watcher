@@ -40,6 +40,38 @@ sh_binary(
 		"kind\\('source file', deps\\(set\\(//:test\\)\\)\\)")
 }
 
+func TestSimpleBuildWithQueryFailure(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "Started!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+# Invalid rule due to a typo
+shh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Build("//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectError("Bazel query failed")
+
+	must(t, b.ScratchFile("BUILD", `
+# Fixed the typo
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	ibazel.ExpectError("Build completed successfully")
+}
+
 func TestSimpleRun(t *testing.T) {
 	b, err := bazel.New()
 	if err != nil {

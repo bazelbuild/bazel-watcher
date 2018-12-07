@@ -433,7 +433,7 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 
 	res, err := b.Query(query)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running Bazel %v\n", err)
+		fmt.Fprintf(os.Stderr, "Bazel query failed: %v\n", err)
 		return []string{}, err
 	}
 
