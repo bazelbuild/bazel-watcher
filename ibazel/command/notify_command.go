@@ -96,7 +96,7 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 		fmt.Fprintf(os.Stderr, "FAILURE: %v\n", res)
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing failure to stdin: %s\n%v", err)
+			fmt.Fprintf(os.Stderr, "Error writing failure to stdin: %s\n", err)
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "SUCCESS\n")
