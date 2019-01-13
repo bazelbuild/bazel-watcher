@@ -27,16 +27,18 @@ func TestDefaultCommand(t *testing.T) {
 	var toKill process_group.ProcessGroup
 
 	if runtime.GOOS == "windows" {
-		toKill = process_group.Command("notepad")
+		// TODO(jchw): Remove hardcoded path.
+		toKill = process_group.Command("C:\\windows\\system32\\notepad")
 	} else {
 		toKill = process_group.Command("sleep", "10s")
 	}
 
 	execCommand = func(name string, args ...string) process_group.ProcessGroup {
 		if runtime.GOOS == "windows" {
-			return oldExecCommand("where", "where")
+			// TODO(jchw): Remove hardcoded path.
+			return oldExecCommand("C:\\windows\\system32\\where")
 		}
-		return oldExecCommand("ls") // Almost every system has ls.
+		return oldExecCommand("ls") // Every system has ls.
 	}
 	defer func() { execCommand = oldExecCommand }()
 
@@ -66,9 +68,10 @@ func TestDefaultCommand_Start(t *testing.T) {
 	// Set up mock execCommand and prep it to be returned
 	execCommand = func(name string, args ...string) process_group.ProcessGroup {
 		if runtime.GOOS == "windows" {
-			return oldExecCommand("where", "where")
+			// TODO(jchw): Remove hardcoded path.
+			return oldExecCommand("C:\\windows\\system32\\where")
 		}
-		return oldExecCommand("ls") // Almost every system has ls.
+		return oldExecCommand("ls") // Every system has ls.
 	}
 	defer func() { execCommand = oldExecCommand }()
 

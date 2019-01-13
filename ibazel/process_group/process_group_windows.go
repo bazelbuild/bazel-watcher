@@ -17,6 +17,7 @@ package process_group
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os/exec"
 	"syscall"
 	"unsafe"
@@ -37,10 +38,7 @@ var (
 	setInformationJobObject  uintptr
 	assignProcessToJobObject uintptr
 	terminateJobObject       uintptr
-	thread32First            uintptr
-	thread32Next             uintptr
-	openThread               uintptr
-	resumeThread             uintptr
+	ntResumeProcess          uintptr
 )
 
 type winProcessGroup struct {
@@ -70,6 +68,11 @@ func init() {
 		panic(err)
 	}
 
+	ntdll, err := syscall.LoadLibrary("ntdll.dll")
+	if err != nil {
+		panic(err)
+	}
+
 	createJobObject, err = syscall.GetProcAddress(kernel32, "CreateJobObjectW")
 	if err != nil {
 		panic(err)
@@ -84,27 +87,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	terminateJobObject, err = syscall.GetProcAddress(kernel32, "TerminateJobObject")
 	if err != nil {
 		panic(err)
 	}
 
-	thread32First, err = syscall.GetProcAddress(kernel32, "Thread32First")
-	if err != nil {
-		panic(err)
-	}
-
-	thread32Next, err = syscall.GetProcAddress(kernel32, "Thread32Next")
-	if err != nil {
-		panic(err)
-	}
-
-	openThread, err = syscall.GetProcAddress(kernel32, "OpenThread")
-	if err != nil {
-		panic(err)
-	}
-
-	resumeThread, err = syscall.GetProcAddress(kernel32, "ResumeThread")
+	ntResumeProcess, err = syscall.GetProcAddress(ntdll, "NtResumeProcess")
 	if err != nil {
 		panic(err)
 	}
@@ -114,6 +103,7 @@ func init() {
 // arguments.
 func Command(name string, arg ...string) ProcessGroup {
 	root := exec.Command(name, arg...)
+	fmt.Println(name, arg)
 	root.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createSuspended}
 	return &winProcessGroup{root, syscall.Handle(0), syscall.Handle(0)}
 }
@@ -148,7 +138,7 @@ func (pg *winProcessGroup) Start() error {
 		CompletionPort: pg.ioport,
 	}
 
-	ret, _, errno := syscall.Syscall6(setInformationJobObject, 4, uintptr(pg.job), jobObjectAssociateCompletionPortInformation, uintptr(unsafe.Pointer(&port)), unsafe.Sizeof(port), 0, 0)
+	_, _, errno = syscall.Syscall6(setInformationJobObject, 4, uintptr(pg.job), jobObjectAssociateCompletionPortInformation, uintptr(unsafe.Pointer(&port)), unsafe.Sizeof(port), 0, 0)
 	if errno != 0 {
 		return errno
 	}
@@ -158,48 +148,14 @@ func (pg *winProcessGroup) Start() error {
 		return err
 	}
 
-	ret, _, errno = syscall.Syscall(assignProcessToJobObject, 2, uintptr(pg.job), uintptr(phandle), 0)
+	_, _, errno = syscall.Syscall(assignProcessToJobObject, 2, uintptr(pg.job), uintptr(phandle), 0)
 	if errno != 0 {
 		return errno
 	}
 
-	snapshot, err := syscall.CreateToolhelp32Snapshot(syscall.TH32CS_SNAPTHREAD, uint32(0))
-	if err != nil {
-		return err
-	}
-
-	thread := &threadEntry32{dwSize: uint32(unsafe.Sizeof(threadEntry32{}))}
-
-	// Get first thread
-	ret, _, errno = syscall.Syscall(thread32First, 2, uintptr(snapshot), uintptr(unsafe.Pointer(thread)), 0)
+	_, _, errno = syscall.Syscall(ntResumeProcess, 1, uintptr(phandle), 0, 0)
 	if errno != 0 {
 		return errno
-	}
-
-	for {
-		if thread.th32OwnerProcessID == uint32(pg.root.Process.Pid) {
-			// Open thread
-			thandle, _, errno := syscall.Syscall(openThread, 3, threadSuspendResume, 0, uintptr(thread.th32ThreadID))
-			if errno != 0 {
-				return errno
-			}
-
-			// Resume thread
-			ret, _, errno = syscall.Syscall(resumeThread, 1, uintptr(thandle), 0, 0)
-			if errno != 0 {
-				return errno
-			} else if int(ret) < 0 {
-				return errors.New("unknown error resuming process")
-			}
-		}
-
-		// Get next thread
-		ret, _, errno = syscall.Syscall(thread32Next, 2, uintptr(snapshot), uintptr(unsafe.Pointer(thread)), 0)
-		if int(ret) == 0 && errno == syscall.ERROR_NO_MORE_FILES {
-			break
-		} else if errno != 0 {
-			return errno
-		}
 	}
 
 	return nil
