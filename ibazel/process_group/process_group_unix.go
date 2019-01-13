@@ -49,6 +49,10 @@ func (pg *unixProcessGroup) Wait() error {
 	return pg.root.Wait()
 }
 
+func (pg *unixProcessGroup) Close() error {
+	return nil
+}
+
 func (pg *unixProcessGroup) CombinedOutput() ([]byte, error) {
 	return pg.root.CombinedOutput()
 }

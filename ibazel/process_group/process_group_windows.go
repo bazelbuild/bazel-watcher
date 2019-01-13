@@ -17,28 +17,10 @@ package process_group
 import (
 	"bytes"
 	"errors"
-	"fmt"
+	"log"
 	"os/exec"
 	"syscall"
 	"unsafe"
-)
-
-const (
-	createSuspended     = 0x00000004
-	threadSuspendResume = 0x0002
-	processAllAcccess   = 0x1F0FFF
-
-	jobObjectAssociateCompletionPortInformation = 7
-
-	jobObjectMsgActiveProcessZero = 4
-)
-
-var (
-	createJobObject          uintptr
-	setInformationJobObject  uintptr
-	assignProcessToJobObject uintptr
-	terminateJobObject       uintptr
-	ntResumeProcess          uintptr
 )
 
 type winProcessGroup struct {
@@ -47,63 +29,10 @@ type winProcessGroup struct {
 	ioport syscall.Handle
 }
 
-type threadEntry32 struct {
-	dwSize             uint32
-	cntUsage           uint32
-	th32ThreadID       uint32
-	th32OwnerProcessID uint32
-	tpBasePri          uint32
-	tpDeltaPri         uint32
-	dwFlags            uint32
-}
-
-type jobObjectAssociationCompletionPort struct {
-	CompletionKey  uintptr
-	CompletionPort syscall.Handle
-}
-
-func init() {
-	kernel32, err := syscall.LoadLibrary("kernel32.dll")
-	if err != nil {
-		panic(err)
-	}
-
-	ntdll, err := syscall.LoadLibrary("ntdll.dll")
-	if err != nil {
-		panic(err)
-	}
-
-	createJobObject, err = syscall.GetProcAddress(kernel32, "CreateJobObjectW")
-	if err != nil {
-		panic(err)
-	}
-
-	setInformationJobObject, err = syscall.GetProcAddress(kernel32, "SetInformationJobObject")
-	if err != nil {
-		panic(err)
-	}
-
-	assignProcessToJobObject, err = syscall.GetProcAddress(kernel32, "AssignProcessToJobObject")
-	if err != nil {
-		panic(err)
-	}
-
-	terminateJobObject, err = syscall.GetProcAddress(kernel32, "TerminateJobObject")
-	if err != nil {
-		panic(err)
-	}
-
-	ntResumeProcess, err = syscall.GetProcAddress(ntdll, "NtResumeProcess")
-	if err != nil {
-		panic(err)
-	}
-}
-
 // Command creates a new ProcessGroup with a root command specified by the
 // arguments.
 func Command(name string, arg ...string) ProcessGroup {
 	root := exec.Command(name, arg...)
-	fmt.Println(name, arg)
 	root.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createSuspended}
 	return &winProcessGroup{root, syscall.Handle(0), syscall.Handle(0)}
 }
@@ -122,11 +51,10 @@ func (pg *winProcessGroup) Start() error {
 		return err
 	}
 
-	job, _, errno := syscall.Syscall(createJobObject, 2, 0, 0, 0)
-	if errno != 0 {
-		return errno
+	pg.job, err = createJobObject()
+	if err != nil {
+		return err
 	}
-	pg.job = syscall.Handle(job)
 
 	pg.ioport, err = syscall.CreateIoCompletionPort(syscall.InvalidHandle, syscall.Handle(0), 0, 1)
 	if err != nil {
@@ -134,43 +62,44 @@ func (pg *winProcessGroup) Start() error {
 	}
 
 	port := jobObjectAssociationCompletionPort{
-		CompletionKey:  job,
+		CompletionKey:  pg.job,
 		CompletionPort: pg.ioport,
 	}
 
-	_, _, errno = syscall.Syscall6(setInformationJobObject, 4, uintptr(pg.job), jobObjectAssociateCompletionPortInformation, uintptr(unsafe.Pointer(&port)), unsafe.Sizeof(port), 0, 0)
-	if errno != 0 {
-		return errno
-	}
-
-	phandle, err := syscall.OpenProcess(processAllAcccess, false, uint32(pg.root.Process.Pid))
+	err = setInformationJobObject(pg.job, jobObjectAssociateCompletionPortInformation, uintptr(unsafe.Pointer(&port)), unsafe.Sizeof(port))
 	if err != nil {
 		return err
 	}
 
-	_, _, errno = syscall.Syscall(assignProcessToJobObject, 2, uintptr(pg.job), uintptr(phandle), 0)
-	if errno != 0 {
-		return errno
+	process, err := syscall.OpenProcess(processAllAccess, false, uint32(pg.root.Process.Pid))
+	if err != nil {
+		return err
 	}
 
-	_, _, errno = syscall.Syscall(ntResumeProcess, 1, uintptr(phandle), 0, 0)
-	if errno != 0 {
-		return errno
+	err = assignProcessToJobObject(pg.job, process)
+	if err != nil {
+		return err
 	}
+
+	err = ntResumeProcess(process)
+	if err != nil {
+		return err
+	}
+
+	syscall.CloseHandle(process)
 
 	return nil
 }
 
 func (pg *winProcessGroup) Kill() error {
+	log.Println("Kill()")
 	if pg.job == 0 {
 		return errors.New("job not started")
 	}
 
-	ret, _, errno := syscall.Syscall(terminateJobObject, 2, uintptr(pg.job), 0, 0)
-	if errno != 0 {
-		return errno
-	} else if ret == 0 {
-		return errors.New("unknown error killing job")
+	err := terminateJobObject(pg.job, 0)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -180,6 +109,7 @@ func (pg *winProcessGroup) Wait() error {
 	var code uint32
 	var key uint32
 	var op *syscall.Overlapped
+
 	for {
 		err := syscall.GetQueuedCompletionStatus(pg.ioport, &code, &key, &op, syscall.INFINITE)
 		if err != nil {
@@ -188,6 +118,20 @@ func (pg *winProcessGroup) Wait() error {
 		if key == uint32(pg.job) && code == jobObjectMsgActiveProcessZero {
 			break
 		}
+	}
+
+	return nil
+}
+
+func (pg *winProcessGroup) Close() error {
+	err := syscall.CloseHandle(pg.job)
+	if err != nil {
+		return err
+	}
+
+	err = syscall.CloseHandle(pg.ioport)
+	if err != nil {
+		return err
 	}
 
 	return nil

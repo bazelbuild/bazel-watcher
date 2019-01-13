@@ -20,6 +20,7 @@ go_library(
         "process_group.go",
         "process_group_unix.go",
         "process_group_windows.go",
+        "syscalls_windows.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/process_group",
     visibility = ["//ibazel:__subpackages__"],

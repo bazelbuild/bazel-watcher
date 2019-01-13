@@ -54,6 +54,7 @@ func (c *notifyCommand) Terminate() {
 	// only goes to the PID not the PGID.
 	c.pg.Kill()
 	c.pg.Wait()
+	c.pg.Close()
 	c.pg = nil
 }
 

@@ -36,5 +36,6 @@ type ProcessGroup interface {
 	Start() error
 	Kill() error
 	Wait() error
+	Close() error
 	CombinedOutput() ([]byte, error)
 }
