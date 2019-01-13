@@ -43,7 +43,7 @@ type Command interface {
 // common.
 func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, process_group.ProcessGroup) {
 	var filePattern strings.Builder
-	filePattern.WriteString("bazel_script_path")
+	filePattern.WriteString("bazel_script_path*")
 	if runtime.GOOS == "windows" {
 		filePattern.WriteString(".bat")
 	}
