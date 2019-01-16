@@ -17,7 +17,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    commit = "15273d8b0d01ce040800d172dbde3a88509d0c3d",
+    commit = "57db374bec74b684e85c5aecde0bf3a26ae27aa7",
     remote = "https://github.com/bazelbuild/bazel-integration-testing",
 )
 
