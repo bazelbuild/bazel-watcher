@@ -34,6 +34,8 @@ go_library(
         "ibazel.go",
         "lifecycle.go",
         "main.go",
+        "main_unix.go",
+        "main_windows.go",
         "source_event_handler.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",

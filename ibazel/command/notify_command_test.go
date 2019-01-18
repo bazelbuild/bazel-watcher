@@ -16,31 +16,29 @@ package command
 
 import (
 	"errors"
-	"os/exec"
-	"syscall"
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
+	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 func TestNotifyCommand(t *testing.T) {
-	cmd := exec.Command("cat")
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	pg := process_group.Command("cat")
 
 	c := &notifyCommand{
 		args:      []string{"moo"},
 		bazelArgs: []string{},
-		cmd:       cmd,
+		pg:        pg,
 		target:    "//path/to:target",
 	}
 
 	if c.IsSubprocessRunning() {
-		t.Errorf("New subprocess shouldn't have been started yet. State: %v", cmd.ProcessState)
+		t.Errorf("New subprocess shouldn't have been started yet. State: %v", pg.RootProcess().ProcessState)
 	}
 
 	var err error
-	c.stdin, err = cmd.StdinPipe()
+	c.stdin, err = pg.RootProcess().StdinPipe()
 	if err != nil {
 		t.Error(err)
 	}
@@ -74,7 +72,7 @@ func TestNotifyCommand(t *testing.T) {
 		t.Error(err)
 	}
 
-	out, err := cmd.CombinedOutput()
+	out, err := pg.CombinedOutput()
 	if err != nil {
 		t.Error(err)
 	}

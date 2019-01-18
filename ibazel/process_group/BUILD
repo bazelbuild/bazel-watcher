@@ -1,4 +1,4 @@
-# Copyright 2017 The Bazel Authors. All rights reserved.
+# Copyright 2018 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,31 +17,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "command.go",
-        "default_command.go",
-        "notify_command.go",
+        "process_group.go",
+        "process_group_unix.go",
+        "process_group_windows.go",
+        "syscalls_windows.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/process_group",
     visibility = ["//ibazel:__subpackages__"],
     deps = [
-        "//bazel:go_default_library",
-        "//ibazel/process_group:go_default_library",
-    ],
-)
-
-go_test(
-    name = "go_default_test",
-    size = "small",
-    srcs = [
-        "command_test.go",
-        "default_command_test.go",
-        "notify_command_test.go",
-    ],
-    embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/command",
-    deps = [
-        "//bazel:go_default_library",
-        "//bazel/testing:go_default_library",
-        "//ibazel/process_group:go_default_library",
+        "//ibazel/workspace_finder:go_default_library",
     ],
 )

@@ -22,12 +22,13 @@ func GetPath(p string) string {
 	return path
 }
 
-var ibazelPath string
+var ibazelPath = getiBazelPath()
 
-func init() {
-	var err error
-	ibazelPath = GetPath(fmt.Sprintf("ibazel/%s_%s_pure_stripped/ibazel", runtime.GOOS, runtime.GOARCH))
-	if err != nil {
-		panic(err)
+func getiBazelPath() string {
+	suffix := ""
+	// Windows expects executables to end in .exe
+	if runtime.GOOS == "windows" {
+		suffix = ".exe"
 	}
+	return GetPath(fmt.Sprintf("ibazel/%s_%s_pure_stripped/ibazel%s", runtime.GOOS, runtime.GOARCH, suffix))
 }

@@ -18,15 +18,15 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
-	"syscall"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 type defaultCommand struct {
 	target    string
 	bazelArgs []string
 	args      []string
-	cmd       *exec.Cmd
+	pg        process_group.ProcessGroup
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
@@ -41,7 +41,7 @@ func DefaultCommand(bazelArgs []string, target string, args []string) Command {
 }
 
 func (c *defaultCommand) Terminate() {
-	if !subprocessRunning(c.cmd) {
+	if c.pg != nil && !subprocessRunning(c.pg.RootProcess()) {
 		return
 	}
 
@@ -50,9 +50,10 @@ func (c *defaultCommand) Terminate() {
 	// send to the PGID, send the signal to the negative of the process PID.
 	// Normally I would do this by calling c.cmd.Process.Signal, but that
 	// only goes to the PID not the PGID.
-	syscall.Kill(-c.cmd.Process.Pid, syscall.SIGKILL)
-	c.cmd.Wait()
-	c.cmd = nil
+	c.pg.Kill()
+	c.pg.Wait()
+	c.pg.Close()
+	c.pg = nil
 }
 
 func (c *defaultCommand) Start() (*bytes.Buffer, error) {
@@ -63,12 +64,12 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 	b.WriteToStdout(true)
 
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.cmd = start(b, c.target, c.args)
+	outputBuffer, c.pg = start(b, c.target, c.args)
 
-	c.cmd.Env = os.Environ()
+	c.pg.RootProcess().Env = os.Environ()
 
 	var err error
-	if err = c.cmd.Start(); err != nil {
+	if err = c.pg.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
 		return outputBuffer, err
 	}
@@ -83,5 +84,5 @@ func (c *defaultCommand) NotifyOfChanges() *bytes.Buffer {
 }
 
 func (c *defaultCommand) IsSubprocessRunning() bool {
-	return subprocessRunning(c.cmd)
+	return c.pg != nil && subprocessRunning(c.pg.RootProcess())
 }

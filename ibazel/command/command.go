@@ -22,12 +22,12 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"syscall"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
+	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
-var execCommand = exec.Command
+var execCommand = process_group.Command
 var bazelNew = bazel.New
 
 // Command is an object that wraps the logic of running a task in Bazel and
@@ -41,9 +41,9 @@ type Command interface {
 
 // start will be called by most implementations since this logic is extremely
 // common.
-func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cmd) {
+func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, process_group.ProcessGroup) {
 	var filePattern strings.Builder
-	filePattern.WriteString("bazel_script_path")
+	filePattern.WriteString("bazel_script_path*")
 	if runtime.GOOS == "windows" {
 		filePattern.WriteString(".bat")
 	}
@@ -65,11 +65,8 @@ func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, *exec.Cm
 	// Now that we have built the target, construct a executable form of it for
 	// execution in a go routine.
 	cmd := execCommand(runScriptPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	// Set a process group id (PGID) on the subprocess. This is
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.RootProcess().Stdout = os.Stdout
+	cmd.RootProcess().Stderr = os.Stderr
 
 	return outputBuffer, cmd
 }

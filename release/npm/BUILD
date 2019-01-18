@@ -22,6 +22,9 @@ genrule(
     outs = ["package.json"],
     cmd = "$(location :npm) $(location //:CONTRIBUTORS) > $@",
     stamp = 1,
+    tags = [
+        "nowindows",
+    ],
     tools = [
         ":npm",
     ],

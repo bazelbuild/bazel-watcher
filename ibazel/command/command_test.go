@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
+	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 var oldExecCommand = execCommand
@@ -36,7 +37,7 @@ func assertKilled(t *testing.T, cmd *exec.Cmd) {
 }
 
 func TestSubprocessRunning(t *testing.T) {
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(name string, args ...string) process_group.ProcessGroup {
 		return oldExecCommand("ls") // Every system has ls.
 	}
 	defer func() { execCommand = oldExecCommand }()

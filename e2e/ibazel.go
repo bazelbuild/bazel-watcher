@@ -158,10 +158,7 @@ func (i *IBazelTester) build(target string, additionalArgs []string) {
 }
 
 func (i *IBazelTester) run(target string, additionalArgs []string) {
-	args := []string{
-		"--bazel_path=" + i.bazelPath(),
-		"--log_to_file=/tmp/ibazel_output.log",
-	}
+	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
 	args = append(args, target)
