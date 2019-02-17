@@ -1,5 +1,27 @@
 # Change Log
 
+## [v0.9.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.9.1) (2019-02-17)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.9.0...v0.9.1)
+
+**Closed issues:**
+
+- iBazel should tell tell Bazel what files changed [\#201](https://github.com/bazelbuild/bazel-watcher/issues/201)
+
+**Merged pull requests:**
+
+- Add --test\_filter flag to ibazel [\#216](https://github.com/bazelbuild/bazel-watcher/pull/216) ([achew22](https://github.com/achew22))
+- Upgrade to rules\_go 0.17.0 [\#215](https://github.com/bazelbuild/bazel-watcher/pull/215) ([achew22](https://github.com/achew22))
+- Update dependency bazel\_skylib to v0.7.0 [\#214](https://github.com/bazelbuild/bazel-watcher/pull/214) ([renovate[bot]](https://github.com/apps/renovate))
+- Create CODEOWNERS [\#212](https://github.com/bazelbuild/bazel-watcher/pull/212) ([dslomov](https://github.com/dslomov))
+- Update org\_golang\_x\_sys commit hash to d0b11bd [\#210](https://github.com/bazelbuild/bazel-watcher/pull/210) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency bazel\_skylib to v0.6.0 [\#209](https://github.com/bazelbuild/bazel-watcher/pull/209) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency io\_bazel\_rules\_go to v0.16.6 [\#208](https://github.com/bazelbuild/bazel-watcher/pull/208) ([renovate[bot]](https://github.com/apps/renovate))
+- Update bazel\_integration\_testing [\#204](https://github.com/bazelbuild/bazel-watcher/pull/204) ([meteorcloudy](https://github.com/meteorcloudy))
+- Update dependency bazel\_gazelle to v0.16.0 [\#203](https://github.com/bazelbuild/bazel-watcher/pull/203) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency io\_bazel\_rules\_go to v0.16.5 [\#202](https://github.com/bazelbuild/bazel-watcher/pull/202) ([renovate[bot]](https://github.com/apps/renovate))
+- Update org\_golang\_x\_sys commit hash to b907332 [\#199](https://github.com/bazelbuild/bazel-watcher/pull/199) ([renovate[bot]](https://github.com/apps/renovate))
+- Add Windows support [\#144](https://github.com/bazelbuild/bazel-watcher/pull/144) ([jchv](https://github.com/jchv))
+
 ## [v0.9.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.9.0) (2018-12-07)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.8.2...v0.9.0)
 
