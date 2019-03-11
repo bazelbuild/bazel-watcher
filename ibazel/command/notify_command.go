@@ -81,7 +81,7 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
 		return outputBuffer, err
 	}
-	fmt.Fprintf(os.Stderr, "Starting...")
+	fmt.Fprintf(os.Stderr, "Starting...\n")
 	return outputBuffer, nil
 }
 
