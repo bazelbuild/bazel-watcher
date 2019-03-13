@@ -8,7 +8,6 @@ bazel_go_integration_test(
         "//ibazel",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/e2e/output_runner",
-    tags = ["nowindows"],
     versions = GET_LATEST_BAZEL_VERSIONS(),
     deps = [
         "//e2e:go_default_library",

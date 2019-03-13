@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
+	"strings"
 	"testing"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
@@ -51,7 +52,7 @@ func TestOutputRunner(t *testing.T) {
 	"command": "touch",
 	"args": ["%s"]
 }]
-`, sentinelFile.Name())))
+`, strings.Replace(sentinelFile.Name(), "\\", "/", -1))))
 	must(t, b.ScratchFile("WORKSPACE", ""))
 	must(t, b.ScratchFileWithMode("test.sh", `printf "action"`, 0777))
 	must(t, b.ScratchFile("defs.bzl", `
