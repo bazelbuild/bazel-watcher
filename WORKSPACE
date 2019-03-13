@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-git_repository(
+http_archive(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    commit = "c0a04233201e5b26180c94e4be61c460bf0328e5",
-    remote = "https://github.com/bazelbuild/bazel-integration-testing",
+    sha256 = "d801cff1c9c4e2f0a32b68272d947a7264b36e67ed703f2a08c5efaea0a931ab",
+    strip_prefix = "bazel-integration-testing-19d678ab0798ce1ed5369c62fd494e6e2e3b8112",
+    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/19d678ab0798ce1ed5369c62fd494e6e2e3b8112.tar.gz",  # 2018-12-10
 )
 
 load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
