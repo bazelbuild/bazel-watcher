@@ -1,5 +1,39 @@
 # Change Log
 
+## [v0.10.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.0) (2019-03-17)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.9.1...v0.10.0)
+
+**Closed issues:**
+
+- Bazel incompatible changes [\#224](https://github.com/bazelbuild/bazel-watcher/issues/224)
+- Get all tests passing with --incompatible\_disable\_legacy\_cc\_provider for Bazel 0.25.0 [\#223](https://github.com/bazelbuild/bazel-watcher/issues/223)
+- Fix the e2e tests in Windows [\#213](https://github.com/bazelbuild/bazel-watcher/issues/213)
+- Bazel incompatible changes [\#207](https://github.com/bazelbuild/bazel-watcher/issues/207)
+- ibazel 0.9.0 release assets [\#205](https://github.com/bazelbuild/bazel-watcher/issues/205)
+- Add support for http\_archive [\#127](https://github.com/bazelbuild/bazel-watcher/issues/127)
+- data race in ibazel [\#52](https://github.com/bazelbuild/bazel-watcher/issues/52)
+
+**Merged pull requests:**
+
+- Release Windows to Github [\#239](https://github.com/bazelbuild/bazel-watcher/pull/239) ([achew22](https://github.com/achew22))
+- Release windows binaries in release scripts [\#238](https://github.com/bazelbuild/bazel-watcher/pull/238) ([achew22](https://github.com/achew22))
+- Upgrade to checked in version of bazel integration [\#237](https://github.com/bazelbuild/bazel-watcher/pull/237) ([achew22](https://github.com/achew22))
+- Update dependency io\_bazel\_rules\_go to v0.18.1 [\#234](https://github.com/bazelbuild/bazel-watcher/pull/234) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_golang\_protobuf to v1.3.1 [\#233](https://github.com/bazelbuild/bazel-watcher/pull/233) ([renovate-bot](https://github.com/renovate-bot))
+- Enable e2e tests on Windows [\#232](https://github.com/bazelbuild/bazel-watcher/pull/232) ([meteorcloudy](https://github.com/meteorcloudy))
+- Added newline to 'Starting...' text [\#231](https://github.com/bazelbuild/bazel-watcher/pull/231) ([zaucy](https://github.com/zaucy))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to c0a0423 [\#230](https://github.com/bazelbuild/bazel-watcher/pull/230) ([renovate-bot](https://github.com/renovate-bot))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 5442699 [\#229](https://github.com/bazelbuild/bazel-watcher/pull/229) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency io\_bazel\_rules\_go to v0.18.0 [\#228](https://github.com/bazelbuild/bazel-watcher/pull/228) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_golang\_protobuf to v1.3.0 [\#227](https://github.com/bazelbuild/bazel-watcher/pull/227) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_gazelle to v0.17.0 [\#226](https://github.com/bazelbuild/bazel-watcher/pull/226) ([renovate-bot](https://github.com/renovate-bot))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 9af28bd [\#225](https://github.com/bazelbuild/bazel-watcher/pull/225) ([renovate-bot](https://github.com/renovate-bot))
+- Delete .travis.yml [\#222](https://github.com/bazelbuild/bazel-watcher/pull/222) ([achew22](https://github.com/achew22))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 2cc1cd2 [\#221](https://github.com/bazelbuild/bazel-watcher/pull/221) ([renovate-bot](https://github.com/renovate-bot))
+- Upgrade bazel-integration-testing [\#220](https://github.com/bazelbuild/bazel-watcher/pull/220) ([achew22](https://github.com/achew22))
+- Update org\_golang\_x\_sys commit hash to cc5685c [\#219](https://github.com/bazelbuild/bazel-watcher/pull/219) ([renovate[bot]](https://github.com/apps/renovate))
+- Update org\_golang\_x\_sys commit hash to ec7b60b [\#218](https://github.com/bazelbuild/bazel-watcher/pull/218) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [v0.9.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.9.1) (2019-02-17)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.9.0...v0.9.1)
 
