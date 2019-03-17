@@ -23,13 +23,18 @@ const spawn = require('child_process').spawn;
 
 function main(args) {
   const arch = {
-    'x64': 'amd64',
+    'x64' : 'amd64',
   }[os.arch()];
   // Filter the platform based on the platforms that are build/included.
   const platform = {
-    'darwin': 'darwin',
-    'linux': 'linux',
-    'windows': 'windows',
+    'darwin' : 'darwin',
+    'linux' : 'linux',
+    'windows' : 'windows',
+  }[os.platform()];
+  const extension = {
+    'darwin' : '',
+    'linux' : '',
+    'windows' : '.exe',
   }[os.platform()];
 
   if (arch == undefined || platform == undefined) {
@@ -47,10 +52,13 @@ function main(args) {
 
   // Walk up the cwd, looking for a local ibazel installation
   for (var i = dirs.length; i > 0; i--) {
-    var attemptedBasePath = [...dirs.slice(0, i), 'node_modules', '@bazel', 'ibazel'].join(path.sep);
+    var attemptedBasePath =
+        [...dirs.slice(0, i), 'node_modules', '@bazel', 'ibazel' ].join(
+            path.sep);
 
     // If we find a local installation, use that one instead
-    if (fs.existsSync(path.join(attemptedBasePath, 'bin', `${platform}_${arch}`, 'ibazel'))) {
+    if (fs.existsSync(path.join(attemptedBasePath, 'bin', `${platform}_${arch}`,
+                                'ibazel' + extension))) {
       basePath = attemptedBasePath;
       foundLocalInstallation = true;
       break;
@@ -64,8 +72,9 @@ function main(args) {
         Using the globally installed version at ${__dirname}`);
   }
 
-  const binary = path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel');
-  const ibazel = spawn(binary, args, {stdio: 'inherit'});
+  const binary =
+      path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel' + extension);
+  const ibazel = spawn(binary, args, {stdio : 'inherit'});
 
   function shutdown() {
     ibazel.kill("SIGTERM")
