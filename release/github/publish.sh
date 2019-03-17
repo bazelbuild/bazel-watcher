@@ -55,8 +55,8 @@ compile() {
 # Now compiler ibazel for every platform/arch that is supported.
 compile "linux"   "amd64"
 compile "darwin"  "amd64"
-# Windows isn't compatable due to the os.Setpgid call.
-#compile "windows" "amd64"
+compile "windows" "amd64"
+
 echo "Build successful."
 
 readonly GHR_BINARY="$(mktemp /tmp/ghr.XXXXXX)"
