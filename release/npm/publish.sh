@@ -35,15 +35,16 @@ compile() {
   export GOARCH=$1; shift
 
   mkdir -p "${STAGING}/bin/${GOOS}_${GOARCH}/"
-  DESTINATION="${STAGING}/bin/${GOOS}_${GOARCH}/ibazel"
+  EXTENSION=""
   if [[ "${GOOS}" == "windows" ]]; then
-    DESTINATION="${DESTINATION}.exe"
+    EXTENSION=".exe"
   fi
+  DESTINATION="${STAGING}/bin/${GOOS}_${GOARCH}/ibazel${EXTENSION}"
   bazel build \
     --config=release \
     "--experimental_platforms=@io_bazel_rules_go//go/toolchain:${GOOS}_${GOARCH}" \
     "//ibazel:ibazel"
-  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel"
+  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel${EXTENSION}"
   cp "${SOURCE}" "${DESTINATION}"
 
   # Sometimes bazel likes to change the ouput directory for binaries
@@ -66,4 +67,4 @@ echo -n "Publishing ${STAGING} to NPM as "
 grep "version" < "${STAGING}/package.json"
 
 # Everything is staged now, actually upload the package.
-cd "$STAGING" && npm publish
+cd "$STAGING" && find . && npm publish

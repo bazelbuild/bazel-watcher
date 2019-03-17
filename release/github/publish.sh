@@ -32,15 +32,16 @@ compile() {
   export GOOS=$1; shift
   export GOARCH=$1; shift
 
-  DESTINATION="${STAGING}/ibazel_${GOOS}_${GOARCH}"
+  EXTENSION=""
   if [[ "${GOOS}" == "windows" ]]; then
-    DESTINATION="${DESTINATION}.exe"
+    EXTENSION=".exe"
   fi
+  DESTINATION="${STAGING}/ibazel_${GOOS}_${GOARCH}${EXTENSION}"
   bazel build \
     --config=release \
     "--experimental_platforms=@io_bazel_rules_go//go/toolchain:${GOOS}_${GOARCH}" \
     "//ibazel:ibazel"
-  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel"
+  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel${EXTENSION}"
   cp "${SOURCE}" "${DESTINATION}"
 
   # Sometimes bazel likes to change the ouput directory for binaries
@@ -62,4 +63,6 @@ echo "Build successful."
 readonly GHR_BINARY="$(mktemp /tmp/ghr.XXXXXX)"
 go get -u github.com/tcnksm/ghr
 go build -o "${GHR_BINARY}" github.com/tcnksm/ghr
+echo -n "Publishing ${STAGING} to GitHub as ${TAG}"
 "${GHR_BINARY}" -t "${CHANGELOG_GITHUB_TOKEN}" "${TAG}" "${STAGING}"
+find "${STAGING}"
