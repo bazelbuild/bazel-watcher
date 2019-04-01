@@ -30,6 +30,7 @@ var overrideableBazelFlags []string = []string{
 	"--curses=no",
 	"--output_groups=",
 	"--keep_going",
+	"--define",
 	"-k",
 	"--strategy",
 	"--define",
