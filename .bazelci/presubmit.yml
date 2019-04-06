@@ -1,6 +1,6 @@
 ---
 platforms:
-  ubuntu1404:
+  ubuntu1804:
     build_flags:
     - "--build_tag_filters=-nolinux"
     build_targets:
