@@ -21,7 +21,7 @@ const os = require('os');
 const path = require('path');
 const spawn = require('child_process').spawn;
 
-function main(args) {
+function getNativeBinary() {
   const arch = {
     'x64' : 'amd64',
   }[os.arch()];
@@ -74,6 +74,11 @@ function main(args) {
 
   const binary =
       path.join(basePath, 'bin', `${platform}_${arch}`, 'ibazel' + extension);
+  return binary;
+}
+
+function main(args) {
+  const binary = getNativeBinary();
   const ibazel = spawn(binary, args, {stdio : 'inherit'});
 
   function shutdown() {
@@ -90,3 +95,7 @@ function main(args) {
 if (require.main === module) {
   main(process.argv.slice(2));
 }
+
+module.exports = {
+  getNativeBinary,
+};
