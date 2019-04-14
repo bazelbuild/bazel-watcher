@@ -1,3 +1,13 @@
+java_library(
+    name = "EphemeralPort",
+    srcs = [
+        "EphemeralPort.java",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
 java_binary(
     name = "brs",
     srcs = [
