@@ -1,7 +1,10 @@
 def _serve(ctx):
     # Write a script to invoke the server at bazel run time.
     ctx.actions.write(
-        content = ctx.executable._server.short_path,
+        # The $@ propagates flags passed to this executable (ctx.outputs.executable) to the
+        # underlying one (ctx.executable._server). This allows the integration test runner to invoke
+        # this executable with a --port flag.
+        content = '%s "$@"' % ctx.executable._server.short_path,
         output = ctx.outputs.executable,
     )
 
