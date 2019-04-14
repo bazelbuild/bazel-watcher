@@ -9,10 +9,13 @@ import com.beust.jcommander.Parameter;
 import com.google.common.flogger.FluentLogger;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,6 +30,13 @@ public final class RunfilesServer {
       names = "--port",
       description = "port to listen on. If not given, an ephemeral port will be chosen")
   private int port;
+
+  @Parameter(
+      names = "--index",
+      description =
+          "page to visit in the system's default browser when the server is up. If not given, the "
+              + "browser will not be launched.")
+  private String indexToOpen;
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
   private static final MimetypesFileTypeMap FILE_TYPE_MAP;
@@ -44,7 +54,7 @@ public final class RunfilesServer {
 
   private RunfilesServer() {}
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, URISyntaxException {
     RunfilesServer me = new RunfilesServer();
     JCommander.newBuilder().addObject(me).build().parse(args);
     int port = me.port == 0 ? EphemeralPort.get() : me.port;
@@ -53,7 +63,14 @@ public final class RunfilesServer {
     server.createContext("/", RunfilesServer::handle);
     server.start();
     logger.atInfo().log("listening on port %d", port);
+    // Print a line to stdout. IntegrationTestRunner uses this for synchronization (it won't run the
+    // test binary until the system under test prints a line to stdout). For other uses, this is
+    // harmless.
     System.out.println("ok");
+    if (me.indexToOpen != null) {
+      Desktop.getDesktop()
+          .browse(new URI(String.format("http://localhost:%d/%s", port, me.indexToOpen)));
+    }
   }
 
   private static void handle(HttpExchange httpExchange) throws IOException {

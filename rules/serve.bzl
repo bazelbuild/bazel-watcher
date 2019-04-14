@@ -4,15 +4,25 @@ def _serve(ctx):
         # The $@ propagates flags passed to this executable (ctx.outputs.executable) to the
         # underlying one (ctx.executable._server). This allows the integration test runner to invoke
         # this executable with a --port flag.
-        content = '%s "$@"' % ctx.executable._server.short_path,
+        content = '%s %s "$@"' % (
+            ctx.executable._server.short_path,
+            "--index " + ctx.file.index.short_path if ctx.attr.index else "",
+        ),
         output = ctx.outputs.executable,
     )
+
+    transitive_runfiles = [ctx.attr._server[DefaultInfo].default_runfiles.files]
+    if ctx.attr.index:
+        transitive_runfiles.append(ctx.attr.index[DefaultInfo].files)
 
     return [
         # Make the data files available at runtime.
         DefaultInfo(
-            runfiles = ctx.attr._server[DefaultInfo].default_runfiles.merge(
-                ctx.runfiles(collect_default = True),
+            runfiles = ctx.runfiles(
+                collect_default = True,
+                transitive_files = depset(
+                    transitive = transitive_runfiles,
+                ),
             ),
         ),
     ]
@@ -23,6 +33,9 @@ serve = rule(
     attrs = {
         "data": attr.label_list(
             allow_files = True,
+        ),
+        "index": attr.label(
+            allow_single_file = True,
         ),
         "_server": attr.label(
             default = "//brs",
