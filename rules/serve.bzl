@@ -1,7 +1,7 @@
 def _serve(ctx):
     # Write a script to invoke the server at bazel run time.
     ctx.actions.write(
-        content = "%s --port 9999" % ctx.executable._server.short_path,
+        content = ctx.executable._server.short_path,
         output = ctx.outputs.executable,
     )
 

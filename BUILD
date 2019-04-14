@@ -24,6 +24,7 @@ java_binary(
         "@flogger//google:flogger",
     ],
     deps = [
+        ":EphemeralPort",
         "@com_google_guava_guava//jar",
         "@flogger//api",
         "@javax_activation//jar",
