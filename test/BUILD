@@ -1,6 +1,7 @@
 load("//brs/rules:serve.bzl", "serve")
 load("//brs/rules:integration_test.bzl", "integration_test")
 
+# First, define a server that serves from the source tree directly.
 serve(
     name = "simple",
     data = [
@@ -18,9 +19,32 @@ sh_binary(
     ],
 )
 
+# This test ensures that hello.txt is the same whether read directly from runfiles or indirectly via
+# the server.
 integration_test(
     name = "simple_test",
     system_under_test = ":simple",
+    test_binary = ":simple_test_binary",
+)
+
+# Now define a server that serves via a filegroup. It should have the same behavior as :simple.
+filegroup(
+    name = "filegroup",
+    srcs = [
+        "hello.txt",
+    ],
+)
+
+serve(
+    name = "simple_filegroup",
+    data = [
+        ":filegroup",
+    ],
+)
+
+integration_test(
+    name = "simple_filegroup_test",
+    system_under_test = ":simple_filegroup",
     test_binary = ":simple_test_binary",
 )
 
