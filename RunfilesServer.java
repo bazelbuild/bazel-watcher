@@ -6,7 +6,6 @@ import static java.net.HttpURLConnection.HTTP_OK;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import com.google.common.base.Preconditions;
 import com.google.common.flogger.FluentLogger;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -15,8 +14,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import javax.activation.MimetypesFileTypeMap;
+import javax.annotation.Nullable;
 
 /** Simple web server that serves files directly out of the bazel runfiles tree. */
 public final class RunfilesServer {
@@ -28,6 +30,7 @@ public final class RunfilesServer {
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
   private static final MimetypesFileTypeMap FILE_TYPE_MAP;
+  private static final Path CWD = Paths.get("").toAbsolutePath();
 
   static {
     try {
@@ -55,11 +58,9 @@ public final class RunfilesServer {
 
   private static void handle(HttpExchange httpExchange) throws IOException {
     String path = httpExchange.getRequestURI().toString();
-    Preconditions.checkState(path.startsWith("/"));
-    String runfilesPath = path.substring(1);
-    File runfile = new File(runfilesPath);
+    @Nullable File runfile = resolve(path);
     int status;
-    if (!runfile.exists()) {
+    if (runfile == null || !runfile.exists()) {
       httpExchange.sendResponseHeaders(status = HTTP_NOT_FOUND, 0);
       httpExchange.getResponseBody().close();
     } else {
@@ -70,5 +71,23 @@ public final class RunfilesServer {
       }
     }
     logger.atInfo().log("%d %s", status, path);
+  }
+
+  @Nullable
+  private static File resolve(String path) {
+    // Paths derived by a user agent from a url should be absolute. Guard against handcrafted paths.
+    if (!path.startsWith("/")) {
+      return null;
+    }
+    // Don't allow path traversal. Based on https://stackoverflow.com/a/33084369.
+    Path untrusted = Paths.get(path.substring(1));
+    if (untrusted.isAbsolute()) {
+      return null;
+    }
+    Path resolved = CWD.resolve(untrusted).normalize();
+    if (!resolved.startsWith(CWD)) {
+      return null;
+    }
+    return resolved.toFile();
   }
 }

@@ -47,7 +47,18 @@ sh_binary(
 )
 
 integration_test(
-    name = "path_traversal_test",
+    name = "path_traversal_test_sandboxed",
+    system_under_test = ":simple",
+    test_binary = ":path_traversal_test_binary",
+)
+
+# Even if the devserver allowed path traversal, bazel test :path_traversal_test_sandbox would pass
+# due to bazel test sandboxing. Explicitly rerun the test unsandboxed. (Since the serve() rule is
+# designed to be used with bazel run, this test is documentation for its behavior with respect to
+# path traversal.)
+integration_test(
+    name = "path_traversal_test_local",
+    local = True,
     system_under_test = ":simple",
     test_binary = ":path_traversal_test_binary",
 )

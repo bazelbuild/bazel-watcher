@@ -25,6 +25,7 @@ java_binary(
     ],
     deps = [
         ":EphemeralPort",
+        "@com_google_code_findbugs_jsr305//jar",
         "@com_google_guava_guava//jar",
         "@flogger//api",
         "@javax_activation//jar",
