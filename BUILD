@@ -31,3 +31,24 @@ java_binary(
         "@jcommander//jar",
     ],
 )
+
+java_binary(
+    name = "IntegrationTestRunner",
+    testonly = True,
+    srcs = [
+        "IntegrationTestRunner.java",
+    ],
+    main_class = "brs.IntegrationTestRunner",
+    visibility = [
+        "//visibility:public",
+    ],
+    runtime_deps = [
+        "@flogger//google:flogger",
+    ],
+    deps = [
+        ":EphemeralPort",
+        "@com_google_guava_guava//jar",
+        "@flogger//api",
+        "@jcommander//jar",
+    ],
+)
