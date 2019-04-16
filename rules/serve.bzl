@@ -1,4 +1,4 @@
-def _serve(ctx):
+def _serve_impl(ctx):
     # Write a script to invoke the server at bazel run time.
     ctx.actions.write(
         # The $@ propagates flags passed to this executable (ctx.outputs.executable) to the
@@ -27,8 +27,8 @@ def _serve(ctx):
         ),
     ]
 
-serve = rule(
-    implementation = _serve,
+_serve = rule(
+    implementation = _serve_impl,
     executable = True,
     attrs = {
         "data": attr.label_list(
@@ -44,3 +44,15 @@ serve = rule(
         ),
     },
 )
+
+def serve(name, data = None, index = None):
+    """Macro wrapper for _serve, to propagate tags needed for livereload."""
+    _serve(
+        name = name,
+        data = data or [],
+        index = index,
+        tags = [
+            "ibazel_live_reload",
+            "ibazel_notify_changes",
+        ],
+    )
