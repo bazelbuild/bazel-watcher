@@ -39,6 +39,15 @@ public final class RunfilesServer {
               + "browser will not be launched.")
   private String indexToOpen;
 
+  @Parameter(
+      names = "--nobrowser",
+      description =
+          "Disables opening the browser."
+              + "The default behavior of RunfilesServer is to open a browser to the page given by --index. "
+              + "Pass --nobrowser if this behavior is not appropriate. "
+              + "Example: bazel run //some_serve_target -- --nobrowser")
+  private boolean disableBrowser;
+
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
   private static final MimetypesFileTypeMap FILE_TYPE_MAP;
   private static final Path CWD = Paths.get("").toAbsolutePath();
@@ -79,10 +88,14 @@ public final class RunfilesServer {
     // test binary until the system under test prints a line to stdout). For other uses, this is
     // harmless.
     System.out.println("ok");
-    if (me.indexToOpen != null) {
+    if (me.shouldOpenBrowser()) {
       Desktop.getDesktop()
           .browse(new URI(String.format("http://localhost:%d/%s", port, me.indexToOpen)));
     }
+  }
+
+  private boolean shouldOpenBrowser() {
+    return indexToOpen != null && !disableBrowser;
   }
 
   private static void handle(HttpExchange httpExchange) throws IOException {
