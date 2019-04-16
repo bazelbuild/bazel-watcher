@@ -3,6 +3,7 @@ package brs;
 import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_OK;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -41,6 +42,17 @@ public final class RunfilesServer {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
   private static final MimetypesFileTypeMap FILE_TYPE_MAP;
   private static final Path CWD = Paths.get("").toAbsolutePath();
+  @Nullable private static final byte[] LIVERELOAD_SNIPPET;
+
+  static {
+    // If the this server is being run under ibazel as part of a target that has the tag
+    // `ibazel_live_reload`, ibazel will set the IBAZEL_LIVERELOAD_URL environment variable.
+    String livereloadUrl = System.getenv("IBAZEL_LIVERELOAD_URL");
+    LIVERELOAD_SNIPPET =
+        livereloadUrl == null
+            ? null
+            : String.format("<script src=\"%s\"></script>", livereloadUrl).getBytes(UTF_8);
+  }
 
   static {
     try {
@@ -81,13 +93,29 @@ public final class RunfilesServer {
       httpExchange.sendResponseHeaders(status = HTTP_NOT_FOUND, 0);
       httpExchange.getResponseBody().close();
     } else {
-      httpExchange.getResponseHeaders().add(CONTENT_TYPE, FILE_TYPE_MAP.getContentType(runfile));
-      httpExchange.sendResponseHeaders(status = HTTP_OK, runfile.length());
-      try (OutputStream out = httpExchange.getResponseBody()) {
-        Files.copy(runfile.toPath(), out);
-      }
+      status = sendFile(httpExchange, runfile);
     }
     logger.atInfo().log("%d %s", status, path);
+  }
+
+  private static int sendFile(HttpExchange httpExchange, File file) throws IOException {
+    int status = HTTP_OK;
+    httpExchange.getResponseHeaders().add(CONTENT_TYPE, FILE_TYPE_MAP.getContentType(file));
+
+    long length = file.length();
+    boolean shouldInjectLiveReloadSnippet =
+        LIVERELOAD_SNIPPET != null && file.getPath().endsWith(".html");
+    if (shouldInjectLiveReloadSnippet) {
+      length += LIVERELOAD_SNIPPET.length;
+    }
+    httpExchange.sendResponseHeaders(status, length);
+    try (OutputStream out = httpExchange.getResponseBody()) {
+      Files.copy(file.toPath(), out);
+      if (shouldInjectLiveReloadSnippet) {
+        out.write(LIVERELOAD_SNIPPET);
+      }
+    }
+    return status;
   }
 
   @Nullable
