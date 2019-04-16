@@ -96,7 +96,13 @@ public final class RunfilesServer {
     if (!path.startsWith("/")) {
       return null;
     }
-    // Don't allow path traversal. Based on https://stackoverflow.com/a/33084369.
+    // Don't allow traversing out of the runfiles. Based on https://stackoverflow.com/a/33084369.
+    // IMPORTANT: RunfilesServer is designed for local development (and it is not clear how it would
+    // be used in production, since the concept of runfiles and bazel itself should not exist
+    // there). This check helps developers avoid accidentally serving files in a nonhermetic way;
+    // it may be not enough to guard against malicious path-traversal attacks
+    // (see https://en.wikipedia.org/wiki/Directory_traversal_attack). In particular, it does not
+    // use a chroot.
     Path untrusted = Paths.get(path.substring(1));
     if (untrusted.isAbsolute()) {
       return null;
