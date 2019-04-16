@@ -113,7 +113,12 @@ public final class RunfilesServer {
 
   private static int sendFile(HttpExchange httpExchange, File file) throws IOException {
     int status = HTTP_OK;
-    httpExchange.getResponseHeaders().add(CONTENT_TYPE, FILE_TYPE_MAP.getContentType(file));
+    String contentType = FILE_TYPE_MAP.getContentType(file);
+    // TODO: consider not hardcoding this.
+    if (contentType.startsWith("text/")) {
+      contentType = contentType + "; charset=utf-8";
+    }
+    httpExchange.getResponseHeaders().add(CONTENT_TYPE, contentType);
 
     long length = file.length();
     boolean shouldInjectLiveReloadSnippet =
