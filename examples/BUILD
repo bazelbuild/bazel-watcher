@@ -2,8 +2,14 @@ load("//brs/examples/tex:katex.bzl", "katex")
 load("//brs/rules:serve.bzl", "serve")
 load("@bazel_pandoc//:pandoc.bzl", "pandoc")
 
+# HTML/CSS/JS livereload example. For simplicity, the files served come directly from the source
+# tree, but they could also be outputs of other genrules or rules.
 serve(
     name = "simple",
+    data = [
+        "simple.css",
+        "simple.js",
+    ],
     index = "simple.html",
 )
 
