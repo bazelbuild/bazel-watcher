@@ -1,5 +1,22 @@
 # Change Log
 
+## [v0.10.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.1) (2019-04-17)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.0...v0.10.1)
+
+**Closed issues:**
+
+- --define flag not passed on properly [\#242](https://github.com/bazelbuild/bazel-watcher/issues/242)
+
+**Merged pull requests:**
+
+- Update dependency io\_bazel\_rules\_go to v0.18.3 [\#250](https://github.com/bazelbuild/bazel-watcher/pull/250) ([renovate-bot](https://github.com/renovate-bot))
+- refactor\(@bazel/ibazel\): export getNativeBinary [\#249](https://github.com/bazelbuild/bazel-watcher/pull/249) ([kyliau](https://github.com/kyliau))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 83c0657 [\#247](https://github.com/bazelbuild/bazel-watcher/pull/247) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency io\_bazel\_rules\_go to v0.18.2 [\#246](https://github.com/bazelbuild/bazel-watcher/pull/246) ([renovate-bot](https://github.com/renovate-bot))
+- Pass --define flag to Bazel [\#243](https://github.com/bazelbuild/bazel-watcher/pull/243) ([achew22](https://github.com/achew22))
+- Update dependency bazel\_skylib to v0.8.0 [\#241](https://github.com/bazelbuild/bazel-watcher/pull/241) ([renovate-bot](https://github.com/renovate-bot))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 5239780 [\#240](https://github.com/bazelbuild/bazel-watcher/pull/240) ([renovate-bot](https://github.com/renovate-bot))
+
 ## [v0.10.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.0) (2019-03-17)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.9.1...v0.10.0)
 
