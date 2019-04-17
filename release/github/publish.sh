@@ -51,6 +51,11 @@ compile() {
   # different architecture write to a different folder the expected
   # directory will not exist.
   rm -f "${SOURCE}"
+
+  # Clean out the old environment variables so that you don't build GHR for
+  # windows on accident.
+  unset GOOS
+  unset GOARCH
 }
 
 # Now compiler ibazel for every platform/arch that is supported.
@@ -63,6 +68,7 @@ echo "Build successful."
 readonly GHR_BINARY="$(mktemp /tmp/ghr.XXXXXX)"
 go get -u github.com/tcnksm/ghr
 go build -o "${GHR_BINARY}" github.com/tcnksm/ghr
-echo -n "Publishing ${STAGING} to GitHub as ${TAG}"
+chmod +x "${GHR_BINARY}"
+echo "Publishing ${STAGING} to GitHub as ${TAG}"
 "${GHR_BINARY}" -t "${CHANGELOG_GITHUB_TOKEN}" "${TAG}" "${STAGING}"
 find "${STAGING}"
