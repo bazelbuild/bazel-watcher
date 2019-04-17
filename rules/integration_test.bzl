@@ -37,7 +37,7 @@ integration_test = rule(
             cfg = "target",
         ),
         "_test_runner": attr.label(
-            default = "//:IntegrationTestRunner",
+            default = "//brs:IntegrationTestRunner",
             executable = True,
             cfg = "target",
         ),
