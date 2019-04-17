@@ -1,5 +1,5 @@
-load("//brs/rules:serve.bzl", "serve")
-load("//brs/rules:integration_test.bzl", "integration_test")
+load("//rules:serve.bzl", "serve")
+load("//rules:integration_test.bzl", "integration_test")
 
 # First, define a server that serves from the source tree directly.
 serve(

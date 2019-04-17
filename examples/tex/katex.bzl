@@ -1,4 +1,4 @@
-load("//brs/rules:serve.bzl", "SERVE_ATTRS", "serve_this")
+load("//rules:serve.bzl", "SERVE_ATTRS", "serve_this")
 
 def _katex_impl(ctx):
     tmp = ctx.actions.declare_file(ctx.attr.name + ".tmp")
@@ -45,7 +45,7 @@ _katex = rule(
             default = "@npm//katex",
         ),
         "_preamble": attr.label(
-            default = "//brs/examples/tex:preamble.html",
+            default = "//examples/tex:preamble.html",
             allow_single_file = True,
         ),
     }),

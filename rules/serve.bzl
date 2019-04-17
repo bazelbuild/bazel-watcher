@@ -1,6 +1,6 @@
 SERVE_ATTRS = {
     "_server": attr.label(
-        default = "//brs",
+        default = "//:brs",
         executable = True,
         cfg = "host",
     ),

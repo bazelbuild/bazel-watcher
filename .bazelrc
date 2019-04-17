@@ -1,0 +1,9 @@
+# Not related to ibazel, but greatly speeds up builds when invoking bazel with different PATHs.
+# See https://github.com/bazelbuild/bazel/issues/7026.
+build --incompatible_strict_action_env
+
+# compile against jdk9.
+build --java_toolchain=@bazel_tools//tools/jdk:toolchain_java9
+
+# Without this, java_binary targets that are used as tools during the build cannot use jdk9 apis.
+build --host_java_toolchain=@bazel_tools//tools/jdk:toolchain_java9

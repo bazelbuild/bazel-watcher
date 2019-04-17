@@ -15,4 +15,4 @@ done
 
 # Ensure that hello.txt is the same whether read directly from runfiles or indirectly via the
 # server.
-diff brs/test/hello_generated.txt <(curl -s http://localhost:"$PORT"/brs/test/hello_generated.txt)
+diff test/hello_generated.txt <(curl -s http://localhost:"$PORT"/test/hello_generated.txt)

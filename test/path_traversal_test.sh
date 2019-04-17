@@ -16,4 +16,4 @@ done
 # Attempt to read out of another target's runfiles dir. This should fail.
 # -f propagates the HTTP status code (404) as a nonzero exit status
 # --path-as-is prevents curl from rewriting the URL
-! curl -sf --path-as-is http://localhost:"$PORT"/../../fake_binary.runfiles/b/brs/test/bad.txt
+! curl -sf --path-as-is http://localhost:"$PORT"/../../fake_binary.runfiles/com_github_ubehebe_bazel_runfiles_server/test/bad.txt

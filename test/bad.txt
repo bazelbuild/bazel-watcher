@@ -1,1 +1,1 @@
-//brs/test:path_traversal_test should not be able to read this file, as it is not in its runfiles.
+//test:path_traversal_test should not be able to read this file, as it is not in its runfiles.
