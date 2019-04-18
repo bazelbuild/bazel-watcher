@@ -24,7 +24,15 @@ import java.util.concurrent.Executors;
 import javax.activation.MimetypesFileTypeMap;
 import javax.annotation.Nullable;
 
-/** Simple web server that serves files directly out of the bazel runfiles tree. */
+/**
+ * Simple web server that serves files directly out of a bazel target's runfiles.
+ * Powers the {@code serve} rule and the {@code serve_this} Starlark helper function.
+ *
+ * The goal of this server is to serve runfiles with no modification (bundling, minification,
+ * etc.) other than what is required for ibazel integration. Specifically, when this server is run
+ * under ibazel, it will inject script tags pointing to the ibazel livereload snippet into every
+ * HTML payload.
+ */
 public final class RunfilesServer {
 
   @Parameter(

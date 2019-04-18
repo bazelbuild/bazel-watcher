@@ -15,6 +15,20 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.CancellationException;
 
+/**
+ * Powers the {@code integration_test} rule.
+ *
+ * The runner brings up the system under test ({@code --sut_binary}) and waits for it to print a
+ * line to its stdout, indicating that it's ready to accept connections. Then it runs the actual
+ * test ({@code --test_binary}), whose exit status becomes the overall result of the test.
+ *
+ * To minimize test flakiness, the runner chooses an {@link EphemeralPort ephemeral port} for the
+ * system under test to bind, communicating it to the system under test via the {@code --port} flag.
+ * It also communicates this port to the test binary via the {@code --backend_port} flag. Test
+ * binaries run with this runner therefore need access to their command-line args. This is notably
+ * difficult to do with JUnit-based java tests, so {@code integration_test} targets in this repo are
+ * currently simple shell scripts.
+ */
 public final class IntegrationTestRunner {
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
