@@ -1,10 +1,10 @@
 # Bazel runfiles server
 
-This repo provides a web server for local development that serves files directly out of a Bazel
-target's runfiles with ~zero extra semantics (no bundling, minification, etc.). It also provides
-Starlark definitions that wrap the server, allowing any rule to integrate with ibazel livereload
-with minimal changes. This enables a powerful local development experience, with sub-second preview
-latency in some cases.
+This repo provides a web server for local development that serves directly out of a Bazel target's
+runfiles with ~zero extra semantics (no bundling, minification, etc.). It also provides Starlark
+definitions that wrap the server, allowing any rule to integrate with ibazel livereload with minimal
+changes. This enables a powerful local development experience, with sub-second preview latency in
+some cases.
 
 ## Background
 
@@ -24,6 +24,27 @@ My vision is this: **any rule that produces outputs that are valuable to show in
 able to be invoked with ibazel run and have livereload just work**.
 
 ## Usage
+
+The repo provides hooks for both rule authors and rule users. In either case, you first need to add
+the following to your WORKSPACE to set up the dependencies:
+
+```py
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+git_repository(
+  name = "com_github_ubehebe_bazel_runfiles_server",
+  remote = "https://github.com/Ubehebe/bazel-runfiles-server.git",
+  commit = ... # TODO: add a valid commit here
+)
+
+load("@com_github_ubehebe_bazel_runfiles_server//:repositories.bzl", "bazel_runfiles_server_repositories")
+
+bazel_runfiles_server_repositories()
+
+load("@com_github_ubehebe_bazel_runfiles_server//:setup.bzl", "setup")
+
+setup()
+```
 
 ### For rule authors
 
