@@ -5,8 +5,8 @@ load("@bazel_pandoc//:repositories.bzl", "pandoc_repositories")
 def setup():
     yarn_install(
         name = "npm",
-        package_json = "//:package.json",
-        yarn_lock = "//:yarn.lock",
+        package_json = "@com_github_ubehebe_bazel_runfiles_server//:package.json",
+        yarn_lock = "@com_github_ubehebe_bazel_runfiles_server//:yarn.lock",
     )
 
     google_common_workspace_rules()
