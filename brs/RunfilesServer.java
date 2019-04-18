@@ -89,8 +89,16 @@ public final class RunfilesServer {
     // harmless.
     System.out.println("ok");
     if (me.shouldOpenBrowser()) {
-      Desktop.getDesktop()
-          .browse(new URI(String.format("http://localhost:%d/%s", port, me.indexToOpen)));
+      String index = String.format("http://localhost:%d/%s", port, me.indexToOpen);
+      try {
+        // The getDesktop api apparently has never worked on linux:
+        // https://stackoverflow.com/questions/18004150/desktop-api-is-not-supported-on-the-current-platform
+        // Fall back to an X Windows api for best effort.
+        // Write once, debug everywhere...
+        Desktop.getDesktop().browse(new URI(index));
+      } catch (UnsupportedOperationException e) {
+        new ProcessBuilder("xdg-open", index).start();
+      }
     }
   }
 
