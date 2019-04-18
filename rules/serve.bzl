@@ -15,6 +15,7 @@ def _serve_impl(ctx):
 
 _serve = rule(
     implementation = _serve_impl,
+    doc = "serve data files in an ibazel-aware local development server",
     executable = True,
     attrs = dict(SERVE_ATTRS, **{
         "data": attr.label_list(
@@ -25,6 +26,21 @@ _serve = rule(
         ),
     }),
 )
+
+def serve(name, data = None, index = None):
+    """Serve arbitrary data files in an ibazel-aware local development server.
+
+Use this macro when you have a rule whose implementation you do not control that you would like to
+run in a local development server."""
+    _serve(
+        name = name,
+        data = data or [],
+        index = index,
+        tags = [
+            "ibazel_live_reload",
+            "ibazel_notify_changes",
+        ],
+    )
 
 def serve_this(ctx, index = None, other_files = None):
     """Helper function allowing rules to boot an ibazel-aware web server on bazel run.
@@ -59,16 +75,4 @@ Returns:
             transitive = [ctx.attr._server[DefaultInfo].default_runfiles.files] +
                          ([other_files] if other_files else []),
         ),
-    )
-
-def serve(name, data = None, index = None):
-    """Macro wrapper for _serve, to propagate tags needed for livereload."""
-    _serve(
-        name = name,
-        data = data or [],
-        index = index,
-        tags = [
-            "ibazel_live_reload",
-            "ibazel_notify_changes",
-        ],
     )
