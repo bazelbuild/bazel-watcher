@@ -1,9 +1,10 @@
 # Bazel runfiles server
 
 This repo provides a web server for local development that serves files directly out of a Bazel
-target's runfiles. It also provides Starlark definitions that wrap the server, allowing any rule to
-integrate with ibazel livereload with minimal changes. This enables a powerful local development
-experience, with sub-second preview latency in some cases.
+target's runfiles with ~zero extra semantics (no bundling, minification, etc.). It also provides
+Starlark definitions that wrap the server, allowing any rule to integrate with ibazel livereload
+with minimal changes. This enables a powerful local development experience, with sub-second preview
+latency in some cases.
 
 ## Background
 
