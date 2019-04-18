@@ -8,7 +8,7 @@ some cases.
 
 ## Background
 
-ibazel is a valuable development tool. When an executable target is run with ibazel and the target's
+[ibazel](https://github.com/bazelbuild/bazel-watcher) is a valuable development tool. When an executable target is run with ibazel and the target's
 inputs change, ibazel kills whatever the running target was doing and restarts it with the changed
 inputs. For rules that do something simple like print to a terminal, this is an ideal development
 experience, giving immediate feedback.
@@ -16,9 +16,9 @@ experience, giving immediate feedback.
 Other rules produce outputs that can be usefully previewed in a browser (HTML/CSS/JS, but also
 Markdown, SVG, TeX, ...). For these, the ideal ibazel development experience is to preview them in
 a browser, reloading the page automatically whenever the target's inputs change. This is currently
-possible to do thanks to ibazel's livereload support, but integrating it into custom rules is
-complex. Adding logic to a rule to boot a web server and launch a browser distracts from the rule's
-main business logic.
+possible thanks to ibazel's livereload support, but integrating it into custom rules is complex.
+Adding logic to a rule to boot a web server and launch a browser distracts from the rule's main
+business logic.
 
 My vision is this: **any rule that produces outputs that are valuable to show in a browser should be
 able to be invoked with ibazel run and have livereload just work**.
