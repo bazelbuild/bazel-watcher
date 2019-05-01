@@ -29,12 +29,12 @@ function getNativeBinary() {
   const platform = {
     'darwin' : 'darwin',
     'linux' : 'linux',
-    'windows' : 'windows',
+    'win32' : 'windows',
   }[os.platform()];
   const extension = {
     'darwin' : '',
     'linux' : '',
-    'windows' : '.exe',
+    'win32' : '.exe',
   }[os.platform()];
 
   if (arch == undefined || platform == undefined) {
