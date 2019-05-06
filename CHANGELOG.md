@@ -1,5 +1,12 @@
 # Change Log
 
+## [v0.10.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.2) (2019-05-01)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.1...v0.10.2)
+
+**Merged pull requests:**
+
+- Fix windows binary resolution on node [\#253](https://github.com/bazelbuild/bazel-watcher/pull/253) ([rerion](https://github.com/rerion))
+
 ## [v0.10.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.1) (2019-04-17)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.0...v0.10.1)
 
