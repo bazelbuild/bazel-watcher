@@ -6,9 +6,10 @@ load(":repositories.bzl", "bazel_runfiles_server_repositories")
 
 bazel_runfiles_server_repositories()
 
-load("@build_bazel_rules_nodejs//:defs.bzl", "check_bazel_version")
 
-check_bazel_version(BAZEL_VERSION)
+load("@bazel_skylib//lib:versions.bzl", "versions")
+
+versions.check(minimum_bazel_version=BAZEL_VERSION)
 
 load(":setup.bzl", "setup")
 
