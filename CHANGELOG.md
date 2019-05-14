@@ -1,5 +1,18 @@
 # Change Log
 
+## [v0.10.3](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.3) (2019-05-14)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.2...v0.10.3)
+
+**Closed issues:**
+
+- --test\_env argument not in allowed list [\#256](https://github.com/bazelbuild/bazel-watcher/issues/256)
+- Add Windows support [\#105](https://github.com/bazelbuild/bazel-watcher/issues/105)
+
+**Merged pull requests:**
+
+- Add more Bazel flags [\#257](https://github.com/bazelbuild/bazel-watcher/pull/257) ([aaliddell](https://github.com/aaliddell))
+- Update dependency io\_bazel\_rules\_go to v0.18.4 [\#255](https://github.com/bazelbuild/bazel-watcher/pull/255) ([renovate-bot](https://github.com/renovate-bot))
+
 ## [v0.10.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.2) (2019-05-01)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.1...v0.10.2)
 
