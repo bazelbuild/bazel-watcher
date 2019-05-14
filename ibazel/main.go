@@ -25,18 +25,25 @@ import (
 var Version = "Development"
 
 var overrideableBazelFlags []string = []string{
+	"--action_env",
 	"--config=",
 	"--curses=no",
 	"--define",
 	"--features=",
 	"--keep_going",
 	"-k",
+	"--nostamp",
 	"--output_groups=",
 	"--override_repository",
+	"--repo_env",
+	"--runs_per_test",
+	"--stamp",
 	"--strategy",
 	"--test_arg",
+	"--test_env",
 	"--test_filter",
 	"--test_output=",
+	"--test_timeout",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
