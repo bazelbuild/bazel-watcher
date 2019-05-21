@@ -27,19 +27,18 @@ _serve = rule(
     }),
 )
 
-def serve(name, data = None, index = None):
+def serve(name, **kwargs):
     """Serve arbitrary data files in an ibazel-aware local development server.
 
 Use this macro when you have a rule whose implementation you do not control that you would like to
 run in a local development server."""
     _serve(
         name = name,
-        data = data or [],
-        index = index,
         tags = [
             "ibazel_live_reload",
             "ibazel_notify_changes",
         ],
+        **kwargs
     )
 
 def serve_this(ctx, index = None, other_files = None):
