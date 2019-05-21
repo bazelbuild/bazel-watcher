@@ -1,5 +1,5 @@
 SERVE_ATTRS = {
-    "_server": attr.label(
+    "server": attr.label(
         default = "//brs",
         executable = True,
         cfg = "host",
@@ -59,10 +59,10 @@ Returns:
     # Write a script to invoke the server at bazel run time.
     ctx.actions.write(
         # The $@ propagates flags passed to this executable (ctx.outputs.executable) to the
-        # underlying one (ctx.executable._server). This allows the integration test runner to invoke
+        # underlying one (ctx.executable.server). This allows the integration test runner to invoke
         # this executable with a --port flag.
         content = '%s %s "$@"' % (
-            ctx.executable._server.short_path,
+            ctx.executable.server.short_path,
             ("--index " + index.short_path) if index else "",
         ),
         output = ctx.outputs.executable,
@@ -72,7 +72,7 @@ Returns:
         collect_default = True,
         files = [index] if index else [],
         transitive_files = depset(
-            transitive = [ctx.attr._server[DefaultInfo].default_runfiles.files] +
+            transitive = [ctx.attr.server[DefaultInfo].default_runfiles.files] +
                          ([other_files] if other_files else []),
         ),
     )
