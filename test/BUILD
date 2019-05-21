@@ -155,6 +155,12 @@ integration_test(
     test_binary = ":path_traversal_test_binary",
 )
 
+integration_test(
+    name = "path_traversal_test_sandboxed_golang",
+    system_under_test = ":simple_golang",
+    test_binary = ":path_traversal_test_binary",
+)
+
 # Even if the devserver allowed path traversal, bazel test :path_traversal_test_sandboxed would pass
 # due to sandboxing. Explicitly rerun the test unsandboxed. (Since the serve() rule is designed to
 # be used with bazel run, this test is documentation for its behavior with respect to path
@@ -163,5 +169,12 @@ integration_test(
     name = "path_traversal_test_local",
     local = True,
     system_under_test = ":simple",
+    test_binary = ":path_traversal_test_binary",
+)
+
+integration_test(
+    name = "path_traversal_test_local_golang",
+    local = True,
+    system_under_test = ":simple_golang",
     test_binary = ":path_traversal_test_binary",
 )
