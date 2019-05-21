@@ -5,6 +5,9 @@ go_binary(
     srcs = [
         "RunfilesServer.go",
     ],
+    deps = [
+        "@com_github_pkg_browser//:go_default_library",
+    ],
     visibility = [
         "//visibility:public",
     ],
