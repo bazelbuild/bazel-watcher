@@ -6,6 +6,10 @@ load(":repositories.bzl", "bazel_runfiles_server_repositories", "bazel_runfiles_
 
 bazel_runfiles_server_repositories()
 
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+go_rules_dependencies()
+go_register_toolchains()
+
 bazel_runfiles_server_example_repositories()
 
 load("@bazel_skylib//lib:versions.bzl", "versions")

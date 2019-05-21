@@ -22,6 +22,12 @@ def bazel_runfiles_server_repositories():
         remote = "https://github.com/google/bazel-common.git",
     )
 
+    git_repository(
+        name = "io_bazel_rules_go",
+        remote = "https://github.com/bazelbuild/rules_go.git",
+        tag = "0.18.5",
+    )
+
     # The official mime.types file from apache httpd. This is way more up-to-date than the default jdk one
     # (javax.activation).
     http_file(
