@@ -9,6 +9,14 @@ serve(
     ],
 )
 
+serve(
+    name = "simple_golang",
+    data = [
+        "hello.txt",
+    ],
+    server = "//brs:main",
+)
+
 sh_binary(
     name = "simple_test_binary",
     srcs = [
@@ -24,6 +32,12 @@ sh_binary(
 integration_test(
     name = "simple_test",
     system_under_test = ":simple",
+    test_binary = ":simple_test_binary",
+)
+
+integration_test(
+    name = "simple_test_golang",
+    system_under_test = ":simple_golang",
     test_binary = ":simple_test_binary",
 )
 
