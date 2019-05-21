@@ -19,12 +19,7 @@ serve(
 
 sh_binary(
     name = "simple_test_binary",
-    srcs = [
-        "simple_test.sh",
-    ],
-    data = [
-        "hello.txt",
-    ],
+    srcs = ["simple_test.sh"],
 )
 
 # This test ensures that hello.txt is the same whether read directly from runfiles or indirectly via
@@ -57,9 +52,23 @@ serve(
     ],
 )
 
+serve(
+    name = "simple_filegroup_golang",
+    data = [
+        ":filegroup",
+    ],
+    server = "//brs:main",
+)
+
 integration_test(
     name = "simple_filegroup_test",
     system_under_test = ":simple_filegroup",
+    test_binary = ":simple_test_binary",
+)
+
+integration_test(
+    name = "simple_filegroup_test_golang",
+    system_under_test = ":simple_filegroup_golang",
     test_binary = ":simple_test_binary",
 )
 
@@ -83,6 +92,14 @@ serve(
     ],
 )
 
+serve(
+    name = "simple_genrule_golang",
+    data = [
+        ":hello_generated",
+    ],
+    server = "//brs:main",
+)
+
 sh_binary(
     name = "genrule_test",
     srcs = [
@@ -96,6 +113,12 @@ sh_binary(
 integration_test(
     name = "simple_genrule_test",
     system_under_test = ":simple_genrule",
+    test_binary = ":genrule_test",
+)
+
+integration_test(
+    name = "simple_genrule_test_golang",
+    system_under_test = ":simple_genrule_golang",
     test_binary = ":genrule_test",
 )
 
