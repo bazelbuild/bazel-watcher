@@ -5,6 +5,12 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 # WORKSPACE.
 def bazel_runfiles_server_repositories():
     git_repository(
+        name = "bazel_gazelle",
+        remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+        tag = "0.17.0",
+    )
+
+    git_repository(
         name = "bazel_skylib",
         remote = "https://github.com/bazelbuild/bazel-skylib.git",
         tag = "0.8.0",
