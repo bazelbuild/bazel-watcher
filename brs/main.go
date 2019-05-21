@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 )
 import "flag"
 import "net/http"
@@ -18,11 +17,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// TODO: synchronization
-	os.Stdout.Write([]byte(fmt.Sprintf("listening on %v\n", listener.Addr())))
-	http.Serve(listener, http.HandlerFunc(hello))
-}
-
-func hello(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hi!"))
+	// Print a line to stdout. IntegrationTestRunner uses this for synchronization (it won't run the
+	// test binary until the system under test prints a line to stdout). For other uses, this is
+	// harmless.
+	fmt.Println("listening on", listener.Addr())
+	http.Serve(listener, http.FileServer(http.Dir(""))) // serve from runfiles root
 }
