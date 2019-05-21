@@ -52,7 +52,7 @@ public final class IntegrationTestRunner {
 
     // Bring up the system under test.
     Process systemUnderTest =
-        new ProcessBuilder(sutBinary, "--port", port).redirectError(INHERIT).start();
+        new ProcessBuilder(sutBinary, "--port", port, "--nobrowser").redirectError(INHERIT).start();
     checkState(systemUnderTest.isAlive(), "%s already died!", sutBinary);
     // Block until the system under test writes a line to its stdout.
     new BufferedReader(new InputStreamReader(systemUnderTest.getInputStream())).readLine();
