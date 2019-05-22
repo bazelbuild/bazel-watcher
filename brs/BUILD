@@ -68,3 +68,13 @@ java_binary(
         "@jcommander//jar",
     ],
 )
+
+go_binary(
+    name = "IntegrationTestRunner_golang",
+    srcs = [
+        "IntegrationTestRunner.go",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+)
