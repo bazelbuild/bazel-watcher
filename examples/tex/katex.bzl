@@ -36,6 +36,11 @@ _katex = rule(
             mandatory = True,
             allow_single_file = True,
         ),
+        "server": attr.label(
+            default = "//brs:main",
+            executable = True,
+            cfg = "host",
+        ),
         "_katex": attr.label(
             default = "@npm//katex/bin:katex",
             cfg = "host",
