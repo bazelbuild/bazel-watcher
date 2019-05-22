@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 )
 
@@ -17,21 +16,25 @@ func main() {
 	flag.StringVar(&testBinary, "test_binary", "", "test binary to run against system under test")
 	flag.Parse()
 
+	port, err := GetEphemeralPort()
+	if err != nil {
+		panic(err)
+	}
+
 	// Bring up the system under test
-	sut := exec.Command(sutBinary, "--nobrowser")
+	sut := exec.Command(sutBinary, "--port", fmt.Sprintf("%d", port), "--nobrowser")
 	var sutOut io.ReadCloser
-	var err error
 	if sutOut, err = sut.StdoutPipe(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	go func() {
 		if err := sut.Run(); err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 	}()
 	var line string
 	if line, err = bufio.NewReader(sutOut).ReadString('\n'); err != nil {
-		log.Fatal(err)
+		panic(line)
 	}
 	fmt.Printf("hello from sut: %s\n", line)
 }
