@@ -60,7 +60,8 @@ Returns:
         # The $@ propagates flags passed to this executable (ctx.outputs.executable) to the
         # underlying one (ctx.executable.server). This allows the integration test runner to invoke
         # this executable with a --port flag.
-        content = '%s %s "$@"' % (
+        content = """#!/bin/sh
+%s %s "$@" """ % (
             ctx.executable.server.short_path,
             ("--index " + index.short_path) if index else "",
         ),
