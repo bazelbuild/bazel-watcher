@@ -1,5 +1,5 @@
 SERVE_ATTRS = {
-    "server": attr.label(
+    "_server": attr.label(
         default = "//brs:main",
         executable = True,
         cfg = "host",
@@ -62,7 +62,7 @@ Returns:
         # this executable with a --port flag.
         content = """#!/bin/sh
 %s %s "$@" """ % (
-            ctx.executable.server.short_path,
+            ctx.executable._server.short_path,
             ("--index " + index.short_path) if index else "",
         ),
         output = ctx.outputs.executable,
@@ -72,7 +72,7 @@ Returns:
         collect_default = True,
         files = [index] if index else [],
         transitive_files = depset(
-            transitive = [ctx.attr.server[DefaultInfo].default_runfiles.files] +
+            transitive = [ctx.attr._server[DefaultInfo].default_runfiles.files] +
                          ([other_files] if other_files else []),
         ),
     )

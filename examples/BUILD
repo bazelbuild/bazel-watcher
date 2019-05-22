@@ -11,7 +11,6 @@ serve(
         "simple.js",
     ],
     index = "simple.html",
-    server = "//brs:main",
 )
 
 # Markdown livereload example. pandoc() is a third-party rule that we cannot change to make
@@ -27,7 +26,6 @@ pandoc(
 serve(
     name = "markdown",
     index = ":run_pandoc",
-    server = "//brs:main",
 )
 
 # TeX livereload example. katex() is a rule defined in this repo. Its implementation calls the

@@ -1,7 +1,7 @@
 def _integration_test(ctx):
     ctx.actions.write(
         content = "%s --sut_binary %s --test_binary %s" % (
-            ctx.executable.test_runner.short_path,
+            ctx.executable._test_runner.short_path,
             ctx.executable.system_under_test.short_path,
             ctx.executable.test_binary.short_path,
         ),
@@ -15,7 +15,7 @@ def _integration_test(ctx):
                     transitive = [
                         ctx.attr.system_under_test[DefaultInfo].default_runfiles.files,
                         ctx.attr.test_binary[DefaultInfo].default_runfiles.files,
-                        ctx.attr.test_runner[DefaultInfo].default_runfiles.files,
+                        ctx.attr._test_runner[DefaultInfo].default_runfiles.files,
                     ],
                 ),
             ),
@@ -36,7 +36,7 @@ integration_test = rule(
             mandatory = True,
             cfg = "target",
         ),
-        "test_runner": attr.label(
+        "_test_runner": attr.label(
             default = "//brs:IntegrationTestRunner",
             executable = True,
             cfg = "target",
