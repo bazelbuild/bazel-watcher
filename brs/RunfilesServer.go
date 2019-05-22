@@ -26,6 +26,8 @@ server is up. If not given, the browser will not be launched`)
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Find the actual port in case the passed-in value was ephemeral
+	port = listener.Addr().(*net.TCPAddr).Port
 	handler := &liveReloadSnippetInjectingHandler{
 		Handler: http.FileServer(http.Dir(".")),
 		snippet: maybeFormatLiveReloadSnippet(),
@@ -34,8 +36,6 @@ server is up. If not given, the browser will not be launched`)
 	// test binary until the system under test prints a line to stdout). For other uses, this is
 	// harmless.
 	fmt.Printf("listening on %d\n", port)
-	// Find the actual port in case the passed-in value was ephemeral
-	port = listener.Addr().(*net.TCPAddr).Port
 	if shouldOpenBrowser() {
 		go browser.OpenURL(fmt.Sprintf("http://localhost:%d/%s", port, index))
 	}
