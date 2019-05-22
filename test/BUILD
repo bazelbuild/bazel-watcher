@@ -34,6 +34,7 @@ integration_test(
     name = "simple_test_golang",
     system_under_test = ":simple_golang",
     test_binary = ":simple_test_binary",
+    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Now define a server that serves via a filegroup. It should have the same behavior as :simple.
@@ -70,6 +71,7 @@ integration_test(
     name = "simple_filegroup_test_golang",
     system_under_test = ":simple_filegroup_golang",
     test_binary = ":simple_test_binary",
+    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Now define a server that serves a generated output. serve() should work for these too.
@@ -120,6 +122,7 @@ integration_test(
     name = "simple_genrule_test_golang",
     system_under_test = ":simple_genrule_golang",
     test_binary = ":genrule_test",
+    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Directory traversal tests.
@@ -159,6 +162,7 @@ integration_test(
     name = "path_traversal_test_sandboxed_golang",
     system_under_test = ":simple_golang",
     test_binary = ":path_traversal_test_binary",
+    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Even if the devserver allowed path traversal, bazel test :path_traversal_test_sandboxed would pass
@@ -177,4 +181,5 @@ integration_test(
     local = True,
     system_under_test = ":simple_golang",
     test_binary = ":path_traversal_test_binary",
+    test_runner = "//brs:IntegrationTestRunner_golang",
 )
