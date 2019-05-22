@@ -1,13 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"github.com/pkg/browser"
 	"log"
 	"net"
+	"net/http"
+	"os"
 )
-import "flag"
-import "github.com/pkg/browser"
-import "net/http"
 
 var port int
 var nobrowser bool
@@ -25,16 +26,30 @@ server is up. If not given, the browser will not be launched`)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Find the actual port in case the passed-in value was ephemeral
-	port = listener.Addr().(*net.TCPAddr).Port
+	handler := &liveReloadSnippetInjectingHandler{
+		Handler: http.FileServer(http.Dir(".")),
+		snippet: maybeFormatLiveReloadSnippet(),
+	}
 	// Print a line to stdout. IntegrationTestRunner uses this for synchronization (it won't run the
 	// test binary until the system under test prints a line to stdout). For other uses, this is
 	// harmless.
 	fmt.Printf("listening on %d\n", port)
+	// Find the actual port in case the passed-in value was ephemeral
+	port = listener.Addr().(*net.TCPAddr).Port
 	if shouldOpenBrowser() {
-		browser.OpenURL(fmt.Sprintf("http://localhost:%d/%s", port, index))
+		go browser.OpenURL(fmt.Sprintf("http://localhost:%d/%s", port, index))
 	}
-	http.Serve(listener, http.FileServer(http.Dir(""))) // serve from runfiles root
+	http.Serve(listener, handler)
+}
+
+func maybeFormatLiveReloadSnippet() []byte {
+	// If the this server is being run under ibazel as part of a target that has the tag
+	// `ibazel_live_reload`, ibazel will set the IBAZEL_LIVERELOAD_URL environment variable.
+	liveReloadUrl := os.Getenv("IBAZEL_LIVERELOAD_URL")
+	if len(liveReloadUrl) > 0 {
+		return []byte(fmt.Sprintf("<script src=\"%s\"></script>", liveReloadUrl))
+	}
+	return nil
 }
 
 func shouldOpenBrowser() bool {

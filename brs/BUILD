@@ -4,6 +4,7 @@ go_binary(
     name = "main",
     srcs = [
         "RunfilesServer.go",
+        "LiveReloadSnippetInjectingHandler.go",
     ],
     deps = [
         "@com_github_pkg_browser//:go_default_library",
