@@ -3,19 +3,12 @@ load("//rules:integration_test.bzl", "integration_test")
 load("//rules:expected_failure_test.bzl", "expected_failure_test")
 
 # First, define a server that serves from the source tree directly.
+
 serve(
     name = "simple",
     data = [
         "hello.txt",
     ],
-)
-
-serve(
-    name = "simple_golang",
-    data = [
-        "hello.txt",
-    ],
-    server = "//brs:main",
 )
 
 sh_binary(
@@ -29,13 +22,6 @@ integration_test(
     name = "simple_test",
     system_under_test = ":simple",
     test_binary = ":simple_test_binary",
-)
-
-integration_test(
-    name = "simple_test_golang",
-    system_under_test = ":simple_golang",
-    test_binary = ":simple_test_binary",
-    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Now define a server that serves via a filegroup. It should have the same behavior as :simple.
@@ -54,25 +40,10 @@ serve(
     ],
 )
 
-serve(
-    name = "simple_filegroup_golang",
-    data = [
-        ":filegroup",
-    ],
-    server = "//brs:main",
-)
-
 integration_test(
     name = "simple_filegroup_test",
     system_under_test = ":simple_filegroup",
     test_binary = ":simple_test_binary",
-)
-
-integration_test(
-    name = "simple_filegroup_test_golang",
-    system_under_test = ":simple_filegroup_golang",
-    test_binary = ":simple_test_binary",
-    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Now define a server that serves a generated output. serve() should work for these too.
@@ -95,14 +66,6 @@ serve(
     ],
 )
 
-serve(
-    name = "simple_genrule_golang",
-    data = [
-        ":hello_generated",
-    ],
-    server = "//brs:main",
-)
-
 sh_binary(
     name = "genrule_test",
     srcs = [
@@ -117,13 +80,6 @@ integration_test(
     name = "simple_genrule_test",
     system_under_test = ":simple_genrule",
     test_binary = ":genrule_test",
-)
-
-integration_test(
-    name = "simple_genrule_test_golang",
-    system_under_test = ":simple_genrule_golang",
-    test_binary = ":genrule_test",
-    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Directory traversal tests.
@@ -159,13 +115,6 @@ integration_test(
     test_binary = ":path_traversal_test_binary",
 )
 
-integration_test(
-    name = "path_traversal_test_sandboxed_golang",
-    system_under_test = ":simple_golang",
-    test_binary = ":path_traversal_test_binary",
-    test_runner = "//brs:IntegrationTestRunner_golang",
-)
-
 # Even if the devserver allowed path traversal, bazel test :path_traversal_test_sandboxed would pass
 # due to sandboxing. Explicitly rerun the test unsandboxed. (Since the serve() rule is designed to
 # be used with bazel run, this test is documentation for its behavior with respect to path
@@ -175,14 +124,6 @@ integration_test(
     local = True,
     system_under_test = ":simple",
     test_binary = ":path_traversal_test_binary",
-)
-
-integration_test(
-    name = "path_traversal_test_local_golang",
-    local = True,
-    system_under_test = ":simple_golang",
-    test_binary = ":path_traversal_test_binary",
-    test_runner = "//brs:IntegrationTestRunner_golang",
 )
 
 # Tests for the integration_test rule itself. An integration_test whose test_binary is fail.sh
@@ -207,18 +148,4 @@ integration_test(
 expected_failure_test(
     name = "expected_failure_test",
     test_binary = ":should_fail",
-)
-
-integration_test(
-    name = "should_fail_golang",
-    system_under_test = ":simple_golang", # doesn't really matter what it is
-    test_binary = ":fail",
-    tags = [
-        "manual", # don't run this as part of bazel test ... (it's expected to fail)
-    ],
-)
-
-expected_failure_test(
-    name = "expected_failure_test_golang",
-    test_binary = ":should_fail_golang",
 )
