@@ -1,5 +1,6 @@
 load("//rules:serve.bzl", "serve")
 load("//rules:integration_test.bzl", "integration_test")
+load("//rules:expected_failure_test.bzl", "expected_failure_test")
 
 # First, define a server that serves from the source tree directly.
 serve(
@@ -182,4 +183,42 @@ integration_test(
     system_under_test = ":simple_golang",
     test_binary = ":path_traversal_test_binary",
     test_runner = "//brs:IntegrationTestRunner_golang",
+)
+
+# Tests for the integration_test rule itself. An integration_test whose test_binary is fail.sh
+# should always fail.
+
+sh_binary(
+    name = "fail",
+    srcs = [
+        "fail.sh",
+    ],
+)
+
+integration_test(
+    name = "should_fail",
+    system_under_test = ":simple", # doesn't really matter what it is
+    test_binary = ":fail",
+    tags = [
+        "manual", # don't run this as part of bazel test ... (it's expected to fail)
+    ],
+)
+
+expected_failure_test(
+    name = "expected_failure_test",
+    test_binary = ":should_fail",
+)
+
+integration_test(
+    name = "should_fail_golang",
+    system_under_test = ":simple_golang", # doesn't really matter what it is
+    test_binary = ":fail",
+    tags = [
+        "manual", # don't run this as part of bazel test ... (it's expected to fail)
+    ],
+)
+
+expected_failure_test(
+    name = "expected_failure_test_golang",
+    test_binary = ":should_fail_golang",
 )
