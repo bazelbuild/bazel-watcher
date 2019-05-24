@@ -94,7 +94,7 @@ func TestMatchRegex(t *testing.T) {
 		{Regex: "^(buildifier) '(.*)'\\s+(.*)$", Command: "test_cmd", Args: []string{"test_arg1", "test_arg2"}},
 	}
 
-	_, commands, args := matchRegex(optcmd, &buf)
+	_, commands, args, _ := matchRegex(optcmd, &buf)
 
 	for idx, c := range []struct {
 		cls string

@@ -132,3 +132,69 @@ sh_binary(
 	ibazel.ExpectIBazelError("Error in .bazel_fix_commands.json")
 	ibazel.ExpectOutput("Hello world")
 }
+
+func TestStopAfter(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var sentinelFiles [4]*os.File
+	var errs [4]error
+	for i := 0; i < 4; i++ {
+		sentinelFiles[i], errs[i] = ioutil.TempFile("", "fixCommandSentinel")
+		must(t, errs[i])
+		must(t, sentinelFiles[i].Close())
+		checkSentinel(t, sentinelFiles[i], "ioutil.TempFile creates the file by default. Delete it.")
+		checkNoSentinel(t, sentinelFiles[i], "The sentinel should now be deleted.")
+	}
+
+
+	must(t, b.ScratchFile(".bazel_fix_commands.json", `
+[{
+	"regex": "runacommand ([^\\s]+)?",
+	"command": "touch",
+	"args": ["$1"],
+	"stopAfter": 3
+}]
+`))
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "action"`, 0777))
+	must(t, b.ScratchFile("defs.bzl", fmt.Sprintf(`
+def doit():
+  print("runacommand %s")
+  print("runacommand %s")
+  print("runacommand ")
+  print("runacommand %s")
+  print("runacommand ")
+  print("runacommand ")
+  print("runacommand %s")
+`,
+		strings.Replace(sentinelFiles[0].Name(), "\\", "/", -1),
+		strings.Replace(sentinelFiles[1].Name(), "\\", "/", -1),
+		strings.Replace(sentinelFiles[2].Name(), "\\", "/", -1),
+		strings.Replace(sentinelFiles[3].Name(), "\\", "/", -1),
+	)))
+	must(t, b.ScratchFile("BUILD", `
+load("//:defs.bzl", "doit")
+
+doit()
+
+sh_binary(
+  name = "test",
+  srcs = ["test.sh"],
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.RunWithBazelFixCommands("//:test")
+
+	ibazel.ExpectOutput("action")
+
+	checkSentinel(t, sentinelFiles[0], "The run should create the first sentinel.")
+	checkSentinel(t, sentinelFiles[1], "The run should create the second sentinel.")
+	checkSentinel(t, sentinelFiles[2], "The run should create the third sentinel.")
+	checkNoSentinel(t, sentinelFiles[3], "The run should not create the fourth sentinel.")
+
+	ibazel.Kill()
+}

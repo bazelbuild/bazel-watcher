@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"math"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
@@ -44,9 +45,10 @@ var runOutputInteractive = flag.Bool(
 type OutputRunner struct{}
 
 type Optcmd struct {
-	Regex   string   `json:"regex"`
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
+	Regex     string   `json:"regex"`
+	Command   string   `json:"command"`
+	Args      []string `json:"args"`
+	StopAfter int8     `json:"stopAfter"`
 }
 
 func New() *OutputRunner {
@@ -72,6 +74,7 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 		Regex:   "^buildozer '(.*)'\\s+(.*)$",
 		Command: "buildozer",
 		Args:    []string{"$1", "$2"},
+		StopAfter: math.MaxInt8,
 	}
 
 	optcmd := readConfigs(jsonCommandPath)
@@ -79,14 +82,20 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 		fmt.Fprintf(os.Stderr, "Use default regex\n")
 		optcmd = []Optcmd{defaultRegex}
 	}
-	commandLines, commands, args := matchRegex(optcmd, output)
+	commandLines, commands, args, stopAfters := matchRegex(optcmd, output)
 	for idx, _ := range commandLines {
 		if *runOutputInteractive {
 			if promptCommand(commandLines[idx]) {
 				executeCommand(commands[idx], args[idx])
 			}
 		} else {
-			executeCommand(commands[idx], args[idx])
+			exit := executeCommand(commands[idx], args[idx])
+			if (exit != 0) {
+				*stopAfters[idx] = *stopAfters[idx] - 1
+				if (*stopAfters[idx] <= 0) {
+					return
+				}
+			}
 		}
 	}
 }
@@ -100,32 +109,41 @@ func readConfigs(configPath string) []Optcmd {
 	defer jsonFile.Close()
 
 	byteValue, _ := ioutil.ReadAll(jsonFile)
-	var optcmd []Optcmd
-	err = json.Unmarshal(byteValue, &optcmd)
+	var optcmds []Optcmd
+	err = json.Unmarshal(byteValue, &optcmds)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error in .bazel_fix_commands.json: %s\n", err)
 	}
 
-	return optcmd
+	for idx, _ := range optcmds {
+		if (optcmds[idx].StopAfter == 0) {
+			// Default to 127
+			optcmds[idx].StopAfter = math.MaxInt8
+		}
+	}
+
+	return optcmds
 }
 
-func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]string) {
+func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]string, []*int8) {
 	var commandLines, commands []string
 	var args [][]string
+	var stopAfters []*int8
 	scanner := bufio.NewScanner(output)
 	for scanner.Scan() {
 		line := scanner.Text()
-		for _, oc := range optcmd {
+		for idx, oc := range optcmd {
 			re := regexp.MustCompile(oc.Regex)
 			matches := re.FindStringSubmatch(line)
 			if matches != nil && len(matches) >= 0 {
 				commandLines = append(commandLines, matches[0])
 				commands = append(commands, convertArg(matches, oc.Command))
 				args = append(args, convertArgs(matches, oc.Args))
+				stopAfters = append(stopAfters, &(optcmd[idx].StopAfter))
 			}
 		}
 	}
-	return commandLines, commands, args
+	return commandLines, commands, args, stopAfters
 }
 
 func convertArg(matches []string, arg string) string {
@@ -163,7 +181,7 @@ func promptCommand(command string) bool {
 	}
 }
 
-func executeCommand(command string, args []string) {
+func executeCommand(command string, args []string) int {
 	for i, arg := range args {
 		args[i] = strings.TrimSpace(arg)
 	}
@@ -186,7 +204,9 @@ func executeCommand(command string, args []string) {
 	err = cmd.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Command failed: %s %s. Error: %s\n", command, args, err)
+		return 1
 	}
+	return 0
 }
 
 func (i *OutputRunner) Cleanup() {}
