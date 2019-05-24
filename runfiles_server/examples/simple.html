@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ibazel html/js/css livereload example</title>
+  <link rel="stylesheet" href="simple.css" />
+  <script type="module">
+    import {displayDuration} from "./simple.js";
+    displayDuration(document.getElementById('duration'));
+  </script>
+</head>
+<body>
+This page can be served with a livereload-aware development server. To see changes:
+<ol>
+  <li>
+    <pre>ibazel run runfiles_server/examples:simple</pre>
+  </li>
+  <li>Edit runfiles_server/examples/simple.{html,css,js} in a text editor and save. ibazel should
+    pick up the changes and automatically reload the browser.
+</ol>
+This page has been open for <span id="duration">0</span> seconds.
+</body>
+</html>

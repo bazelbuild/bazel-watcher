@@ -86,6 +86,12 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_pkg_browser",
+    importpath = "github.com/pkg/browser",
+    commit = "0a3d74bf9ce488f035cf5bc36f753a711bc74334",
+)
+
+go_repository(
     name = "org_golang_x_sys",
     commit = "cc5685c2db1239775905f3911f0067c0fa74762f",
     importpath = "golang.org/x/sys",
@@ -111,3 +117,14 @@ go_repository(
     importpath = "github.com/bazelbuild/rules_go",
     tag = "0.16.2",
 )
+
+load(":repositories.bzl", "bazel_runfiles_server_repositories", "bazel_runfiles_server_example_repositories")
+
+bazel_runfiles_server_repositories()
+
+bazel_runfiles_server_example_repositories()
+
+load("//runfiles_server/examples:setup.bzl", "setup_examples")
+
+setup_examples()
+
