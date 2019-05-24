@@ -50,7 +50,7 @@ _katex = rule(
             default = "@npm//katex",
         ),
         "_preamble": attr.label(
-            default = "//examples/tex:preamble.html",
+            default = ":preamble.html",
             allow_single_file = True,
         ),
     }),

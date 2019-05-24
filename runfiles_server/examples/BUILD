@@ -1,4 +1,4 @@
-load("//examples/tex:katex.bzl", "katex")
+load("//runfiles_server/examples/tex:katex.bzl", "katex")
 load("//rules:serve.bzl", "serve")
 load("@bazel_pandoc//:pandoc.bzl", "pandoc")
 

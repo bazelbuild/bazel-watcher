@@ -63,10 +63,10 @@ def foo_impl(ctx):
   ]
 ```
 
-For example, [examples/tex/katex.bzl](examples/tex/katex.bzl) is a rule that uses the
-[KaTeX](https://katex.org) command-line tool to render TeX into HTML at build time. The use of
-serve_this allows `katex()` targets to be directly runnable with bazel and ibazel, and to support
-livereload when run with the latter.
+For example, [runfiles_server/examples/tex/katex.bzl](runfiles_server.examples/tex/katex.bzl) is a
+rule that uses the [KaTeX](https://katex.org) command-line tool to render TeX into HTML at build
+time. The use of serve_this allows `katex()` targets to be directly runnable with bazel and ibazel,
+and to support livereload when run with the latter.
 
 ### For rule users
 
@@ -91,10 +91,11 @@ serve(
 The `server` target is runnable with bazel and ibazel, and supports livereload when run with the
 latter.
 
-For example, [//examples:run_pandoc](examples/BUILD#L19) uses the third-party
-[Pandoc rules](https://github.com/ProdriveTechnologies/bazel-pandoc) to render Markdown into HTML at
-build time. Since I don't control the pandoc() rule implementation, I define a serve() target
-([//examples:markdown](examples/BUILD#L26)) that consumes the pandoc() rule.
+For example, [//runfiles_server/examples:run_pandoc](runfiles_server/examples/BUILD#L19) uses the
+third-party [Pandoc rules](https://github.com/ProdriveTechnologies/bazel-pandoc) to render Markdown
+into HTML at build time. Since I don't control the pandoc() rule implementation, I define a serve()
+target ([//runfiles_server/examples:markdown](runfiles_server/examples/BUILD#L26)) that consumes the
+pandoc() rule.
 
 serve() can also be used to serve files directly from the source tree, from filegroups, from genrule
 outputs. etc.

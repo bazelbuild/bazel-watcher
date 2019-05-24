@@ -4,8 +4,8 @@ load("@bazel_pandoc//:repositories.bzl", "pandoc_repositories")
 def setup_examples():
     yarn_install(
         name = "npm",
-        package_json = "//examples:package.json",
-        yarn_lock = "//examples:yarn.lock",
+        package_json = "//runfiles_server/examples:package.json",
+        yarn_lock = "//runfiles_server/examples:yarn.lock",
     )
 
     pandoc_repositories()
