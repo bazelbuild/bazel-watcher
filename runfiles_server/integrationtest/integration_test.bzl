@@ -25,6 +25,18 @@ def _integration_test(ctx):
 integration_test = rule(
     implementation = _integration_test,
     test = True,
+    doc = """Brings up a system under test, then runs a test binary against it.
+
+This rule is for testing the serve() rule. It is not generalizable for testing arbitrary servers.
+
+The system_under_test binary will be invoked with a --port flag giving the port
+that the system under test should listen on.
+
+The test binary will be invoked with a --backend_port flag giving the port of the system under test.
+The test binary should make calls to the system under test using this port.
+
+The exit code of the test_binary determines the overall result of the integration test (zero for
+success, nonzero for failure).""",
     attrs = {
         "system_under_test": attr.label(
             mandatory = True,
