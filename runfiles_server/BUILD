@@ -16,15 +16,6 @@ go_binary(
     ],
 )
 
-go_binary(
-    name = "IntegrationTestRunner",
-    srcs = [
-        "integration_test_runner.go",
-    ],
-    visibility = [
-        "//visibility:public",
-    ],
-)
 
 
 # A nice livereload experience for writing the readme itself.

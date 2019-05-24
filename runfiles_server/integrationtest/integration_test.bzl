@@ -63,7 +63,7 @@ success, nonzero for failure).""",
             cfg = "target",
         ),
         "_test_runner": attr.label(
-            default = "//runfiles_server:IntegrationTestRunner",
+            default = "//runfiles_server/integrationtest:IntegrationTestRunner",
             executable = True,
             cfg = "target",
         ),

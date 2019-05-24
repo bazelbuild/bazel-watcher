@@ -1,6 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 load("//runfiles_server:serve.bzl", "serve")
 load(":integration_test.bzl", "integration_test")
 load(":expected_failure_test.bzl", "expected_failure_test")
+
+# The binary powering the integration_test rule.
+go_binary(
+    name = "IntegrationTestRunner",
+    srcs = [
+        "integration_test_runner.go",
+    ],
+)
 
 # First, define a server that serves from the source tree directly.
 
