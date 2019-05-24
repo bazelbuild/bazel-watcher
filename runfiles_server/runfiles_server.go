@@ -52,6 +52,10 @@ func maybeFormatLiveReloadSnippet() []byte {
 	return nil
 }
 
+// When the binary is invoked with --index foo.html, we usually want to open a browser to foo.html.
+// But also allow for an explicit --nobrowser override, so that it is possible to bazel run a
+// serve() target without launching a browser and without changing the target's attributes:
+// `bazel run :some_serve_target -- --nobrowser`.
 func shouldOpenBrowser() bool {
-	return nobrowser == false
+	return index != "" && nobrowser == false
 }

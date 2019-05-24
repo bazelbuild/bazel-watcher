@@ -26,7 +26,7 @@ func main() {
 	portString := fmt.Sprintf("%d", port)
 
 	// Bring up the system under test
-	sut := exec.Command(sutBinary, "--port", portString, "--nobrowser")
+	sut := exec.Command(sutBinary, "--port", portString)
 	var sutOut io.ReadCloser
 	if sutOut, err = sut.StdoutPipe(); err != nil {
 		panic(err)
