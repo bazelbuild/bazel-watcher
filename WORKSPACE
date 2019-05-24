@@ -118,11 +118,9 @@ go_repository(
     tag = "0.16.2",
 )
 
-load(":repositories.bzl", "bazel_runfiles_server_repositories", "bazel_runfiles_server_example_repositories")
+load("//runfiles_server/examples:repositories.bzl", "example_repositories")
 
-bazel_runfiles_server_repositories()
-
-bazel_runfiles_server_example_repositories()
+example_repositories()
 
 load("//runfiles_server/examples:setup.bzl", "setup_examples")
 
