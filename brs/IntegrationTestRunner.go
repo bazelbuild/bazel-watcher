@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 )
@@ -18,7 +19,7 @@ func main() {
 	flag.StringVar(&testBinary, "test_binary", "", "test binary to run against system under test")
 	flag.Parse()
 
-	port, err := GetEphemeralPort()
+	port, err := getEphemeralPort()
 	if err != nil {
 		panic(err)
 	}
@@ -54,4 +55,17 @@ func main() {
 
 	status := <-testDone
 	os.Exit(status)
+}
+
+func getEphemeralPort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }

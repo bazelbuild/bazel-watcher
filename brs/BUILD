@@ -18,7 +18,6 @@ go_binary(
     name = "IntegrationTestRunner",
     srcs = [
         "IntegrationTestRunner.go",
-        "EphemeralPort.go",
     ],
     visibility = [
         "//visibility:public",
