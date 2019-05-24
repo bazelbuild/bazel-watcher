@@ -37,7 +37,7 @@ _katex = rule(
             allow_single_file = True,
         ),
         "server": attr.label(
-            default = "//brs:main",
+            default = "//runfiles_server:main",
             executable = True,
             cfg = "host",
         ),

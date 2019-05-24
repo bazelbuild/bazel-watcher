@@ -1,8 +1,8 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
-# These repos are needed to build //brs. Downstream bazel repos should call this from their
-# WORKSPACE.
+# These repos are needed to build //runfiles_server. Downstream bazel repos should call this from
+# their WORKSPACE.
 def bazel_runfiles_server_repositories():
     git_repository(
         name = "bazel_gazelle",

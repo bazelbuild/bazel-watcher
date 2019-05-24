@@ -9,6 +9,6 @@ sh_binary(
 
 integration_test(
     name = "golang_sanity_test",
-    system_under_test = "//brs:main",
+    system_under_test = "//runfiles_server:main",
     test_binary = ":golang_sanity_test_sh",
 )
