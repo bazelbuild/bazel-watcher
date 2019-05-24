@@ -15,7 +15,8 @@ def _serve_impl(ctx):
 
 _serve = rule(
     implementation = _serve_impl,
-    doc = "serve data files in an ibazel-aware local development server",
+    doc = """Serves files in an ibazel-aware local development server.
+See the serve() macro (which wraps this rule) for documentation.""",
     executable = True,
     attrs = dict(SERVE_ATTRS, **{
         "data": attr.label_list(
@@ -27,13 +28,29 @@ _serve = rule(
     }),
 )
 
-def serve(name, **kwargs):
-    """Serve arbitrary data files in an ibazel-aware local development server.
+def serve(name, data=[], index=None, **kwargs):
+    """Serves arbitrary files in an ibazel-aware local development server.
 
-Use this macro when you have a rule whose implementation you do not control that you would like to
-run in a local development server."""
+    Use this macro when you have a rule whose implementation you do not control that you would like
+    to run in a local development server. (If you do control the rule's implementation, use
+    the `serve_this` helper function.)
+
+    bazel running a `serve()` target starts a web server on an open port serving the given
+    `data` files. If `index` is specified, it also opens the system's default web browser to that
+    file.
+
+    When ibazel running a `serve()` target, any changes to the `data` or `index` files are
+    immediately displayed in the browser.
+
+    Args:
+        name: A unique name for this rule.
+        data: Files to serve.
+        index: If given, bazel running a serve() target will open a browser pointing to this file.
+    """
     _serve(
         name = name,
+        data = data,
+        index = index,
         tags = [
             "ibazel_live_reload",
             "ibazel_notify_changes",
@@ -42,24 +59,31 @@ run in a local development server."""
     )
 
 def serve_this(ctx, index = None, other_files = None):
-    """Helper function allowing rules to boot an ibazel-aware web server on bazel run.
+    """Allows rules to boot an ibazel-aware web server on bazel run.
 
-This is neither a rule implementation function nor a macro. It is a helper function designed to be
-called from other rule implementations. Rules producing outputs that can be usefully previewed in a
-browser can call this function to set up all the serving logic. Requirements:
+    This is neither a rule implementation function nor a macro. It is a helper function to be called
+    from other rule implementations. Rules producing outputs that can be usefully previewed in a
+    browser can call this function to set up all the serving logic. Requirements:
 
-- The rule must be executable. (This function writes to ctx.outputs.executable.)
-- The rule must mix SERVE_ATTRS into its own attributes: `attrs = dict(SERVE_ATTRS, **{...})`.
+    - The rule must declare `executable = True`, but cannot already produce an executable. (This
+       function writes to ctx.outputs.executable.)
+    - The rule must mix `SERVE_ATTRS` into its own attributes: `attrs = dict(SERVE_ATTRS, **{...})`.
 
-Returns:
-    A runfiles object. The calling rule must propagate this as part of its own runfiles.
+    Args:
+        ctx: The Starlark context object.
+        index: The file to open in the system's default browser when the rule is bazel run.
+            If not given, bazel run will launch a web server but not the browser.
+        other_files: Other files to serve.
+
+    Returns:
+        A runfiles object. The calling rule must propagate this as part of its own runfiles.
     """
 
     # Write a script to invoke the server at bazel run time.
     ctx.actions.write(
-        # The $@ propagates flags passed to this executable (ctx.outputs.executable) to the
-        # underlying one (ctx.executable.server). This allows the integration test runner to invoke
-        # this executable with a --port flag.
+        # $@ propagates flags passed to this script to the underlying server binary. Use cases:
+        # bazel run <some_target> -- --port 9999 # hard-code port
+        # bazel run <some_target> -- --nobrowser # explicitly disable the browser
         content = """#!/bin/sh
 %s %s "$@" """ % (
             ctx.executable._server.short_path,
