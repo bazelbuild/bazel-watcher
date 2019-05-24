@@ -51,6 +51,9 @@ def serve(name, data=[], index=None, **kwargs):
         name = name,
         data = data,
         index = index,
+        # Set the magic flags enabling livereload support.
+        # TODO: if ibazel used a different signaling mechanism (a well-known target?),
+        # macro wrapping wouldn't be necessary.
         tags = [
             "ibazel_live_reload",
             "ibazel_notify_changes",
