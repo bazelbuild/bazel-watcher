@@ -1,6 +1,6 @@
-load("//rules:serve.bzl", "serve")
-load("//rules:integration_test.bzl", "integration_test")
-load("//rules:expected_failure_test.bzl", "expected_failure_test")
+load("//runfiles_server/rules:serve.bzl", "serve")
+load(":integration_test.bzl", "integration_test")
+load(":expected_failure_test.bzl", "expected_failure_test")
 
 # First, define a server that serves from the source tree directly.
 

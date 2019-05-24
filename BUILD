@@ -1,4 +1,4 @@
-load("//rules:serve.bzl", "serve")
+load("//runfiles_server/rules:serve.bzl", "serve")
 load("@bazel_pandoc//:pandoc.bzl", "pandoc")
 
 # A nice livereload experience for writing the readme itself.

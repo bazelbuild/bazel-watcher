@@ -1,4 +1,4 @@
-load("//rules:serve.bzl", "SERVE_ATTRS", "serve_this")
+load("//runfiles_server/rules:serve.bzl", "SERVE_ATTRS", "serve_this")
 
 def _katex_impl(ctx):
     tmp = ctx.actions.declare_file(ctx.attr.name + ".tmp")
