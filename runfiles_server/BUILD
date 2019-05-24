@@ -1,5 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
-load("//runfiles_server/rules:serve.bzl", "serve")
+load("//runfiles_server:serve.bzl", "serve")
 load("@bazel_pandoc//:pandoc.bzl", "pandoc")
 
 go_binary(

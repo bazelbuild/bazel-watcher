@@ -1,4 +1,4 @@
-load("//runfiles_server/rules:serve.bzl", "serve")
+load("//runfiles_server:serve.bzl", "serve")
 load(":integration_test.bzl", "integration_test")
 load(":expected_failure_test.bzl", "expected_failure_test")
 
