@@ -14,7 +14,7 @@
 
 SERVE_ATTRS = {
     "_server": attr.label(
-        default = "//runfiles_server:main",
+        default = "//runfiles_server",
         executable = True,
         cfg = "host",
     ),

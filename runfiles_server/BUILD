@@ -3,7 +3,7 @@ load("//runfiles_server:serve.bzl", "serve")
 load("@bazel_pandoc//:pandoc.bzl", "pandoc")
 
 go_binary(
-    name = "main",
+    name = "runfiles_server",
     srcs = [
         "runfiles_server.go",
         "live_reload_snippet_injecting_handler.go",
