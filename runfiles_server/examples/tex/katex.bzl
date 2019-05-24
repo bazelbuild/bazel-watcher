@@ -50,11 +50,6 @@ _katex = rule(
             mandatory = True,
             allow_single_file = True,
         ),
-        "server": attr.label(
-            default = "//runfiles_server",
-            executable = True,
-            cfg = "host",
-        ),
         "_katex": attr.label(
             default = "@npm//katex/bin:katex",
             cfg = "host",
