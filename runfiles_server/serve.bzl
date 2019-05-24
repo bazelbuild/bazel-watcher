@@ -42,7 +42,7 @@ See the serve() macro (which wraps this rule) for documentation.""",
     }),
 )
 
-def serve(name, data=[], index=None, **kwargs):
+def serve(name, data = [], index = None, **kwargs):
     """Serves arbitrary files in an ibazel-aware local development server.
 
     Use this macro when you have a rule whose implementation you do not control that you would like

@@ -5,18 +5,16 @@ load("@bazel_pandoc//:pandoc.bzl", "pandoc")
 go_binary(
     name = "runfiles_server",
     srcs = [
-        "runfiles_server.go",
         "live_reload_snippet_injecting_handler.go",
-    ],
-    deps = [
-        "@com_github_pkg_browser//:go_default_library",
+        "runfiles_server.go",
     ],
     visibility = [
         "//visibility:public",
     ],
+    deps = [
+        "@com_github_pkg_browser//:go_default_library",
+    ],
 )
-
-
 
 # A nice livereload experience for writing the readme itself.
 

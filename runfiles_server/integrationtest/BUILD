@@ -11,6 +11,7 @@ go_binary(
     ],
 )
 
+# The remaining targets are test-related.
 # First, define a server that serves from the source tree directly.
 
 serve(
@@ -147,11 +148,11 @@ sh_binary(
 
 integration_test(
     name = "should_fail",
-    system_under_test = ":simple", # doesn't really matter what it is
-    test_binary = ":fail",
+    system_under_test = ":simple",  # doesn't really matter what it is
     tags = [
-        "manual", # don't run this as part of bazel test ... (it's expected to fail)
+        "manual",  # don't run this as part of bazel test ... (it's expected to fail)
     ],
+    test_binary = ":fail",
 )
 
 expected_failure_test(
