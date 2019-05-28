@@ -78,7 +78,7 @@ func TestNotifyCommand(t *testing.T) {
 	}
 
 	// Read on the pipe is only valid in between start and wait so read now.
-	expected := "IBAZEL_BUILD_COMPLETED SUCCESS\nIBAZEL_BUILD_COMPLETED FAILURE\nIBAZEL_BUILD_COMPLETED SUCCESS\n"
+	expected := "IBAZEL_BUILD_STARTED\nIBAZEL_BUILD_COMPLETED SUCCESS\nIBAZEL_BUILD_STARTED\nIBAZEL_BUILD_COMPLETED FAILURE\nIBAZEL_BUILD_STARTED\nIBAZEL_BUILD_COMPLETED SUCCESS\n"
 	if expected != string(out) {
 		t.Errorf("Not equal.\nGot:  %s\nWant: %s", string(out), expected)
 	}

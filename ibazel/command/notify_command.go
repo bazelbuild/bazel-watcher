@@ -92,6 +92,11 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
+	_, err := c.stdin.Write([]byte("IBAZEL_BUILD_STARTED\n"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing build to stdin: %s\n", err)
+	}
+
 	outputBuffer, res := b.Build(c.target)
 	if res != nil {
 		fmt.Fprintf(os.Stderr, "FAILURE: %v\n", res)
