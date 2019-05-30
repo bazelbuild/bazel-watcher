@@ -87,7 +87,7 @@ func (i *IBazelTester) GetIBazelError() string {
 func (i *IBazelTester) Expect(want string, stream func() string, history *string) {
 	stopAt := time.Now().Add(delay)
 	for time.Now().Before(stopAt) {
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 
 		// Grab the output and strip output that was available last time we passed
 		// a test.
