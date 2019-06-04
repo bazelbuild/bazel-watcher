@@ -16,9 +16,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "com_github_bazelbuild_bazel_integration_testing",
-    sha256 = "999f1a5ac37f3b9a7a84c74e83980465da18e6844162700981372980ae88825f",
-    strip_prefix = "bazel-integration-testing-b8f2053f7d25724ab092d125b5035bad437a9600",
-    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/b8f2053f7d25724ab092d125b5035bad437a9600.tar.gz",
+    sha256 = "16fae60b9284415a6cb5fadd6c9219201f7587820ced7c7cb277d0fc6b19b345",
+    strip_prefix = "bazel-integration-testing-2ce0893982858dcc5fc7234d4a48c17d8dfd0c71",
+    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/2ce0893982858dcc5fc7234d4a48c17d8dfd0c71.tar.gz",
 )
 load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
 
