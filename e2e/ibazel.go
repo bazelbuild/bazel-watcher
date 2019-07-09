@@ -43,19 +43,19 @@ func (i *IBazelTester) Build(target string) {
 	i.build(target, []string{})
 }
 
-func (i *IBazelTester) Run(target string) {
-	i.run(target, []string{})
+func (i *IBazelTester) Run(target string, bazelArgs ...string) {
+	i.run(target, []string{}, bazelArgs)
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
-	i.run(target, []string{"--profile_dev=" + profiler})
+	i.run(target, []string{"--profile_dev=" + profiler}, []string{})
 }
 
 func (i *IBazelTester) RunWithBazelFixCommands(target string) {
 	i.run(target, []string{
 		"--run_output=true",
 		"--run_output_interactive=false",
-	})
+	}, []string{})
 }
 
 func (i *IBazelTester) GetOutput() string {
@@ -157,11 +157,12 @@ func (i *IBazelTester) build(target string, additionalArgs []string) {
 	}
 }
 
-func (i *IBazelTester) run(target string, additionalArgs []string) {
+func (i *IBazelTester) run(target string, additionalArgs []string, bazelArgs []string) {
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
 	args = append(args, target)
+	args = append(args, bazelArgs...)
 	i.cmd = exec.Command(ibazelPath, args...)
 
 	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
