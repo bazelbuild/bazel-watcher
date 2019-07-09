@@ -189,6 +189,36 @@ sh_binary(
 	ibazel.ExpectOutput("Started3!")
 }
 
+func TestSimpleRunWithFlag(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test_1.sh", `printf "Started 1!"`, 0777))
+	must(t, b.ScratchFileWithMode("test_2.sh", `printf "Started 2!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+config_setting(
+	name = "test_is_2",
+	values = {"define": "test_number=2"},
+)
+
+sh_binary(
+	name = "test",
+	srcs = select({
+        ":test_is_2": ["test_2.sh"],
+        "//conditions:default": ["test_1.sh"],
+    }),
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Run("//:test", "--define=test_number=2")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("Started 2!")
+}
+
 func renameAndWriteNewFile(t *testing.T, fname, content string) {
 	// write a file in the same manner as vim with backupcopy=no;
 	// this will rename the original file to a file with a backup extension
