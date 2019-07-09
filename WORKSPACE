@@ -96,7 +96,7 @@ go_repository(
 go_repository(
     name = "com_github_golang_protobuf",
     importpath = "github.com/golang/protobuf",
-    tag = "v1.3.1",
+    tag = "v1.3.2",
 )
 
 go_repository(
