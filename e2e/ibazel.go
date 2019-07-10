@@ -43,7 +43,7 @@ func (i *IBazelTester) Build(target string) {
 	i.build(target, []string{})
 }
 
-func (i *IBazelTester) Run(target string, bazelArgs ...string) {
+func (i *IBazelTester) Run(bazelArgs []string, target string) {
 	i.run(target, bazelArgs, []string{})
 }
 

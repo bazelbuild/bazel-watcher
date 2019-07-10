@@ -87,7 +87,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:test")
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Started!")
@@ -113,7 +113,7 @@ sh_binary(
 	}
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:test")
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Started!")
@@ -141,7 +141,7 @@ sh_binary(
 		t.Fatal(err)
 	}
 
-	ibazel.Run("test")
+	ibazel.Run([]string{}, "test")
 	defer ibazel.Kill()
 
 	err = os.Chdir("..")
@@ -167,7 +167,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:test")
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
 	// Give it time to start up and query.
@@ -213,7 +213,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:test", "--define=test_number=2")
+	ibazel.Run([]string{"--define=test_number=2"}, "//:test")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Started 2!")
@@ -288,7 +288,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:test")
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 	ibazel.ExpectOutput("Started!")
 
@@ -314,7 +314,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:test")
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 	ibazel.ExpectOutput("Started!")
 
