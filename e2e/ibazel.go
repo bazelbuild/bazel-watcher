@@ -44,18 +44,18 @@ func (i *IBazelTester) Build(target string) {
 }
 
 func (i *IBazelTester) Run(target string, bazelArgs ...string) {
-	i.run(target, []string{}, bazelArgs)
+	i.run(target, bazelArgs, []string{})
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
-	i.run(target, []string{"--profile_dev=" + profiler}, []string{})
+	i.run(target, []string{}, []string{"--profile_dev=" + profiler})
 }
 
 func (i *IBazelTester) RunWithBazelFixCommands(target string) {
-	i.run(target, []string{
+	i.run(target, []string{}, []string{
 		"--run_output=true",
 		"--run_output_interactive=false",
-	}, []string{})
+	})
 }
 
 func (i *IBazelTester) GetOutput() string {
@@ -157,7 +157,7 @@ func (i *IBazelTester) build(target string, additionalArgs []string) {
 	}
 }
 
-func (i *IBazelTester) run(target string, additionalArgs []string, bazelArgs []string) {
+func (i *IBazelTester) run(target string, bazelArgs []string, additionalArgs []string) {
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
