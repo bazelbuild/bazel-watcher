@@ -142,7 +142,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:no_profiler")
+	ibazel.Run([]string{}, "//:no_profiler")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Profiler url: $")
