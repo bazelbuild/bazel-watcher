@@ -73,7 +73,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:live_reload")
+	ibazel.Run([]string{}, "//:live_reload")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
@@ -163,7 +163,7 @@ sh_binary(
 `))
 
 	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run("//:no_live_reload")
+	ibazel.Run([]string{}, "//:no_live_reload")
 	defer ibazel.Kill()
 
 	// Expect there to not be a url since this is the negative test case.
