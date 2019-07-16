@@ -91,3 +91,21 @@ func TestCancel(t *testing.T) {
 	b := New()
 	b.Cancel()
 }
+
+func TestBazelNpmPath(t *testing.T) {
+	// Where ibazel gets installed by npm
+	ibazelPath := os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/ibazel/bin/linux-amd64/ibazel"
+	// Where bazel gets installed by npm
+	bazelNpmDir := os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/bazel-linux_x64"
+	
+	if err := os.MkdirAll(bazelNpmDir, 0755); err != nil {
+		t.Errorf(err.Error())
+	}
+	expected := bazelNpmDir + "/bazel-1.2.3-linux_x86"
+	if _, err := os.Create(expected); err != nil {
+		t.Errorf(err.Error())
+	}
+	if result, _ := bazelNpmPath(ibazelPath); result != expected {
+		t.Errorf("Expected to resolve bazel binary to %v but was %v", expected, result)
+	}
+}

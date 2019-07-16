@@ -23,13 +23,66 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 	"github.com/golang/protobuf/proto"
 )
 
-var bazelPath = flag.String("bazel_path", "bazel", "Path to the bazel binary to use for actions")
+var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to use for actions")
+
+// bazelNpmPath looks up a relative path to a binary from @bazel/bazel
+// This is used as an alternate resolution when no bazel binary is in the $PATH
+// When running from the @bazel/ibazel npm package, our binary is
+// /DIR/node_modules/@bazel/ibazel/bin/$ARCH/ibazel
+// We can find bazel in
+// /DIR/node_modules/@bazel/bazel-$ARCH/bazel-0.28.0-linux-x86_64
+func bazelNpmPath(ibazelBinPath string) (string, error) {
+	s := strings.Split(ibazelBinPath, "/")
+	for i := 0; i + 4 < len(s); i++ {
+		nm, scope, pkg, dir, bin := s[i], s[i+1], s[i+2], s[i+3], s[i+4]
+		if nm == "node_modules" && scope == "@bazel" && pkg == "ibazel" && dir == "bin" {
+			// See mapping in release/npm/index.js - ibazel is named with "amd64" arch 
+			// but @bazel/bazel uses node arch names
+			arch := strings.Replace(strings.Replace(bin, "amd64", "x64", 1), "-", "_", 1)
+			dir := strings.Join(append(s[0:i+2], "bazel-" + arch), "/")
+			// Find the bazel binary in the directory - it will have a version number in the name
+			// so we list all the files and find a bazel-*-$ARCH
+			if fd, err := os.Open(filepath.FromSlash(dir)); err == nil {
+				if names, err := fd.Readdirnames(0); err == nil {
+					for j := 0; j < len(names); j++ {
+						if strings.HasPrefix(names[j], "bazel-") {
+							return dir + "/" + names[j], nil
+						}
+					}
+				}
+			}
+		}
+	}
+	return "", errors.New("bazel binary not found in @bazel/bazel package")
+}
+
+func findBazel() (string) {
+	// Trust the user, if they supplied a path we always use it
+	if len(*bazelPathFlag) > 0 {
+		return *bazelPathFlag
+	}
+	// Common case, check in $PATH for system-installed Bazel
+	if path, err := exec.LookPath("bazel"); err == nil {
+		return path
+	}
+	// Frontend devs may have installed @bazel/bazel and @bazel/ibazel from npm
+	if npmPath, err := bazelNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
+		return filepath.FromSlash(npmPath)
+	}
+
+	// If we've fallen through to here, the lookup won't succeed.
+	// Return "bazel" so that we'll later fail with an error
+	//   exec: "bazel": executable file not found in $PATH
+	// which helps the user understand that we looked in the $PATH
+	return "bazel"
+}
 
 type Bazel interface {
 	SetArguments([]string)
@@ -87,7 +140,8 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 			args = append(args, "--color=yes")
 		}
 	}
-	b.cmd = exec.CommandContext(b.ctx, *bazelPath, args...)
+
+	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)
