@@ -16,6 +16,7 @@ package bazel
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"reflect"
@@ -92,20 +93,47 @@ func TestCancel(t *testing.T) {
 	b.Cancel()
 }
 
+var bazelNpmPathTests = []struct {
+	in string
+	out string
+	err error
+}{
+	{"/node_modules/@bazel/ibazel/bin/linux_amd64/ibazel", os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/bazel-linux_x64/bazel-1.2.3-linux_x86_64", nil},
+	{"/node_modules/@bazel/ibazel/bin/windows_amd64/ibazel.exe", os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/bazel-windows_x64/bazel-1.2.3-windows_x86_64.exe", nil},
+	{"/node_modules/@bazel/ibazel/bin/darwin_amd64/ibazel", os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/bazel-darwin_x64/bazel-1.2.3-darwin_x86_64", nil},
+	{"/", "", errors.New("bazel binary not found in @bazel/bazel package")},
+}
 func TestBazelNpmPath(t *testing.T) {
-	// Where ibazel gets installed by npm
-	ibazelPath := os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/ibazel/bin/linux-amd64/ibazel"
 	// Where bazel gets installed by npm
-	bazelNpmDir := os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel/bazel-linux_x64"
+	bazelNpmDir := os.Getenv("TEST_TMPDIR") + "/node_modules/@bazel"
 	
-	if err := os.MkdirAll(bazelNpmDir, 0755); err != nil {
+	if err := os.MkdirAll(bazelNpmDir + "/bazel-linux_x64", 0755); err != nil {
 		t.Errorf(err.Error())
 	}
-	expected := bazelNpmDir + "/bazel-1.2.3-linux_x86"
-	if _, err := os.Create(expected); err != nil {
+	if err := os.MkdirAll(bazelNpmDir + "/bazel-windows_x64", 0755); err != nil {
 		t.Errorf(err.Error())
 	}
-	if result, _ := bazelNpmPath(ibazelPath); result != expected {
-		t.Errorf("Expected to resolve bazel binary to %v but was %v", expected, result)
+	if err := os.MkdirAll(bazelNpmDir + "/bazel-darwin_x64", 0755); err != nil {
+		t.Errorf(err.Error())
+	}
+	if _, err := os.Create(bazelNpmDir + "/bazel-linux_x64/bazel-1.2.3-linux_x86_64"); err != nil {
+		t.Errorf(err.Error())
+	}
+	if _, err := os.Create(bazelNpmDir + "/bazel-windows_x64/bazel-1.2.3-windows_x86_64.exe"); err != nil {
+		t.Errorf(err.Error())
+	}
+	if _, err := os.Create(bazelNpmDir + "/bazel-darwin_x64/bazel-1.2.3-darwin_x86_64"); err != nil {
+		t.Errorf(err.Error())
+	}
+	for _, tt := range bazelNpmPathTests {
+		t.Run(tt.in, func(t *testing.T) {
+			result, err := bazelNpmPath(os.Getenv("TEST_TMPDIR") + tt.in)
+			if result != tt.out {
+				t.Errorf("Expected to resolve bazel binary to %v but was %v", tt.out, result)
+			}
+			if (err != nil && err.Error() != tt.err.Error()) {
+				t.Errorf("Expected error %v but was %v", tt.err.Error(), err.Error())
+			}
+		})
 	}
 }

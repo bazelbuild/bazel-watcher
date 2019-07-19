@@ -35,18 +35,18 @@ var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to u
 // bazelNpmPath looks up a relative path to a binary from @bazel/bazel
 // This is used as an alternate resolution when no bazel binary is in the $PATH
 // When running from the @bazel/ibazel npm package, our binary is
-// /DIR/node_modules/@bazel/ibazel/bin/$ARCH/ibazel
+// /DIR/node_modules/@bazel/ibazel/bin/darwin_amd64/ibazel
 // We can find bazel in
-// /DIR/node_modules/@bazel/bazel-$ARCH/bazel-0.28.0-linux-x86_64
+// /DIR/node_modules/@bazel/bazel-darwin_x64/bazel-0.28.0-darwin-x86_64
 func bazelNpmPath(ibazelBinPath string) (string, error) {
 	s := strings.Split(ibazelBinPath, "/")
 	for i := 0; i + 4 < len(s); i++ {
-		nm, scope, pkg, dir, bin := s[i], s[i+1], s[i+2], s[i+3], s[i+4]
+		prefix, nm, scope, pkg, dir, bin := s[0:i], s[i], s[i+1], s[i+2], s[i+3], s[i+4]
 		if nm == "node_modules" && scope == "@bazel" && pkg == "ibazel" && dir == "bin" {
 			// See mapping in release/npm/index.js - ibazel is named with "amd64" arch 
 			// but @bazel/bazel uses node arch names
-			arch := strings.Replace(strings.Replace(bin, "amd64", "x64", 1), "-", "_", 1)
-			dir := strings.Join(append(s[0:i+2], "bazel-" + arch), "/")
+			arch := strings.Replace(bin, "amd64", "x64", 1)
+			dir := strings.Join(append(prefix, nm, scope, "bazel-" + arch), "/")
 			// Find the bazel binary in the directory - it will have a version number in the name
 			// so we list all the files and find a bazel-*-$ARCH
 			if fd, err := os.Open(filepath.FromSlash(dir)); err == nil {
@@ -68,13 +68,15 @@ func findBazel() (string) {
 	if len(*bazelPathFlag) > 0 {
 		return *bazelPathFlag
 	}
-	// Common case, check in $PATH for system-installed Bazel
-	if path, err := exec.LookPath("bazel"); err == nil {
-		return path
-	}
 	// Frontend devs may have installed @bazel/bazel and @bazel/ibazel from npm
+	// If they also have bazel in the $PATH, we want to resolve this one, to avoid version skew
 	if npmPath, err := bazelNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
 		return filepath.FromSlash(npmPath)
+	}
+
+	// Check in $PATH for system-installed Bazel
+	if path, err := exec.LookPath("bazel"); err == nil {
+		return path
 	}
 
 	// If we've fallen through to here, the lookup won't succeed.
