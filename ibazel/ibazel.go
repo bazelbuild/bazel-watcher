@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -431,6 +432,31 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	b := i.newBazel()
 
+	info, _ := i.getInfo()
+	outputBase := (*info)["output_base"]
+	installBase := (*info)["install_base"]
+	externalPath := outputBase + "/external"
+	localRepositories := map[string]string{}
+
+	files, err := ioutil.ReadDir(externalPath)
+    if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding external repo: %v\n", err)
+		return []string{}, err
+	}
+
+    for _, f := range files {
+		if !f.IsDir() && (f.Mode()&os.ModeSymlink) == os.ModeSymlink {
+			name := f.Name()
+			realPath, _ := os.Readlink(externalPath + "/" + f.Name())
+
+			if !strings.Contains(realPath, installBase) {
+				localRepositories[name] = realPath
+			}
+
+			// fmt.Println(f.Name(), realPath, strings.Contains(realPath, installBase), localRepositories)
+		}
+    }
+
 	res, err := b.Query(query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Bazel query failed: %v\n", err)
@@ -449,6 +475,12 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		case blaze_query.Target_SOURCE_FILE:
 			label := *target.SourceFile.Name
 			if strings.HasPrefix(label, "@") {
+				parts := strings.Split(strings.TrimPrefix(label, "@"), "//")
+				if realPath, ok := localRepositories[parts[0]]; ok {
+					label = strings.Replace(parts[1], ":", string(filepath.Separator), 1)
+					toWatch = append(toWatch, filepath.Join(realPath, label))
+					break
+				}
 				continue
 			}
 			if strings.HasPrefix(label, "//external") {
