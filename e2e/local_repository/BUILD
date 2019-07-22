@@ -1,0 +1,18 @@
+# gazelle:exclude local_repository_test.go
+
+load("@com_github_bazelbuild_bazel_integration_testing//go:bazel_integration_test.bzl", "bazel_go_integration_test")
+load("@com_github_bazelbuild_bazel_integration_testing//tools:common.bzl", "GET_LATEST_BAZEL_VERSIONS")
+
+bazel_go_integration_test(
+    name = "go_default_test",
+    srcs = ["local_repository_test.go"],
+    data = [
+        "//ibazel",
+    ],
+    importpath = "github.com/bazelbuild/bazel-watcher/e2e/local_repository",
+    versions = GET_LATEST_BAZEL_VERSIONS(),
+    deps = [
+        "//e2e:go_default_library",
+        "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",
+    ],
+)
