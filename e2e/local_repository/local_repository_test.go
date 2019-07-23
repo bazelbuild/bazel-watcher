@@ -1,11 +1,11 @@
-package simple
+package local_repository
 
 import (
-	"runtime/debug"
-	"testing"
-	"strings"
 	"fmt"
 	"os"
+	"runtime/debug"
+	"strings"
+	"testing"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
@@ -48,7 +48,7 @@ echo $BUILD_WORKSPACE_DIRECTORY
 
 	_, stdout, _ := secondary.RunBazel([]string{"run", "//:workspace"})
 	secondaryWorkspacePath := strings.TrimSpace(stdout)
-	
+
 	main, err := bazel.New()
 	if err != nil {
 		t.Fatal(err)
@@ -81,11 +81,9 @@ say_hello
 
 	ibazel.ExpectOutput("hello!")
 
-	/**
-	 * File operations in `TestingBazel` doesn't respect their own `tmpDir` all instances 
-	 * will work in the same directory so in order to update files in `secondary` workspace 
-	 * we need to change directory manualy.
-	 */
+	// File operations in `TestingBazel` doesn't respect their own `tmpDir` all instances
+	// will work in the same directory so in order to update files in `secondary` workspace
+	// we need to change directory manualy.
 	os.Chdir(secondaryWorkspacePath)
 
 	must(t, secondary.ScratchFileWithMode("lib.sh", `
