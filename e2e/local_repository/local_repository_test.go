@@ -5,6 +5,7 @@ import (
 	"testing"
 	"strings"
 	"fmt"
+	"os"
 
 	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
@@ -79,6 +80,13 @@ say_hello
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("hello!")
+
+	/**
+	 * File operations in `TestingBazel` doesn't respect their own `tmpDir` all instances 
+	 * will work in the same directory so in order to update files in `secondary` workspace 
+	 * we need to change directory manualy.
+	 */
+	os.Chdir(secondaryWorkspacePath)
 
 	must(t, secondary.ScratchFileWithMode("lib.sh", `
 function say_hello {
