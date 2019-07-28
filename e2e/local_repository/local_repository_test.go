@@ -71,7 +71,8 @@ sh_binary(
 )
 `))
 	must(t, main.ScratchFileWithMode("test.sh", `
-source external/secondary/lib.sh
+#!/bin/bash
+source ../secondary/lib.sh
 say_hello
 `, 0777))
 
