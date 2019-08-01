@@ -59,9 +59,10 @@ const buildQuery = "buildfiles(deps(set(%s)))"
 type IBazel struct {
 	debounceDuration time.Duration
 
-	cmd       command.Command
-	args      []string
-	bazelArgs []string
+	cmd         command.Command
+	args        []string
+	bazelArgs   []string
+	startupArgs []string
 
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
@@ -159,12 +160,17 @@ func (i *IBazel) handleSignals() {
 
 func (i *IBazel) newBazel() bazel.Bazel {
 	b := bazelNew()
+	b.SetStartupArgs(i.startupArgs)
 	b.SetArguments(i.bazelArgs)
 	return b
 }
 
 func (i *IBazel) SetBazelArgs(args []string) {
 	i.bazelArgs = args
+}
+
+func (i *IBazel) SetStartupArgs(args []string) {
+	i.startupArgs = args
 }
 
 func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
@@ -374,9 +380,9 @@ func (i *IBazel) setupRun(target string) command.Command {
 
 	if commandNotify {
 		fmt.Fprintf(os.Stderr, "Launching with notifications\n")
-		return commandNotifyCommand(i.bazelArgs, target, i.args)
+		return commandNotifyCommand(i.startupArgs, i.bazelArgs, target, i.args)
 	} else {
-		return commandDefaultCommand(i.bazelArgs, target, i.args)
+		return commandDefaultCommand(i.startupArgs, i.bazelArgs, target, i.args)
 	}
 }
 

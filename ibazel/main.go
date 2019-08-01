@@ -26,6 +26,8 @@ var Version = "Development"
 
 var overrideableBazelFlags []string = []string{
 	"--action_env",
+	"--announce_rc",
+	"--bazelrc",
 	"--config=",
 	"--curses=no",
 	"--define",
@@ -86,7 +88,7 @@ func isOverrideableBazelFlag(arg string) bool {
 	return false
 }
 
-func parseArgs(in []string) (targets, bazelArgs, args []string) {
+func parseArgs(in []string) (targets, startupArgs, bazelArgs, args []string) {
 	afterDoubleDash := false
 	for _, arg := range in {
 		if afterDoubleDash {
@@ -101,7 +103,12 @@ func parseArgs(in []string) (targets, bazelArgs, args []string) {
 
 			// Check to see if this flag is on the bazel whitelist of flags.
 			if isOverrideableBazelFlag(arg) {
-				bazelArgs = append(bazelArgs, arg)
+				// TODO
+				if strings.HasPrefix(arg, "--bazelrc") {
+					startupArgs = append(startupArgs, arg)
+				} else {
+					bazelArgs = append(bazelArgs, arg)
+				}
 				continue
 			}
 
@@ -153,7 +160,8 @@ func main() {
 }
 
 func handle(i *IBazel, command string, args []string) {
-	targets, bazelArgs, args := parseArgs(args)
+	targets, startupArgs, bazelArgs, args := parseArgs(args)
+	i.SetStartupArgs(startupArgs)
 	i.SetBazelArgs(bazelArgs)
 
 	switch command {

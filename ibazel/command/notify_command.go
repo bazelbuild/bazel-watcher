@@ -24,9 +24,10 @@ import (
 )
 
 type notifyCommand struct {
-	target    string
-	bazelArgs []string
-	args      []string
+	target       string
+	startupArgs  []string
+	bazelArgs    []string
+	args         []string
 
 	pg    process_group.ProcessGroup
 	stdin io.WriteCloser
@@ -34,11 +35,12 @@ type notifyCommand struct {
 
 // NotifyCommand is an alternate mode for starting a command. In this mode the
 // command will be notified on stdin that the source files have changed.
-func NotifyCommand(bazelArgs []string, target string, args []string) Command {
+func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string) Command {
 	return &notifyCommand{
-		target:    target,
-		bazelArgs: bazelArgs,
-		args:      args,
+		startupArgs:    startupArgs,
+		target:    	    target,
+		bazelArgs:      bazelArgs,
+		args:           args,
 	}
 }
 
@@ -60,7 +62,9 @@ func (c *notifyCommand) Terminate() {
 
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
+	b.SetStartupArgs(c.startupArgs)
 	b.SetArguments(c.bazelArgs)
+
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -87,6 +91,7 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 
 func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 	b := bazelNew()
+	b.SetStartupArgs(c.startupArgs)
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)

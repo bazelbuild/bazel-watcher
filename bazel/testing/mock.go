@@ -27,6 +27,7 @@ type MockBazel struct {
 	actions       [][]string
 	queryResponse map[string]*blaze_query.QueryResult
 	args          []string
+	startupArgs   []string
 
 	buildError error
 	waitError  error
@@ -34,6 +35,10 @@ type MockBazel struct {
 
 func (b *MockBazel) SetArguments(args []string) {
 	b.args = args
+}
+
+func (b *MockBazel) SetStartupArgs(args []string) {
+	b.startupArgs = args
 }
 
 func (b *MockBazel) WriteToStderr(v bool) {

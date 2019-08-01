@@ -23,20 +23,22 @@ import (
 )
 
 type defaultCommand struct {
-	target    string
-	bazelArgs []string
-	args      []string
-	pg        process_group.ProcessGroup
+	target       string
+	startupArgs	 []string
+	bazelArgs    []string
+	args         []string
+	pg           process_group.ProcessGroup
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
 // server in this mode and notify of changes the server will be killed and
 // restarted.
-func DefaultCommand(bazelArgs []string, target string, args []string) Command {
+func DefaultCommand(startupArgs []string, bazelArgs []string, target string, args []string) Command {
 	return &defaultCommand{
-		target:    target,
-		bazelArgs: bazelArgs,
-		args:      args,
+		target:      target,
+		startupArgs: startupArgs,
+		bazelArgs:   bazelArgs,
+		args:        args,
 	}
 }
 
@@ -58,6 +60,7 @@ func (c *defaultCommand) Terminate() {
 
 func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
+	b.SetStartupArgs(c.startupArgs)
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
