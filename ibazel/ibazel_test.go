@@ -59,9 +59,9 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 
 type mockCommand struct {
 	startupArgs []string
-	bazelArgs []string
-	target    string
-	args      []string
+	bazelArgs   []string
+	target      string
+	args        []string
 
 	notifiedOfChanges bool
 	started           bool

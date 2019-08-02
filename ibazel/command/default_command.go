@@ -23,11 +23,11 @@ import (
 )
 
 type defaultCommand struct {
-	target       string
-	startupArgs	 []string
-	bazelArgs    []string
-	args         []string
-	pg           process_group.ProcessGroup
+	target      string
+	startupArgs []string
+	bazelArgs   []string
+	args        []string
+	pg          process_group.ProcessGroup
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a

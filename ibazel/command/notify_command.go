@@ -24,10 +24,10 @@ import (
 )
 
 type notifyCommand struct {
-	target       string
-	startupArgs  []string
-	bazelArgs    []string
-	args         []string
+	target      string
+	startupArgs []string
+	bazelArgs   []string
+	args        []string
 
 	pg    process_group.ProcessGroup
 	stdin io.WriteCloser
@@ -37,10 +37,10 @@ type notifyCommand struct {
 // command will be notified on stdin that the source files have changed.
 func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string) Command {
 	return &notifyCommand{
-		startupArgs:    startupArgs,
-		target:    	    target,
-		bazelArgs:      bazelArgs,
-		args:           args,
+		startupArgs: startupArgs,
+		target:      target,
+		bazelArgs:   bazelArgs,
+		args:        args,
 	}
 }
 
