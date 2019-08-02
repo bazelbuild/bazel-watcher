@@ -67,6 +67,25 @@ your target contains `ibazel_notify_changes` in its `tags` attribute, then the
 command will stay alive and will receive a notification of the source changes on
 stdin.
 
+## Output Runner
+
+iBazel is capable of producing and running commands from the output of Bazel commands. If iBazel is run with the flag `--run_output` then it will check for a `%WORKSPACE%/.bazel_fix_commands.json` and if present run any commands that match the provided regular expressions.
+For example the commands defined by the following file will match `buildozer` commands found in the output and provide a prompt to run the command.
+```
+[{
+    "regex": "^buildozer '(.*)'\\s+(.*)$",
+    "command": "buildozer",
+    "args":    ["$1", "$2"],
+}]
+```
+Adding the flag `--run_output_interactive=false` will automatically run the command without prompting for confirmation.
+The fields in `.bazel_fix_commands.json` are:
+
+* regex: a regular expression that will be matched against every line of output.
+    * backslash `\` characters will need to be escaped once for the regex to be parsed properly.
+* command: a command that will be run from the workspace root.
+* args: a list of arguments to provide to the command, with `$1` being the first match group of `regex`, `$2` being the second and so on.
+
 ## Profiling
 
 iBazel has a `--profile_dev` flag which turns on a generated profile output file
@@ -123,7 +142,7 @@ The profile outfile is in concatenated JSON format. Events are outputted one per
 You can find an example profile output JSON file [here](https://github.com/bazelbuild/bazel-watcher/blob/master/example.profile.json). Below is the file in pretty print JSON format:
 
 ```
-{  
+{
    "type":"IBAZEL_START",
    "iteration":"4214114686684e0f",
    "time":1513706108351,
@@ -132,35 +151,35 @@ You can find an example profile output JSON file [here](https://github.com/bazel
    "maxHeapSize":"3817MB",
    "committedHeapSize":"1372MB"
 }
-{  
+{
    "type":"RUN_START",
    "iteration":"4214114686684e0f",
    "time":1513706109329,
    "targets":["//src:devserver"],
    "elapsed":978
 }
-{  
+{
    "type":"RELOAD_TRIGGERED",
    "iteration":"4214114686684e0f",
    "time":1513706114595,
    "targets":["//src:devserver"],
    "elapsed":6244
 }
-{  
+{
    "type":"RUN_DONE",
    "iteration":"4214114686684e0f",
    "time":1513706114595,
    "targets":["//src:devserver"],
    "elapsed":6244
 }
-{  
+{
    "type":"SOURCE_CHANGE",
    "iteration":"7e6f8e150e9a8367",
    "time":1513706129384,
    "targets":["//src:devserver"],
    "change":"/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"
 }
-{  
+{
    "type":"RUN_START",
    "iteration":"7e6f8e150e9a8367",
    "time":1513706129484,
@@ -168,7 +187,7 @@ You can find an example profile output JSON file [here](https://github.com/bazel
    "elapsed":100,
    "changes":["/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"]
 }
-{  
+{
    "type":"RELOAD_TRIGGERED",
    "iteration":"7e6f8e150e9a8367",
    "time":1513706133947,
@@ -176,7 +195,7 @@ You can find an example profile output JSON file [here](https://github.com/bazel
    "elapsed":4563,
    "changes":["/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"]
 }
-{  
+{
    "type":"RUN_DONE",
    "iteration":"7e6f8e150e9a8367",
    "time":1513706133947,
@@ -184,7 +203,7 @@ You can find an example profile output JSON file [here](https://github.com/bazel
    "elapsed":4563,
    "changes":["/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"]
 }
-{  
+{
    "type":"REMOTE_EVENT",
    "iteration":"7e6f8e150e9a8367",
    "time":1513706134297,
