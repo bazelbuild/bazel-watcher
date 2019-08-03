@@ -102,10 +102,13 @@ type Bazel interface {
 
 type bazel struct {
 	cmd           *exec.Cmd
+
 	args          []string
+	startupArgs   []string
+
 	ctx           context.Context
 	cancel        context.CancelFunc
-	startupArgs   []string
+
 	writeToStderr bool
 	writeToStdout bool
 }
