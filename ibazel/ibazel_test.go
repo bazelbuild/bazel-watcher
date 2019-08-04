@@ -58,9 +58,10 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 }
 
 type mockCommand struct {
-	bazelArgs []string
-	target    string
-	args      []string
+	startupArgs []string
+	bazelArgs   []string
+	target      string
+	args        []string
 
 	notifiedOfChanges bool
 	started           bool
@@ -125,9 +126,10 @@ func init() {
 		})
 		return mockBazel
 	}
-	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {
+	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
 		// Don't do anything
 		return &mockCommand{
+			startupArgs: startupArgs,
 			bazelArgs: bazelArgs,
 			target:    target,
 			args:      args,
@@ -269,7 +271,8 @@ func TestIBazelRun_firstPass(t *testing.T) {
 }
 
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
-	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {
+	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
+		assertEqual(t, startupArgs, []string{}, "Startup args")
 		assertEqual(t, bazelArgs, []string{}, "Bazel args")
 		assertEqual(t, target, "", "Target")
 		assertEqual(t, args, []string{}, "Args")

@@ -88,6 +88,7 @@ func findBazel() (string) {
 
 type Bazel interface {
 	SetArguments([]string)
+	SetStartupArgs([]string)
 	WriteToStderr(v bool)
 	WriteToStdout(v bool)
 	Info() (map[string]string, error)
@@ -101,9 +102,13 @@ type Bazel interface {
 
 type bazel struct {
 	cmd           *exec.Cmd
+
 	args          []string
+	startupArgs   []string
+
 	ctx           context.Context
 	cancel        context.CancelFunc
+
 	writeToStderr bool
 	writeToStdout bool
 }
@@ -114,6 +119,10 @@ func New() Bazel {
 
 func (b *bazel) SetArguments(args []string) {
 	b.args = args
+}
+
+func (b *bazel) SetStartupArgs(args []string) {
+	b.startupArgs = args
 }
 
 // WriteToStderr when running an operation.
@@ -130,6 +139,7 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 
 	args = append([]string{command}, args...)
+	args = append(b.startupArgs, args...)
 
 	if b.writeToStderr || b.writeToStdout {
 		containsColor := false
