@@ -48,6 +48,7 @@ var overrideableBazelFlags []string = []string{
 	"--test_env",
 	"--test_filter",
 	"--test_output=",
+	"--test_tag_filters=",
 	"--test_timeout",
 }
 
