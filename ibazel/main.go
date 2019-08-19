@@ -151,6 +151,7 @@ func main() {
 
 	command := strings.ToLower(flag.Args()[0])
 	args := flag.Args()[1:]
+	os.Setenv("IBAZEL", "true")
 
 	i, err := New()
 	if err != nil {
