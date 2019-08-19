@@ -93,6 +93,27 @@ sh_binary(
 	ibazel.ExpectOutput("Started!")
 }
 
+func TestSimpleRunConfirmEnvironment(t *testing.T) {
+	b, err := bazel.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must(t, b.ScratchFile("WORKSPACE", ""))
+	must(t, b.ScratchFileWithMode("test.sh", `printf "Started and IBAZEL=${IBAZEL}!"`, 0777))
+	must(t, b.ScratchFile("BUILD", `
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+`))
+
+	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel.Run([]string{}, "//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("Started and IBAZEL=true!")
+}
+
 func TestSimpleRunAfterShutdown(t *testing.T) {
 	b, err := bazel.New()
 	if err != nil {
