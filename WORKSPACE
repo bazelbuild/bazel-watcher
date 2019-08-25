@@ -82,7 +82,7 @@ go_repository(
 go_repository(
     name = "com_github_gorilla_websocket",
     importpath = "github.com/gorilla/websocket",
-    tag = "v1.4.0",
+    tag = "v1.4.1",
 )
 
 go_repository(
