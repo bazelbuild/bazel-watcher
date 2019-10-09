@@ -26,11 +26,11 @@ bazel_binaries()
 
 http_archive(
     name = "bazel_skylib",
-    sha256 = "9a737999532daca978a158f94e77e9af6a6a169709c0cee274f0a4c3359519bd",
-    strip_prefix = "bazel-skylib-1.0.0",
+    sha256 = "b96c7ac1a7bcc2d8afc6b230daa1a2263f70b5ec96e292d3d3f85ba43447c585",
+    strip_prefix = "bazel-skylib-1.0.1",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/archive/1.0.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-skylib/archive/1.0.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/archive/1.0.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/archive/1.0.1.tar.gz",
     ],
 )
 
