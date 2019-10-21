@@ -32,6 +32,7 @@ var overrideableBazelFlags []string = []string{
 	"--action_env",
 	"--announce_rc",
 	"--config=",
+	"--copt=",
 	"--curses=no",
 	"--define=",
 	"--features=",
