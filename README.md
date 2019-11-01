@@ -41,6 +41,14 @@ If you're a JS developer you can install it as a `devDependency` or by calling `
 npm install @bazel/ibazel
 ```
 
+### Linux
+
+Packages are available for the following distributions:
+
+* **Arch Linux**: [`aur/ibazel`][install/linux/archlinux/aur]
+
+[install/linux/archlinux/aur]: https://aur.archlinux.org/packages/ibazel
+
 ### Compiling yourself
 
 You can, of course, build iBazel using Bazel.
