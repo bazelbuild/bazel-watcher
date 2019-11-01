@@ -21,7 +21,7 @@ Right now this repo supports `build`, `test`, and `run`.
 
 ## Installation
 
-There are currently 3 ways to install iBazel
+There are several ways to install iBazel, documented below.
 
 ### Mac (Homebrew)
 
