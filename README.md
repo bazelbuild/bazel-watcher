@@ -21,7 +21,7 @@ Right now this repo supports `build`, `test`, and `run`.
 
 ## Installation
 
-There are currently 3 ways to install iBazel
+There are several ways to install iBazel, documented below.
 
 ### Mac (Homebrew)
 
@@ -40,6 +40,14 @@ If you're a JS developer you can install it as a `devDependency` or by calling `
 ```
 npm install @bazel/ibazel
 ```
+
+### Linux
+
+Packages are available for the following distributions:
+
+* **Arch Linux**: [`aur/ibazel`][install/linux/archlinux/aur]
+
+[install/linux/archlinux/aur]: https://aur.archlinux.org/packages/ibazel
 
 ### Compiling yourself
 
