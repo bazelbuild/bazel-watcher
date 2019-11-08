@@ -41,6 +41,9 @@ var runOutputInteractive = flag.Bool(
 	true,
 	"Use an interactive prompt when executing commands in Bazel output")
 
+// This RegExp will match ANSI escape codes.
+var escapeCodeCleanerRegex = regexp.MustCompile("\\x1B\\[[\\x30-\\x3F]*[\\x20-\\x2F]*[\\x40-\\x7E]")
+
 type OutputRunner struct{}
 
 type Optcmd struct {
@@ -114,7 +117,7 @@ func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]
 	var args [][]string
 	scanner := bufio.NewScanner(output)
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := escapeCodeCleanerRegex.ReplaceAllLiteralString(scanner.Text(), "")
 		for _, oc := range optcmd {
 			re := regexp.MustCompile(oc.Regex)
 			matches := re.FindStringSubmatch(line)
