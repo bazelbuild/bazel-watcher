@@ -170,7 +170,6 @@ func executeCommand(command string, args []string) {
 	for i, arg := range args {
 		args[i] = strings.TrimSpace(arg)
 	}
-	fmt.Fprintf(os.Stderr, "Executing command: %s\n", command)
 	workspaceFinder := &workspace_finder.MainWorkspaceFinder{}
 	workspacePath, err := workspaceFinder.FindWorkspace()
 	if err != nil {
@@ -181,7 +180,7 @@ func executeCommand(command string, args []string) {
 
 	ctx, _ := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, command, args...)
-	fmt.Fprintf(os.Stderr, "Executing command: %s %s\n", cmd.Path, strings.Join(cmd.Args, ","))
+	fmt.Fprintf(os.Stderr, "Executing command: %s\n", strings.Join(cmd.Args, " "))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Dir = workspacePath

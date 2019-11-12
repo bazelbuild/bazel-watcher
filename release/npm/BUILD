@@ -33,7 +33,7 @@ genrule(
 go_library(
     name = "go_default_library",
     srcs = ["generate_package.go"],
-    importpath = "github.com/bazelbuild/bazel-watcher/npm",
+    importpath = "github.com/bazelbuild/bazel-watcher/release/npm",
     visibility = ["//visibility:private"],
 )
 

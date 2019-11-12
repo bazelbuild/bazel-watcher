@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -24,7 +24,4 @@ go_library(
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/process_group",
     visibility = ["//ibazel:__subpackages__"],
-    deps = [
-        "//ibazel/workspace_finder:go_default_library",
-    ],
 )
