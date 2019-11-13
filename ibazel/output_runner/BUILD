@@ -20,6 +20,7 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/output_runner",
     visibility = ["//ibazel:__subpackages__"],
     deps = [
+        "//ibazel/log:go_default_library",
         "//ibazel/workspace_finder:go_default_library",
         "//third_party/bazel/master/src/main/protobuf:go_default_library",
     ],

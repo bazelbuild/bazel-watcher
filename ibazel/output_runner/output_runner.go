@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 )
@@ -79,7 +80,7 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 
 	optcmd := readConfigs(jsonCommandPath)
 	if optcmd == nil {
-		fmt.Fprintf(os.Stderr, "Use default regex\n")
+		log.Log("Use default regex")
 		optcmd = []Optcmd{defaultRegex}
 	}
 	commandLines, commands, args := matchRegex(optcmd, output)
@@ -97,7 +98,7 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 func readConfigs(configPath string) []Optcmd {
 	jsonFile, err := os.Open(configPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		log.Errorf("Error reading config: %s", err)
 		return nil
 	}
 	defer jsonFile.Close()
@@ -106,7 +107,7 @@ func readConfigs(configPath string) []Optcmd {
 	var optcmd []Optcmd
 	err = json.Unmarshal(byteValue, &optcmd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error in .bazel_fix_commands.json: %s\n", err)
+		log.Errorf("Error in .bazel_fix_commands.json: %s", err)
 	}
 
 	return optcmd
@@ -170,24 +171,25 @@ func executeCommand(command string, args []string) {
 	for i, arg := range args {
 		args[i] = strings.TrimSpace(arg)
 	}
+	log.Logf("Executing command: %s", command)
 	workspaceFinder := &workspace_finder.MainWorkspaceFinder{}
 	workspacePath, err := workspaceFinder.FindWorkspace()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding workspace: %v\n", err)
+		log.Fatalf("Error finding workspace: %v", err)
 		os.Exit(5)
 	}
-	fmt.Fprintf(os.Stderr, "Workspace path: %s\n", workspacePath)
+	log.Logf("Workspace path: %s", workspacePath)
 
 	ctx, _ := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, command, args...)
-	fmt.Fprintf(os.Stderr, "Executing command: %s\n", strings.Join(cmd.Args, " "))
+	log.Logf("Executing command: `%s`", strings.Join(cmd.Args, " "))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Dir = workspacePath
 
 	err = cmd.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Command failed: %s %s. Error: %s\n", command, args, err)
+		log.Errorf("Command failed: %s %s. Error: %s", command, args, err)
 	}
 }
 

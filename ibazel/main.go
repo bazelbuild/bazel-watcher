@@ -20,6 +20,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 )
 
 var Version = "Development"
@@ -142,7 +144,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		os.Stderr = logFile
+		log.SetWriter(logFile)
 	}
 
 	if len(flag.Args()) < 2 {
@@ -156,8 +158,7 @@ func main() {
 
 	i, err := New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating iBazel: %s\n", err)
-		os.Exit(1)
+		log.Fatalf("Error creating iBazel: %s", err)
 	}
 	i.SetDebounceDuration(*debounceDuration)
 	defer i.Cleanup()
@@ -166,7 +167,7 @@ func main() {
 	// have open.
 	err = setUlimit()
 	if err != nil {
-		fmt.Fprint(os.Stderr, "error setting higher file descriptor limit for this process: ", err)
+		log.Errorf("error setting higher file descriptor limit for this process: %v", err)
 	}
 
 	handle(i, command, args)
