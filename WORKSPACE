@@ -15,16 +15,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = "com_github_bazelbuild_bazel_integration_testing",
-    sha256 = "8601e606c315a3a12a38ca527d5a3fc4a41aff935950b0678b4b5aa9b7dd2644",
-    strip_prefix = "bazel-integration-testing-cd4f16d50898eebe0eca0c09496fe15e9a642f71",
-    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/cd4f16d50898eebe0eca0c09496fe15e9a642f71.tar.gz",
-)
-load("@com_github_bazelbuild_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
-
-bazel_binaries()
-
-http_archive(
     name = "bazel_skylib",
     sha256 = "e5d90f0ec952883d56747b7604e2a15ee36e288bb556c3d0ed33e818a4d971f2",
     strip_prefix = "bazel-skylib-1.0.2",
@@ -34,26 +24,46 @@ http_archive(
     ],
 )
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "rules_proto",
+    sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
+    strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+        "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+    ],
+)
+
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+
+rules_proto_dependencies()
+
+rules_proto_toolchains()
+
 # NOTE: URLs are mirrored by an asynchronous review process. They must
 #       be greppable for that to happen. It's OK to submit broken mirror
 #       URLs, so long as they're correctly formatted. Bazel's downloader
 #       has fast failover.
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "f04d2373bcaf8aa09bccb08a98a57e721306c8f6043a2a0ee610fd6853dcde3d",
+    sha256 = "b9aa86ec08a292b97ec4591cf578e020b35f98e12173bbd4a921f84f583aebd9",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/0.18.6/rules_go-0.18.6.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/0.18.6/rules_go-0.18.6.tar.gz",
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/v0.20.2/rules_go-v0.20.2.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.20.2/rules_go-v0.20.2.tar.gz",
     ],
 )
 
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "3c681998538231a2d24d0c07ed5a7658cb72bfb5fd4bf9911157c0e9ac6a2687",
+    sha256 = "86c6d481b3f7aedc1d60c1c211c6f76da282ae197c3b3160f54bd3a8f847896f",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/0.17.0/bazel-gazelle-0.17.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.17.0/bazel-gazelle-0.17.0.tar.gz",
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.19.1/bazel-gazelle-v0.19.1.tar.gz",
     ],
 )
 
@@ -63,51 +73,10 @@ go_rules_dependencies()
 
 go_register_toolchains()
 
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
 
-go_repository(
-    name = "com_github_fsnotify_fsnotify",
-    importpath = "github.com/fsnotify/fsnotify",
-    tag = "v1.4.7",
-)
+load(":repositories.bzl", "go_repositories")
 
-go_repository(
-    name = "com_github_jaschaephraim_lrserver",
-    importpath = "github.com/jaschaephraim/lrserver",
-    tag = "3.0.1",
-)
-
-go_repository(
-    name = "com_github_gorilla_websocket",
-    importpath = "github.com/gorilla/websocket",
-    tag = "v1.4.1",
-)
-
-go_repository(
-    name = "org_golang_x_sys",
-    commit = "cc5685c2db1239775905f3911f0067c0fa74762f",
-    importpath = "golang.org/x/sys",
-)
-
-# NOTE: this must match rules_go version located at
-# https://github.com/bazelbuild/rules_go/blob/master/go/private/repositories.bzl
-go_repository(
-    name = "com_github_golang_protobuf",
-    importpath = "github.com/golang/protobuf",
-    tag = "v1.3.2",
-)
-
-go_repository(
-    name = "com_github_gorilla_websocket",
-    importpath = "github.com/gorilla/websocket",
-    tag = "v1.4.0",
-)
-
-# NOTE: this must match rules_go version above
-go_repository(
-    name = "com_github_bazelbuild_rules_go",
-    importpath = "github.com/bazelbuild/rules_go",
-    tag = "v0.20.2",
-)
+go_repositories()

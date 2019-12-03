@@ -39,7 +39,7 @@ compile() {
   DESTINATION="${STAGING}/ibazel_${GOOS}_${GOARCH}${EXTENSION}"
   bazel build \
     --config=release \
-    "--experimental_platforms=@io_bazel_rules_go//go/toolchain:${GOOS}_${GOARCH}" \
+    "--platforms=@io_bazel_rules_go//go/toolchain:${GOOS}_${GOARCH}" \
     "//ibazel:ibazel"
   SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel${EXTENSION}"
   cp "${SOURCE}" "${DESTINATION}"
