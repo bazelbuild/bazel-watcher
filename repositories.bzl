@@ -43,5 +43,5 @@ def go_repositories():
     go_repository(
         name = "com_github_bazelbuild_rules_go",
         importpath = "github.com/bazelbuild/rules_go",
-        tag = "v0.20.2",
+        tag = "v0.20.3",
     )
