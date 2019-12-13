@@ -27,8 +27,7 @@ echo "Staging into ${STAGING}"
 # Copy over the base files required for NPM
 cp "README.md" "${STAGING}/README.md"
 cp "release/npm/index.js" "${STAGING}/index.js"
-bazel build --config=release "//release/npm:package.json"
-cp "$(bazel info bazel-genfiles)/release/npm/package.json" "${STAGING}/package.json"
+bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "${STAGING}/package.json"
 
 compile() {
   export GOOS=$1; shift
