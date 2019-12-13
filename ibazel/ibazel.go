@@ -316,11 +316,20 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			i.state = RUN
 		}
 	case RUN:
-		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(command), joinedTargets)
+		fmt.Fprintf(os.Stderr, "%sing %s\n", strings.Title(verb(command)), joinedTargets)
 		i.beforeCommand(targets, command)
 		outputBuffer, err := commandToRun(targets...)
 		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.state = WAIT
+	}
+}
+
+func verb(s string) string {
+	switch s {
+	case "run":
+		return "running"
+	default:
+		return fmt.Sprintf("%sing", s)
 	}
 }
 
