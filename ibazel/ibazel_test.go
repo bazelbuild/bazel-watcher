@@ -27,12 +27,17 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	"github.com/fsnotify/fsnotify"
 
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 	"github.com/golang/protobuf/proto"
 )
+
+func init() {
+	log.FakeExit()
+}
 
 type fakeFSNotifyWatcher struct {
 	ErrorChan chan error
@@ -130,9 +135,9 @@ func init() {
 		// Don't do anything
 		return &mockCommand{
 			startupArgs: startupArgs,
-			bazelArgs: bazelArgs,
-			target:    target,
-			args:      args,
+			bazelArgs:   bazelArgs,
+			target:      target,
+			args:        args,
 		}
 	}
 }

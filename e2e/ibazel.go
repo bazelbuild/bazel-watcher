@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -21,12 +22,9 @@ const (
 	defaultDelay = 20 * time.Second
 )
 
-var (
-	ibazelLogFile = filepath.Join(os.TempDir(), "ibazel_output.log")
-)
-
 type IBazelTester struct {
-	t *testing.T
+	t             *testing.T
+	ibazelLogFile string
 
 	cmd          *exec.Cmd
 	stderrBuffer *Buffer
@@ -37,8 +35,14 @@ type IBazelTester struct {
 }
 
 func NewIBazelTester(t *testing.T) *IBazelTester {
+	f, err := ioutil.TempFile("", "ibazel_output.*.log")
+	if err != nil {
+		panic(fmt.Sprintf("Error ioutil.Tempfile: %v", err))
+	}
+
 	return &IBazelTester{
-		t: t,
+		t:             t,
+		ibazelLogFile: f.Name(),
 	}
 }
 
@@ -59,14 +63,14 @@ func (i *IBazelTester) Build(target string) {
 func (i *IBazelTester) Run(bazelArgs []string, target string) {
 	i.t.Helper()
 	i.run(target, bazelArgs, []string{
-		"--log_to_file=" + ibazelLogFile,
+		"--log_to_file=" + i.ibazelLogFile,
 	})
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
 	i.t.Helper()
 	i.run(target, []string{}, []string{
-		"--log_to_file=" + ibazelLogFile,
+		"--log_to_file=" + i.ibazelLogFile,
 		"--profile_dev=" + profiler,
 	})
 }
@@ -74,7 +78,7 @@ func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
 func (i *IBazelTester) RunWithBazelFixCommands(target string) {
 	i.t.Helper()
 	i.run(target, []string{}, []string{
-		"--log_to_file=" + ibazelLogFile,
+		"--log_to_file=" + i.ibazelLogFile,
 		"--run_output=true",
 		"--run_output_interactive=false",
 	})
@@ -126,9 +130,9 @@ func (i *IBazelTester) GetIBazelError() string {
 
 	i.checkExit()
 
-	iBazelError, err := os.Open(ibazelLogFile)
+	iBazelError, err := os.Open(i.ibazelLogFile)
 	if err != nil {
-		i.t.Errorf("Error os.Open(%q): %v", ibazelLogFile, err)
+		i.t.Errorf("Error os.Open(%q): %v", i.ibazelLogFile, err)
 		return ""
 	}
 

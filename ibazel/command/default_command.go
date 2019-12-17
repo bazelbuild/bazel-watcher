@@ -16,9 +16,9 @@ package command
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
@@ -73,10 +73,10 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 
 	var err error
 	if err = c.pg.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
+		log.Errorf("Error starting process: %v", err)
 		return outputBuffer, err
 	}
-	fmt.Fprintf(os.Stderr, "Starting...\n")
+	log.Log("Starting...")
 	return outputBuffer, nil
 }
 

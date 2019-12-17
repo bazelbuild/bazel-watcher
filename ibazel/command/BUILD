@@ -25,6 +25,7 @@ go_library(
     visibility = ["//ibazel:__subpackages__"],
     deps = [
         "//bazel:go_default_library",
+        "//ibazel/log:go_default_library",
         "//ibazel/process_group:go_default_library",
     ],
 )
