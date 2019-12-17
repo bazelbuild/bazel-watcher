@@ -1,17 +1,69 @@
 # Change Log
 
-## [v0.10.3](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.3) (2019-05-14)
+## [v0.11.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.11.0) (2019-12-17)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.3...v0.11.0)
+
+**Closed issues:**
+
+- runing != running [\#313](https://github.com/bazelbuild/bazel-watcher/issues/313)
+- v0.10.3 fails to build due to error in bazel-integration-testing//tools:common.bzl dependency [\#297](https://github.com/bazelbuild/bazel-watcher/issues/297)
+- Clarification on tag/release workflow [\#296](https://github.com/bazelbuild/bazel-watcher/issues/296)
+- Color output in console can conflict with output\_runner regex [\#263](https://github.com/bazelbuild/bazel-watcher/issues/263)
+
+**Merged pull requests:**
+
+- Update dependencies [\#315](https://github.com/bazelbuild/bazel-watcher/pull/315) ([achew22](https://github.com/achew22))
+- Verbize run to running not runing [\#314](https://github.com/bazelbuild/bazel-watcher/pull/314) ([achew22](https://github.com/achew22))
+- Fix NPM release script [\#312](https://github.com/bazelbuild/bazel-watcher/pull/312) ([achew22](https://github.com/achew22))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.20.3 [\#309](https://github.com/bazelbuild/bazel-watcher/pull/309) ([renovate-bot](https://github.com/renovate-bot))
+- Update rules\_proto commit hash to 2c04683 [\#308](https://github.com/bazelbuild/bazel-watcher/pull/308) ([renovate-bot](https://github.com/renovate-bot))
+- Update rules\_proto commit hash to f6c112f [\#307](https://github.com/bazelbuild/bazel-watcher/pull/307) ([renovate-bot](https://github.com/renovate-bot))
+- Update to latest rules\_go [\#303](https://github.com/bazelbuild/bazel-watcher/pull/303) ([achew22](https://github.com/achew22))
+- Add a logging module [\#302](https://github.com/bazelbuild/bazel-watcher/pull/302) ([achew22](https://github.com/achew22))
+- Remove ANSI codes from output before matching [\#299](https://github.com/bazelbuild/bazel-watcher/pull/299) ([DavidANeil](https://github.com/DavidANeil))
+- Add installation instructions for Arch Linux [\#298](https://github.com/bazelbuild/bazel-watcher/pull/298) ([sudoforge](https://github.com/sudoforge))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to cd4f16d [\#268](https://github.com/bazelbuild/bazel-watcher/pull/268) ([renovate-bot](https://github.com/renovate-bot))
+
+## [v0.10.3](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.3) (2019-11-01)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.2...v0.10.3)
 
 **Closed issues:**
 
+- error setting higher file descriptor limit for this process: invalid argument [\#285](https://github.com/bazelbuild/bazel-watcher/issues/285)
+- Add support for bazelrc flag [\#278](https://github.com/bazelbuild/bazel-watcher/issues/278)
+- run command should also forward recognized flags [\#269](https://github.com/bazelbuild/bazel-watcher/issues/269)
 - --test\_env argument not in allowed list [\#256](https://github.com/bazelbuild/bazel-watcher/issues/256)
+- ibazel can't locate bazel if not in $PATH [\#252](https://github.com/bazelbuild/bazel-watcher/issues/252)
 - Add Windows support [\#105](https://github.com/bazelbuild/bazel-watcher/issues/105)
 
 **Merged pull requests:**
 
+- add --copt= to overrideable flags [\#295](https://github.com/bazelbuild/bazel-watcher/pull/295) ([girtsf](https://github.com/girtsf))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.20.2 [\#294](https://github.com/bazelbuild/bazel-watcher/pull/294) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_skylib to v1.0.2 [\#293](https://github.com/bazelbuild/bazel-watcher/pull/293) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_skylib to v1.0.1 [\#292](https://github.com/bazelbuild/bazel-watcher/pull/292) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_skylib to v1 [\#290](https://github.com/bazelbuild/bazel-watcher/pull/290) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.19.5 [\#289](https://github.com/bazelbuild/bazel-watcher/pull/289) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.19.4 [\#288](https://github.com/bazelbuild/bazel-watcher/pull/288) ([renovate-bot](https://github.com/renovate-bot))
+- Most bazel flags take arguments with an = [\#287](https://github.com/bazelbuild/bazel-watcher/pull/287) ([achew22](https://github.com/achew22))
+- Work around getrlimit syscall error on darwin [\#286](https://github.com/bazelbuild/bazel-watcher/pull/286) ([jeremyschlatter](https://github.com/jeremyschlatter))
+- Update dependency com\_github\_gorilla\_websocket to v1.4.1 [\#284](https://github.com/bazelbuild/bazel-watcher/pull/284) ([renovate-bot](https://github.com/renovate-bot))
+- Set IBAZEL=true in process env [\#282](https://github.com/bazelbuild/bazel-watcher/pull/282) ([statik](https://github.com/statik))
+- Add --test\_tag\_filters= to overrideable flags [\#281](https://github.com/bazelbuild/bazel-watcher/pull/281) ([whilp](https://github.com/whilp))
+- Add support for startup option bazelrc [\#280](https://github.com/bazelbuild/bazel-watcher/pull/280) ([libsamek](https://github.com/libsamek))
+- Add documentation for the output runner [\#279](https://github.com/bazelbuild/bazel-watcher/pull/279) ([DavidANeil](https://github.com/DavidANeil))
+- feat: locate Bazel binary in sibling package when installed via npm [\#275](https://github.com/bazelbuild/bazel-watcher/pull/275) ([alexeagle](https://github.com/alexeagle))
+- Update dependency bazel\_skylib to v0.9.0 [\#273](https://github.com/bazelbuild/bazel-watcher/pull/273) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_golang\_protobuf to v1.3.2 [\#272](https://github.com/bazelbuild/bazel-watcher/pull/272) ([renovate-bot](https://github.com/renovate-bot))
+- Pass bazel args for run command. [\#271](https://github.com/bazelbuild/bazel-watcher/pull/271) ([zoido](https://github.com/zoido))
+- Update dependency io\_bazel\_rules\_go to v0.18.6 [\#267](https://github.com/bazelbuild/bazel-watcher/pull/267) ([renovate-bot](https://github.com/renovate-bot))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 2ce0893 [\#266](https://github.com/bazelbuild/bazel-watcher/pull/266) ([renovate-bot](https://github.com/renovate-bot))
+- Notify listening processes when a build starts. [\#265](https://github.com/bazelbuild/bazel-watcher/pull/265) ([DavidANeil](https://github.com/DavidANeil))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to b8f2053 [\#264](https://github.com/bazelbuild/bazel-watcher/pull/264) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency io\_bazel\_rules\_go to v0.18.5 [\#258](https://github.com/bazelbuild/bazel-watcher/pull/258) ([renovate-bot](https://github.com/renovate-bot))
 - Add more Bazel flags [\#257](https://github.com/bazelbuild/bazel-watcher/pull/257) ([aaliddell](https://github.com/aaliddell))
 - Update dependency io\_bazel\_rules\_go to v0.18.4 [\#255](https://github.com/bazelbuild/bazel-watcher/pull/255) ([renovate-bot](https://github.com/renovate-bot))
+- Update com\_github\_bazelbuild\_bazel\_integration\_testing commit hash to 13a7d51 [\#254](https://github.com/bazelbuild/bazel-watcher/pull/254) ([renovate-bot](https://github.com/renovate-bot))
 
 ## [v0.10.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.10.2) (2019-05-01)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.1...v0.10.2)
