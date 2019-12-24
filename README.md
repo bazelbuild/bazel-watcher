@@ -29,8 +29,7 @@ If you run a mac you can install it from [homebrew](https://brew.sh).
 
 ```
 $ brew tap bazelbuild/tap
-$ brew tap-pin bazelbuild/tap
-$ brew install ibazel
+$ brew install bazelbuild/tap/ibazel
 ```
 
 ### NPM
