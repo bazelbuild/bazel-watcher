@@ -159,6 +159,9 @@ func (i *IBazel) handleSignals() {
 	if i.interruptCount > 2 {
 		log.NewLine()
 		log.Fatal("Exiting from getting SIGINT 3 times")
+		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
+			i.cmd.Terminate()
+		}
 		osExit(3)
 	}
 }
@@ -423,6 +426,9 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	res, err := b.Query(rule)
 	if err != nil {
 		log.Errorf("Error running Bazel %v", err)
+		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
+			i.cmd.Terminate()
+		}
 		osExit(4)
 	}
 

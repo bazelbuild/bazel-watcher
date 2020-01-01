@@ -29,7 +29,15 @@ type unixProcessGroup struct {
 // arguments.
 func Command(name string, arg ...string) ProcessGroup {
 	root := exec.Command(name, arg...)
-	root.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	root.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+		// TODO: Consider supporting Pdeathsig for Linux.
+		// Consequence of not having Pdeathdig is that on non-Linux systems,
+		// if SIGTERM doesn't stop child procs then they may "leak" and be
+		// reparented 'up the chain' somewhere when the minion process
+		// terminates.
+		// Pdeathsig: syscall.SIGKILL
+	}
 	return &unixProcessGroup{root}
 }
 
@@ -42,6 +50,13 @@ func (pg *unixProcessGroup) Start() error {
 }
 
 func (pg *unixProcessGroup) Kill() error {
+	// Kill all proccesses in group.
+	pgid, err := syscall.Getpgid(pg.root.Process.Pid)
+	if err == nil {
+		return syscall.Kill(-pgid, syscall.SIGKILL)
+	}
+
+	// Fallback to assuming the Pid is the process group ID.
 	return syscall.Kill(-pg.root.Process.Pid, syscall.SIGKILL)
 }
 

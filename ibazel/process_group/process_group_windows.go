@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"errors"
 	"log"
+	"os"
 	"os/exec"
+	"strconv"
 	"syscall"
 	"unsafe"
 )
@@ -33,7 +35,7 @@ type winProcessGroup struct {
 // arguments.
 func Command(name string, arg ...string) ProcessGroup {
 	root := exec.Command(name, arg...)
-	root.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createSuspended}
+	root.SysProcAttr = &syscall.SysProcAttr{CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | syscall.CREATE_SUSPENDED}
 	return &winProcessGroup{root, syscall.Handle(0), syscall.Handle(0)}
 }
 
@@ -93,16 +95,14 @@ func (pg *winProcessGroup) Start() error {
 
 func (pg *winProcessGroup) Kill() error {
 	log.Println("Kill()")
-	if pg.job == 0 {
-		return errors.New("job not started")
-	}
 
-	err := terminateJobObject(pg.job, 0)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	// See https://ss64.com/nt/taskkill.html
+	// /T Tree kill: terminates the specified process and any child processes which were started by it.
+	// /F Forcefully terminate the process(es).
+	kill := exec.Command("TASKKILL", "/T", "/F", "/PID", strconv.Itoa(pg.root.Process.Pid))
+	kill.Stderr = os.Stderr
+	kill.Stdout = os.Stdout
+	return kill.Run()
 }
 
 func (pg *winProcessGroup) Wait() error {
