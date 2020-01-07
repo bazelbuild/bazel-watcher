@@ -1,5 +1,24 @@
 # Change Log
 
+## [v0.11.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.11.1) (2020-01-07)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.11.0...v0.11.1)
+
+**Closed issues:**
+
+- parallel run support [\#320](https://github.com/bazelbuild/bazel-watcher/issues/320)
+- Give output runner an option to exit early [\#260](https://github.com/bazelbuild/bazel-watcher/issues/260)
+- Make livereload usable for custom rules  [\#248](https://github.com/bazelbuild/bazel-watcher/issues/248)
+- Add option to ignore files to be watched [\#244](https://github.com/bazelbuild/bazel-watcher/issues/244)
+- File changes beyond the first are not detected on Windows 10 [\#236](https://github.com/bazelbuild/bazel-watcher/issues/236)
+- ibazel\_notify\_changes not working for tests [\#184](https://github.com/bazelbuild/bazel-watcher/issues/184)
+- Watching for files being added [\#135](https://github.com/bazelbuild/bazel-watcher/issues/135)
+- -log\_to\_file redirects bazel's stderr in addition to ibazel's [\#124](https://github.com/bazelbuild/bazel-watcher/issues/124)
+
+**Merged pull requests:**
+
+- Add --nocache\_test\_results to overrideableBazelFlags [\#324](https://github.com/bazelbuild/bazel-watcher/pull/324) ([mariusgrigoriu](https://github.com/mariusgrigoriu))
+- Remove tap-bin from Home-brew formula. [\#318](https://github.com/bazelbuild/bazel-watcher/pull/318) ([BooneJS](https://github.com/BooneJS))
+
 ## [v0.11.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.11.0) (2019-12-17)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.10.3...v0.11.0)
 
