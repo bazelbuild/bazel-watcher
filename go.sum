@@ -1,5 +1,7 @@
 github.com/bazelbuild/rules_go v0.20.3 h1:ahj93Bg45YtjubG8O2EoozdW/je4WqgwEuvCPC0hjVA=
 github.com/bazelbuild/rules_go v0.20.3/go.mod h1:MC23Dc/wkXEyk3Wpq6lCqz0ZAYOZDw2DR5y3N1q2i7M=
+github.com/bazelbuild/rules_go v0.20.4 h1:Rixj6x1mFTnR1MXC3OaYDS6ZIPDMHilFli7tberl5vI=
+github.com/bazelbuild/rules_go v0.20.4/go.mod h1:MC23Dc/wkXEyk3Wpq6lCqz0ZAYOZDw2DR5y3N1q2i7M=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
