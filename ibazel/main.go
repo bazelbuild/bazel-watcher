@@ -40,6 +40,7 @@ var overrideableBazelFlags []string = []string{
 	"--features=",
 	"--keep_going",
 	"-k",
+	"--nocache_test_results",
 	"--nostamp",
 	"--output_groups=",
 	"--override_repository=",
