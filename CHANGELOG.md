@@ -1,5 +1,30 @@
 # Change Log
 
+## [v0.11.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.11.2) (2020-02-14)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.11.1...v0.11.2)
+
+**Closed issues:**
+
+- Querying for files to watch... \)\) was unexpected at this time. Bazel query failed: exit status 255 [\#342](https://github.com/bazelbuild/bazel-watcher/issues/342)
+- Flag --incompatible\_load\_proto\_rules\_from\_bzl will break Bazel watcher in Bazel 1.2.1 [\#317](https://github.com/bazelbuild/bazel-watcher/issues/317)
+
+**Merged pull requests:**
+
+- Adds passthrough for bazel flags "--compilation\_mode" and "-c" [\#348](https://github.com/bazelbuild/bazel-watcher/pull/348) ([Jdban](https://github.com/Jdban))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.21.3 [\#345](https://github.com/bazelbuild/bazel-watcher/pull/345) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_gazelle to v0.20.0 [\#343](https://github.com/bazelbuild/bazel-watcher/pull/343) ([renovate-bot](https://github.com/renovate-bot))
+- support WORKSPACE.bazel file [\#340](https://github.com/bazelbuild/bazel-watcher/pull/340) ([alexeagle](https://github.com/alexeagle))
+- Update rules\_proto commit hash to f6b8d89 [\#338](https://github.com/bazelbuild/bazel-watcher/pull/338) ([renovate-bot](https://github.com/renovate-bot))
+- Update module golang/protobuf to v1.3.3 [\#337](https://github.com/bazelbuild/bazel-watcher/pull/337) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.21.2 [\#334](https://github.com/bazelbuild/bazel-watcher/pull/334) ([renovate-bot](https://github.com/renovate-bot))
+- Update module bazelbuild/rules\_go to v0.21.0 [\#332](https://github.com/bazelbuild/bazel-watcher/pull/332) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.21.0 [\#331](https://github.com/bazelbuild/bazel-watcher/pull/331) ([renovate-bot](https://github.com/renovate-bot))
+- Update module bazelbuild/rules\_go to v0.20.4 [\#328](https://github.com/bazelbuild/bazel-watcher/pull/328) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency io\_bazel\_rules\_go to v0.21.0 [\#327](https://github.com/bazelbuild/bazel-watcher/pull/327) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.20.4 [\#326](https://github.com/bazelbuild/bazel-watcher/pull/326) ([renovate-bot](https://github.com/renovate-bot))
+- Update rules\_proto commit hash to d7666ec [\#325](https://github.com/bazelbuild/bazel-watcher/pull/325) ([renovate-bot](https://github.com/renovate-bot))
+- Load proto from @rules\_proto [\#321](https://github.com/bazelbuild/bazel-watcher/pull/321) ([achew22](https://github.com/achew22))
+
 ## [v0.11.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.11.1) (2020-01-07)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.11.0...v0.11.1)
 
