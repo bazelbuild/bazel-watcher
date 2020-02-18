@@ -71,14 +71,18 @@ func bazelNpmPath(ibazelBinPath string) (string, error) {
 // /DIR/node_modules/@bazel/bazelisk/bazelizk-darwin_amd64
 func bazeliskNpmPath(ibazelBinPath string) (string, error) {
 	s := strings.Split(ibazelBinPath, "/")
-	for i := 0; i + 4 < len(s); i++ {
+	for i := 0; i+4 < len(s); i++ {
 		prefix, nm, scope, pkg, dir, bin := s[0:i], s[i], s[i+1], s[i+2], s[i+3], s[i+4]
 		if nm == "node_modules" && scope == "@bazel" && pkg == "ibazel" && dir == "bin" {
-			name := strings.Join(append(prefix, nm, scope, "bazelisk", "bazelisk-" + bin), "/")
+			var ext string
+			if strings.HasPrefix(bin, "windows_") {
+				ext = ".exe"
+			}
+			name := strings.Join(append(prefix, nm, scope, "bazelisk", "bazelisk-"+bin+ext), "/")
 			return name, nil
 		}
 	}
-	return "", errors.New("bazel binary not found in @bazel/bazelisk package")
+	return "", errors.New("bazelisk binary not found in @bazel/bazelisk package")
 }
 
 func findBazel() (string) {
