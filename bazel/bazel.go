@@ -63,17 +63,47 @@ func bazelNpmPath(ibazelBinPath string) (string, error) {
 	return "", errors.New("bazel binary not found in @bazel/bazel package")
 }
 
+// bazeliskNpmPath looks up a relative path to a binary from @bazel/bazelisk
+// This is used as an alternate resolution when no bazel binary is in the $PATH
+// When running from the @bazel/ibazel npm package, our binary is
+// /DIR/node_modules/@bazel/ibazel/bin/darwin_amd64/ibazel
+// We can find bazelisk in
+// /DIR/node_modules/@bazel/bazelisk/bazelizk-darwin_amd64
+func bazeliskNpmPath(ibazelBinPath string) (string, error) {
+	s := strings.Split(ibazelBinPath, "/")
+	for i := 0; i+4 < len(s); i++ {
+		prefix, nm, scope, pkg, dir, bin := s[0:i], s[i], s[i+1], s[i+2], s[i+3], s[i+4]
+		if nm == "node_modules" && scope == "@bazel" && pkg == "ibazel" && dir == "bin" {
+			var ext string
+			if strings.HasPrefix(bin, "windows_") {
+				ext = ".exe"
+			}
+			name := strings.Join(append(prefix, nm, scope, "bazelisk", "bazelisk-"+bin+ext), "/")
+			return name, nil
+		}
+	}
+	return "", errors.New("bazelisk binary not found in @bazel/bazelisk package")
+}
+
 func findBazel() (string) {
 	// Trust the user, if they supplied a path we always use it
 	if len(*bazelPathFlag) > 0 {
 		return *bazelPathFlag
+	}
+	// Frontend devs may have installed @bazel/bazelisk and @bazel/ibazel from npm
+	// If they also have bazelisk in the $PATH, we want to resolve this one, to avoid version skew
+	if npmPath, err := bazeliskNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
+		return filepath.FromSlash(npmPath)
 	}
 	// Frontend devs may have installed @bazel/bazel and @bazel/ibazel from npm
 	// If they also have bazel in the $PATH, we want to resolve this one, to avoid version skew
 	if npmPath, err := bazelNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
 		return filepath.FromSlash(npmPath)
 	}
-
+	// Check in $PATH for system-installed Bazelisk
+	if path, err := exec.LookPath("bazelisk"); err == nil {
+		return path
+	}
 	// Check in $PATH for system-installed Bazel
 	if path, err := exec.LookPath("bazel"); err == nil {
 		return path
