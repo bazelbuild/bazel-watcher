@@ -86,14 +86,14 @@ func findBazel() (string) {
 	if len(*bazelPathFlag) > 0 {
 		return *bazelPathFlag
 	}
-	// Frontend devs may have installed @bazel/bazel and @bazel/ibazel from npm
-	// If they also have bazel in the $PATH, we want to resolve this one, to avoid version skew
-	if npmPath, err := bazelNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
-		return filepath.FromSlash(npmPath)
-	}
 	// Frontend devs may have installed @bazel/bazelisk and @bazel/ibazel from npm
 	// If they also have bazelisk in the $PATH, we want to resolve this one, to avoid version skew
 	if npmPath, err := bazeliskNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
+		return filepath.FromSlash(npmPath)
+	}
+	// Frontend devs may have installed @bazel/bazel and @bazel/ibazel from npm
+	// If they also have bazel in the $PATH, we want to resolve this one, to avoid version skew
+	if npmPath, err := bazelNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
 		return filepath.FromSlash(npmPath)
 	}
 
