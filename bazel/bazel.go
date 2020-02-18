@@ -96,7 +96,10 @@ func findBazel() (string) {
 	if npmPath, err := bazelNpmPath(filepath.ToSlash(os.Args[0])); err == nil {
 		return filepath.FromSlash(npmPath)
 	}
-
+	// Check in $PATH for system-installed Bazelisk
+	if path, err := exec.LookPath("bazelisk"); err == nil {
+		return path
+	}
 	// Check in $PATH for system-installed Bazel
 	if path, err := exec.LookPath("bazel"); err == nil {
 		return path
