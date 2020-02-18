@@ -78,7 +78,7 @@ func bazeliskNpmPath(ibazelBinPath string) (string, error) {
 			return name, nil
 		}
 	}
-	return "", errors.New("bazel binary not found in @bazel/bazel package")
+	return "", errors.New("bazel binary not found in @bazel/bazelisk package")
 }
 
 func findBazel() (string) {
