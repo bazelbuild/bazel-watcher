@@ -35,7 +35,7 @@ import (
 
 var runOutput = flag.Bool(
 	"run_output",
-	false,
+	true,
 	"Search for commands in Bazel output that match a regex and execute them, the default path of file should be in the workspace root .bazel_fix_commands.json")
 var runOutputInteractive = flag.Bool(
 	"run_output_interactive",
