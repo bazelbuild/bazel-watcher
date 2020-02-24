@@ -1,5 +1,17 @@
 # Change Log
 
+## [v0.12.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.0) (2020-02-19)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.11.2...v0.12.0)
+
+**Closed issues:**
+
+- bazel watcher does not work with `run -c` [\#347](https://github.com/bazelbuild/bazel-watcher/issues/347)
+- Try resolve bazel binary from @bazel/bazelisk installed locally [\#339](https://github.com/bazelbuild/bazel-watcher/issues/339)
+
+**Merged pull requests:**
+
+- Support bazelisk [\#346](https://github.com/bazelbuild/bazel-watcher/pull/346) ([zoidbergwill](https://github.com/zoidbergwill))
+
 ## [v0.11.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.11.2) (2020-02-14)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.11.1...v0.11.2)
 
