@@ -1,5 +1,8 @@
 # Change Log
 
+## [v0.12.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.1) (2020-02-24)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.0...v0.12.1)
+
 ## [v0.12.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.0) (2020-02-19)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.11.2...v0.12.0)
 
