@@ -70,5 +70,10 @@ go get -u github.com/tcnksm/ghr
 go build -o "${GHR_BINARY}" github.com/tcnksm/ghr
 chmod +x "${GHR_BINARY}"
 echo "Publishing ${STAGING} to GitHub as ${TAG}"
-"${GHR_BINARY}" -t "${CHANGELOG_GITHUB_TOKEN}" "${TAG}" "${STAGING}"
+"${GHR_BINARY}" \
+  -t "${CHANGELOG_GITHUB_TOKEN}" \
+  -u "bazelbuild" \
+  -r "bazel-watcher" \
+  "${TAG}" \
+  "${STAGING}"
 find "${STAGING}"
