@@ -48,7 +48,7 @@ var overrideableBazelFlags []string = []string{
 	"--override_repository=",
 	"--repo_env",
 	"--runs_per_test=",
-	"--stamp=",
+	"--stamp",
 	"--strategy=",
 	"--test_arg=",
 	"--test_env=",
