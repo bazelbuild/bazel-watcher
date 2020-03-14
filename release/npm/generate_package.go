@@ -17,11 +17,15 @@ type jsPackage struct {
 	PublishConfig map[string]string `json:"publish_config"`
 }
 
-var unsetVersion = "VERSION_NOT_SET"
-var Version string = unsetVersion
+// Note that Version must be assigned to a constant value to allow stamping to
+// override.
+// See:
+//   * https://github.com/bazelbuild/rules_go/issues/2379
+//   * https://github.com/golang/go/issues/37369
+var Version string = "VERSION_NOT_SET"
 
 func main() {
-	if unsetVersion == Version {
+	if "VERSION_NOT_SET" == Version {
 		panic("The version string was not overriden. Please rebuild with --stamp")
 	}
 
