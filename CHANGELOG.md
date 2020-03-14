@@ -1,5 +1,28 @@
 # Change Log
 
+## [v0.12.3](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.3) (2020-03-14)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.2...v0.12.3)
+
+**Closed issues:**
+
+- ibazel not connecting to bazel server on VPN [\#356](https://github.com/bazelbuild/bazel-watcher/issues/356)
+- No artifacts uploaded for 0.12.0 and 0.11.2 [\#350](https://github.com/bazelbuild/bazel-watcher/issues/350)
+- $TEST\_TMPDIR is deleted across reloads [\#323](https://github.com/bazelbuild/bazel-watcher/issues/323)
+- Flag --incompatible\_no\_implicit\_file\_export will break Bazel watcher in a future Bazel release [\#319](https://github.com/bazelbuild/bazel-watcher/issues/319)
+- Flag --incompatible\_no\_implicit\_file\_export will break Bazel watcher in Bazel 1.2.1 [\#316](https://github.com/bazelbuild/bazel-watcher/issues/316)
+- Bash trap works with bazel but not with ibazel [\#291](https://github.com/bazelbuild/bazel-watcher/issues/291)
+
+**Merged pull requests:**
+
+- Fix stamping regression caused by latest rules\_go [\#360](https://github.com/bazelbuild/bazel-watcher/pull/360) ([achew22](https://github.com/achew22))
+- Update module golang/protobuf to v1.3.4 [\#355](https://github.com/bazelbuild/bazel-watcher/pull/355) ([renovate-bot](https://github.com/renovate-bot))
+- Enable run\_output by default [\#349](https://github.com/bazelbuild/bazel-watcher/pull/349) ([achew22](https://github.com/achew22))
+- Update module bazelbuild/rules\_go to v0.22.1 [\#336](https://github.com/bazelbuild/bazel-watcher/pull/336) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency io\_bazel\_rules\_go to v0.22.1 [\#335](https://github.com/bazelbuild/bazel-watcher/pull/335) ([renovate-bot](https://github.com/renovate-bot))
+
+## [v0.12.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.2) (2020-02-24)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.1...v0.12.2)
+
 ## [v0.12.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.1) (2020-02-24)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.0...v0.12.1)
 
