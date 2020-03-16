@@ -2,10 +2,12 @@ package simple
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -48,11 +50,41 @@ printf "Started and IBAZEL=${IBAZEL}!"
 printf "define_test_1"
 -- define_test_2.sh --
 printf "define_test_2"
+-- subdir/BUILD.bazel --
+sh_binary(
+  name = "subdir",
+  srcs = ["subdir.sh"],
+)
+-- subdir/subdir.sh --
+printf "Hello subdir!"
 `
 
 func TestMain(m *testing.M) {
 	bazel_testing.TestMain(m, bazel_testing.Args{
 		Main: mainFiles,
+		SetUp: func() error {
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+
+			if err := filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if strings.HasSuffix(path, ".sh") {
+					if err := os.Chmod(path, 0777); err != nil {
+						return fmt.Errorf("Error os.Chmod(%q, 0777): %v", path, err)
+					}
+				}
+				return nil
+			}); err != nil {
+				fmt.Printf("Error walking dir: %v\n", err)
+				return err
+			}
+			return nil
+		},
 	})
 }
 
@@ -91,23 +123,7 @@ func TestSimpleRunConfirmEnvironment(t *testing.T) {
 }
 
 func TestSimpleRunUnderSubdir(t *testing.T) {
-	// TODO: the logic to create these directories is unnecessary after
-	// https://github.com/bazelbuild/rules_go/pull/2280 When that happens, make
-	// these dirs and files in the txtar during setup.
 	subdir := "subdir"
-
-	e2e.Must(t, os.Mkdir(subdir, 0777))
-	e2e.MustWriteFile(t, filepath.Join(subdir, "BUILD.bazel"), `
-sh_binary(
-  name = "subdir",
-  srcs = ["subdir.sh"],
-)
-`)
-	e2e.MustWriteFile(t, filepath.Join(subdir, "subdir.sh"), `
-printf "Hello subdir!"
-`, 0777)
-
-	// END TODO
 
 	ibazel := e2e.SetUp(t)
 
