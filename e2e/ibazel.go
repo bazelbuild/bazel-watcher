@@ -19,7 +19,7 @@ import (
 
 // Maximum amount of time to wait before failing a test for not matching your expectations.
 const (
-	defaultDelay = 20 * time.Second
+	defaultDelay = 30 * time.Second
 )
 
 type IBazelTester struct {

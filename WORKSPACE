@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
     name = "bazel_skylib",
@@ -77,6 +78,26 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
 
+# gazelle:repository go_repository name=io_bazel_rules_webtesting importpath=github.com/bazelbuild/rules_webtesting
+http_archive(
+    name = "io_bazel_rules_webtesting",
+    sha256 = "9bb461d5ef08e850025480bab185fd269242d4e533bca75bfb748001ceb343c3",
+    urls = [
+        "https://github.com/bazelbuild/rules_webtesting/releases/download/0.3.3/rules_webtesting.tar.gz",
+    ],
+)
+
+load("@io_bazel_rules_webtesting//web:repositories.bzl", "web_test_repositories")
+
+web_test_repositories()
+
+load("@io_bazel_rules_webtesting//web/versioned:browsers-0.3.2.bzl", "browser_repositories")
+
+browser_repositories(
+    chromium = True,
+)
+
 load(":repositories.bzl", "go_repositories")
 
+# gazelle:repository_macro repositories.bzl%go_repositories
 go_repositories()
