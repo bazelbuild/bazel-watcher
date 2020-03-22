@@ -136,6 +136,23 @@ func parseArgs(in []string) (targets, startupArgs, bazelArgs, args []string) {
 	return
 }
 
+// Inspired by https://dzone.com/articles/try-and-catch-in-golang
+type TryCatchBlock struct {
+	Try   func()
+	Catch func(Exception)
+}
+
+type Exception interface{}
+
+func (tcb TryCatchBlock) Do() {
+	defer func() {
+		if r := recover(); r != nil {
+			tcb.Catch(r)
+		}
+	}()
+	tcb.Try()
+}
+
 // main entrypoint for IBazel.
 func main() {
 	flag.Usage = usage
@@ -172,6 +189,19 @@ func main() {
 	if err != nil {
 		log.Errorf("error setting higher file descriptor limit for this process: %v", err)
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("ibazel caught a terminal error: %v\n", r)
+			log.Log("Please log an issue at https://github.com/bazelbuild/bazel-watcher/issues/new")
+
+			if i.cmd != nil && i.cmd.IsSubprocessRunning() {
+				log.Log("Cleaning up running command")
+				i.cmd.Terminate()
+				log.Log("Cleanup successful")
+			}
+		}
+	}()
 
 	handle(i, command, args)
 }
