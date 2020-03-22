@@ -56,30 +56,94 @@ func TestNotifyCommand(t *testing.T) {
 	c.NotifyOfChanges()
 
 	b.AssertActions(t, [][]string{
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
 	})
+}
 
-	err = c.stdin.Close()
+func TestNotifyCommand_Restart(t *testing.T) {
+	var pg process_group.ProcessGroup
+
+	pg = process_group.Command("ls")
+	execCommand = func(name string, args ...string) process_group.ProcessGroup {
+		return oldExecCommand("ls")
+	}
+	defer func() { execCommand = oldExecCommand }()
+
+	c := &notifyCommand{
+		args:      []string{"moo"},
+		bazelArgs: []string{},
+		pg:        pg,
+		target:    "//path/to:target",
+	}
+
+	var err error
+	c.stdin, err = pg.RootProcess().StdinPipe()
 	if err != nil {
 		t.Error(err)
 	}
 
-	out, err := pg.CombinedOutput()
-	if err != nil {
-		t.Error(err)
+	b := &mock_bazel.MockBazel{}
+	b.BuildError(errors.New("Demo error"))
+	bazelNew = func() bazel.Bazel { return b }
+	defer func() { bazelNew = oldBazelNew }()
+
+	if c.IsSubprocessRunning() {
+		t.Errorf("new subprocess shouldn't have been started yet. State: %v", pg.RootProcess().ProcessState)
 	}
 
-	// Read on the pipe is only valid in between start and wait so read now.
-	expected := "IBAZEL_BUILD_STARTED\nIBAZEL_BUILD_COMPLETED SUCCESS\nIBAZEL_BUILD_STARTED\nIBAZEL_BUILD_COMPLETED FAILURE\nIBAZEL_BUILD_STARTED\nIBAZEL_BUILD_COMPLETED SUCCESS\n"
-	if expected != string(out) {
-		t.Errorf("Not equal.\nGot:  %s\nWant: %s", string(out), expected)
+	c.NotifyOfChanges()
+	if c.IsSubprocessRunning() {
+		t.Errorf("process should not start with build errors. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	// Since the process isn't currently running, this should start it.
+	b.BuildError(nil)
+	c.NotifyOfChanges()
+	if !c.IsSubprocessRunning() {
+		t.Errorf("subprocess should have started. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	pid1 := c.pg.RootProcess().Process.Pid
+
+	c.Terminate()
+	if c.IsSubprocessRunning() {
+		t.Errorf("subprocess should have been terminated. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	b.BuildError(errors.New("Demo error"))
+	c.NotifyOfChanges()
+	if c.IsSubprocessRunning() {
+		t.Errorf("subprocess should not restart with build errors. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	// Since the process isn't currently running, this should re-start it.
+	b.BuildError(nil)
+	c.NotifyOfChanges()
+	if !c.IsSubprocessRunning() {
+		t.Errorf("subprocess should have been restarted. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	pid2 := c.pg.RootProcess().Process.Pid
+	if pid2 == pid1 {
+		t.Error("PIDs of restarted process should be different that original process")
+	}
+
+	c.NotifyOfChanges()
+	if pid2 != c.pg.RootProcess().Process.Pid {
+		t.Error("non-dead process was restarted")
 	}
 }
