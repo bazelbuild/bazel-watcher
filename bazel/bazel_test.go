@@ -36,7 +36,7 @@ func TestProcessInfo(t *testing.T) {
 KEY2: VALUE2
 KEY3: value`)
 	if err != nil {
-		t.Errorf("Error processing info", err)
+		t.Errorf("Error processing info: %s", err)
 	}
 
 	expected := map[string]string{
