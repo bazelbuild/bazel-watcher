@@ -79,6 +79,13 @@ func bazeliskNpmPath(ibazelBinPath string) (string, error) {
 				ext = ".exe"
 			}
 			name := strings.Join(append(prefix, nm, scope, "bazelisk", "bazelisk-"+bin+ext), "/")
+			_, err := os.Stat(name)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					return "", err
+				}
+				continue
+			}
 			return name, nil
 		}
 	}
