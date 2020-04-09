@@ -1,5 +1,28 @@
 # Change Log
 
+## [v0.12.4](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.4) (2020-04-09)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.3...v0.12.4)
+
+**Fixed bugs:**
+
+- Full log not being shown on initial querying [\#217](https://github.com/bazelbuild/bazel-watcher/issues/217)
+- output\_runner multiline regex and env variable support [\#206](https://github.com/bazelbuild/bazel-watcher/issues/206)
+- Support for passing flags to bazel is limited and undocumented [\#126](https://github.com/bazelbuild/bazel-watcher/issues/126)
+
+**Closed issues:**
+
+- bazeliskNpmPath: should check if @bazel/bazelisk binary exists? [\#370](https://github.com/bazelbuild/bazel-watcher/issues/370)
+- Bazelisk regression [\#352](https://github.com/bazelbuild/bazel-watcher/issues/352)
+- \[Windows\] - Querying for files to watch... \)\) was unexpected at this time. Bazel query failed: exit status 255 [\#344](https://github.com/bazelbuild/bazel-watcher/issues/344)
+
+**Merged pull requests:**
+
+- Fix a lingering TODO [\#362](https://github.com/bazelbuild/bazel-watcher/pull/362) ([achew22](https://github.com/achew22))
+- Stamp can be passed without a value [\#361](https://github.com/bazelbuild/bazel-watcher/pull/361) ([achew22](https://github.com/achew22))
+- Update module golang/protobuf to v1.3.5 [\#359](https://github.com/bazelbuild/bazel-watcher/pull/359) ([renovate-bot](https://github.com/renovate-bot))
+- Update module fsnotify/fsnotify to v1.4.9 [\#357](https://github.com/bazelbuild/bazel-watcher/pull/357) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.22.1 [\#354](https://github.com/bazelbuild/bazel-watcher/pull/354) ([renovate-bot](https://github.com/renovate-bot))
+
 ## [v0.12.3](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.12.3) (2020-03-14)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.2...v0.12.3)
 
