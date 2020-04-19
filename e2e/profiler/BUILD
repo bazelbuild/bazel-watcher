@@ -9,7 +9,6 @@ go_bazel_test(
     importpath = "github.com/bazelbuild/bazel-watcher/e2e/profiler",
     deps = [
         "//e2e:go_default_library",
-        "@com_github_gorilla_websocket//:go_default_library",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
     ],
 )

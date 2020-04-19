@@ -20,7 +20,8 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-watcher/bazel",
     visibility = ["//visibility:public"],
     deps = [
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf/analysis:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )

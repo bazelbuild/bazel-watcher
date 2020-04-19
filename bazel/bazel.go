@@ -26,7 +26,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -40,13 +42,13 @@ var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to u
 // /DIR/node_modules/@bazel/bazel-darwin_x64/bazel-0.28.0-darwin-x86_64
 func bazelNpmPath(ibazelBinPath string) (string, error) {
 	s := strings.Split(ibazelBinPath, "/")
-	for i := 0; i + 4 < len(s); i++ {
+	for i := 0; i+4 < len(s); i++ {
 		prefix, nm, scope, pkg, dir, bin := s[0:i], s[i], s[i+1], s[i+2], s[i+3], s[i+4]
 		if nm == "node_modules" && scope == "@bazel" && pkg == "ibazel" && dir == "bin" {
-			// See mapping in release/npm/index.js - ibazel is named with "amd64" arch 
+			// See mapping in release/npm/index.js - ibazel is named with "amd64" arch
 			// but @bazel/bazel uses node arch names
 			arch := strings.Replace(bin, "amd64", "x64", 1)
-			dir := strings.Join(append(prefix, nm, scope, "bazel-" + arch), "/")
+			dir := strings.Join(append(prefix, nm, scope, "bazel-"+arch), "/")
 			// Find the bazel binary in the directory - it will have a version number in the name
 			// so we list all the files and find a bazel-*-$ARCH
 			if fd, err := os.Open(filepath.FromSlash(dir)); err == nil {
@@ -92,7 +94,7 @@ func bazeliskNpmPath(ibazelBinPath string) (string, error) {
 	return "", errors.New("bazelisk binary not found in @bazel/bazelisk package")
 }
 
-func findBazel() (string) {
+func findBazel() string {
 	// Trust the user, if they supplied a path we always use it
 	if len(*bazelPathFlag) > 0 {
 		return *bazelPathFlag
@@ -130,6 +132,7 @@ type Bazel interface {
 	WriteToStdout(v bool)
 	Info() (map[string]string, error)
 	Query(args ...string) (*blaze_query.QueryResult, error)
+	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
 	Test(args ...string) (*bytes.Buffer, error)
 	Run(args ...string) (*exec.Cmd, *bytes.Buffer, error)
@@ -138,13 +141,13 @@ type Bazel interface {
 }
 
 type bazel struct {
-	cmd           *exec.Cmd
+	cmd *exec.Cmd
 
-	args          []string
-	startupArgs   []string
+	args        []string
+	startupArgs []string
 
-	ctx           context.Context
-	cancel        context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	writeToStderr bool
 	writeToStdout bool
@@ -282,6 +285,46 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 
 func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
 	var qr blaze_query.QueryResult
+	if err := proto.Unmarshal(out, &qr); err != nil {
+		fmt.Fprintf(os.Stderr, "Could not read blaze query response. Error: %s\nOutput: %s\n", err, out)
+		return nil, err
+	}
+
+	return &qr, nil
+}
+
+// Executes a configurable query expression over a specified subgraph of the
+// build dependency graph.
+//
+// For example, to show all C++ test rules in the strings package, use:
+//
+//   res, err := b.CQuery('kind("cc_.*test", strings:*)')
+//
+// or to find all dependencies of //path/to/package:target, use:
+//
+//   res, err := b.CQuery('deps(//path/to/package:target)')
+//
+// or to find a dependency path between //path/to/package:target and //dependency:
+//
+//   res, err := b.CQuery('somepath(//path/to/package:target, //dependency)')
+func (b *bazel) CQuery(args ...string) (*analysis.CqueryResult, error) {
+	blazeArgs := append([]string(nil), "--output=proto", "--color=no")
+	blazeArgs = append(blazeArgs, args...)
+
+	b.WriteToStderr(true)
+	b.WriteToStdout(false)
+	stdoutBuffer, _ := b.newCommand("cquery", blazeArgs...)
+
+	err := b.cmd.Run()
+
+	if err != nil {
+		return nil, err
+	}
+	return b.processCQuery(stdoutBuffer.Bytes())
+}
+
+func (b *bazel) processCQuery(out []byte) (*analysis.CqueryResult, error) {
+	var qr analysis.CqueryResult
 	if err := proto.Unmarshal(out, &qr); err != nil {
 		fmt.Fprintf(os.Stderr, "Could not read blaze query response. Error: %s\nOutput: %s\n", err, out)
 		return nil, err

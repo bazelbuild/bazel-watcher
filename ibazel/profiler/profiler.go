@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
 var profileDev = flag.String("profile_dev", "", "Turn on profiling and append report to file")

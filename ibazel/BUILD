@@ -48,7 +48,7 @@ go_library(
         "//ibazel/output_runner:go_default_library",
         "//ibazel/profiler:go_default_library",
         "//ibazel/workspace_finder:go_default_library",
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
 )
@@ -67,7 +67,7 @@ go_test(
         "//ibazel/command:go_default_library",
         "//ibazel/log:go_default_library",
         "//ibazel/workspace_finder:go_default_library",
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],

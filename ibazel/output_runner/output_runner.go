@@ -30,7 +30,7 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
 var runOutput = flag.Bool(

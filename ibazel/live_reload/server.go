@@ -18,14 +18,16 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	golog "log"
 	"net"
 	"os"
 	"strconv"
 
-	"github.com/bazelbuild/bazel-watcher/ibazel/log"
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 	"github.com/jaschaephraim/lrserver"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+
+	golog "log"
 )
 
 var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
