@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -14,18 +15,18 @@ var osExit = os.Exit
 var timeNow = time.Now
 
 const (
-	reset color = "\033[0m"
-
-	errorColor color = "\033[31m"
-	fatalColor color = "\033[41m"
-	logColor   color = "\033[96m"
+	resetColor  color = "\033[0m"
+	bannerColor color = "\033[33m"
+	errorColor  color = "\033[31m"
+	fatalColor  color = "\033[41m"
+	logColor    color = "\033[96m"
 )
 
 func log(c color, msg string, args ...interface{}) {
 	fmt.Fprintf(writer, "%siBazel [%s]%s: ",
 		c,
 		timeNow().Local().Format(time.Kitchen),
-		reset)
+		resetColor)
 	fmt.Fprintf(writer, msg, args...)
 	fmt.Fprintf(writer, "\n")
 }
@@ -33,6 +34,22 @@ func log(c color, msg string, args ...interface{}) {
 // NewLine prints a new line to the screen without any preamble.
 func NewLine() {
 	fmt.Fprintf(writer, "\n")
+}
+
+// Print out a banner surrounded by # to draw attention to the eye.
+func Banner(lines ...string) {
+	NewLine()
+	fmt.Fprintf(writer, "%s%s%s", bannerColor, strings.Repeat("#", 80), resetColor)
+	NewLine()
+
+	for _, line := range lines {
+		fmt.Fprintf(writer, "%s#%s %-76s %s#%s", bannerColor, resetColor, line, bannerColor, resetColor)
+		NewLine()
+	}
+
+	fmt.Fprintf(writer, "%s%s%s", bannerColor, strings.Repeat("#", 80), resetColor)
+	NewLine()
+	NewLine()
 }
 
 // Error prints an error to the screen with a preamble.

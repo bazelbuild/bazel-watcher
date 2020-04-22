@@ -73,6 +73,13 @@ func TestOutputRunner(t *testing.T) {
 	checkSentinel(t, sentinelFile, "ioutil.TempFile creates the file by default. Delete it.")
 	checkNoSentinel(t, sentinelFile, "The sentinal should now be deleted.")
 
+	// First check that it doesn't run if there isn't a `.bazel_fix_commands.json` file.
+	ibazel := e2e.NewIBazelTester(t)
+	ibazel.RunWithBazelFixCommands("//:overwrite")
+
+	// Ensure it prints out the banner.
+	ibazel.ExpectIBazelError("Did you know")
+
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
 	[{
 		"regex": "^(.*)runacommand(.*)$",
@@ -84,7 +91,6 @@ func TestOutputRunner(t *testing.T) {
 printf "overwrite1"
 `)
 
-	ibazel := e2e.NewIBazelTester(t)
 	ibazel.RunWithBazelFixCommands("//:overwrite")
 
 	ibazel.ExpectOutput("overwrite1")

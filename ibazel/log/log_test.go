@@ -112,3 +112,23 @@ func TestNonfLoggers(t *testing.T) {
 		})
 	}
 }
+
+func TestBanner(t *testing.T) {
+	buf := &bytes.Buffer{}
+	SetWriter(buf)
+
+	Banner("This is multi", "line output that", "is expected to be printed")
+
+	got := buf.String()
+	want := fmt.Sprintf(`
+%s################################################################################%s
+%s#%s This is multi                                                                %s#%s
+%s#%s line output that                                                             %s#%s
+%s#%s is expected to be printed                                                    %s#%s
+%s################################################################################%s
+
+`, bannerColor, resetColor, bannerColor, resetColor, bannerColor, resetColor, bannerColor, resetColor, bannerColor, resetColor, bannerColor, resetColor, bannerColor, resetColor, bannerColor, resetColor)
+	if diff := cmp.Diff(got, want); diff != "" {
+		t.Errorf("\nGot:  %q\nWant: %q\nDiff:\n%s", got, want, diff)
+	}
+}
