@@ -24,15 +24,16 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/golang/protobuf/proto"
+
 	"github.com/bazelbuild/bazel-watcher/bazel"
-	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
-	"github.com/fsnotify/fsnotify"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
-	"github.com/golang/protobuf/proto"
+	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 )
 
 func init() {
@@ -266,13 +267,6 @@ func TestIBazelTest(t *testing.T) {
 	}
 
 	mockBazel.AssertActions(t, expected)
-}
-
-func TestIBazelRun_firstPass(t *testing.T) {
-	i := newIBazel(t)
-	defer i.Cleanup()
-
-	i.run("//path/to:target")
 }
 
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {

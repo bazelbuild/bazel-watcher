@@ -21,4 +21,4 @@ gazelle(
 
 exports_files(["CONTRIBUTORS"])
 
-# gazelle:resolve go github.com/bazelbuild/bazel-integration-testing/go @com_github_bazelbuild_bazel_integration_testing//go:go_default_library
+# gazelle:prefix github.com/bazelbuild/bazel-watcher

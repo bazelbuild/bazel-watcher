@@ -25,6 +25,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
@@ -32,9 +34,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/ibazel/output_runner"
 	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
 	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
-	"github.com/fsnotify/fsnotify"
-
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
 var osExit = os.Exit
@@ -420,16 +420,16 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b := i.newBazel()
 
-	res, err := b.Query(rule)
+	res, err := b.CQuery(rule)
 	if err != nil {
 		log.Errorf("Error running Bazel %v", err)
 		osExit(4)
 	}
 
-	for _, target := range res.Target {
-		switch *target.Type {
+	for _, target := range res.Results {
+		switch *target.Target.Type {
 		case blaze_query.Target_RULE:
-			return target.Rule, nil
+			return target.Target.Rule, nil
 		}
 	}
 

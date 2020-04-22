@@ -22,7 +22,7 @@ go_library(
     deps = [
         "//ibazel/log:go_default_library",
         "//ibazel/workspace_finder:go_default_library",
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
     ],
 )
 
