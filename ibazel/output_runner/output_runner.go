@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -33,19 +34,24 @@ import (
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
-var runOutput = flag.Bool(
-	"run_output",
-	true,
-	"Search for commands in Bazel output that match a regex and execute them, the default path of file should be in the workspace root .bazel_fix_commands.json")
-var runOutputInteractive = flag.Bool(
-	"run_output_interactive",
-	true,
-	"Use an interactive prompt when executing commands in Bazel output")
+var (
+	runOutput = flag.Bool(
+		"run_output",
+		true,
+		"Search for commands in Bazel output that match a regex and execute them, the default path of file should be in the workspace root .bazel_fix_commands.json")
+	runOutputInteractive = flag.Bool(
+		"run_output_interactive",
+		true,
+		"Use an interactive prompt when executing commands in Bazel output")
+	notifiedUser = false
+)
 
 // This RegExp will match ANSI escape codes.
 var escapeCodeCleanerRegex = regexp.MustCompile("\\x1B\\[[\\x30-\\x3F]*[\\x20-\\x2F]*[\\x40-\\x7E]")
 
-type OutputRunner struct{}
+type OutputRunner struct {
+	wf workspace_finder.WorkspaceFinder
+}
 
 type Optcmd struct {
 	Regex   string   `json:"regex"`
@@ -54,7 +60,9 @@ type Optcmd struct {
 }
 
 func New() *OutputRunner {
-	i := &OutputRunner{}
+	i := &OutputRunner{
+		wf: &workspace_finder.MainWorkspaceFinder{},
+	}
 	return i
 }
 
@@ -78,7 +86,7 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 		Args:    []string{"$1", "$2"},
 	}
 
-	optcmd := readConfigs(jsonCommandPath)
+	optcmd := i.readConfigs(jsonCommandPath)
 	if optcmd == nil {
 		log.Log("Use default regex")
 		optcmd = []Optcmd{defaultRegex}
@@ -86,18 +94,35 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 	commandLines, commands, args := matchRegex(optcmd, output)
 	for idx, _ := range commandLines {
 		if *runOutputInteractive {
-			if promptCommand(commandLines[idx]) {
-				executeCommand(commands[idx], args[idx])
+			if i.promptCommand(commandLines[idx]) {
+				i.executeCommand(commands[idx], args[idx])
 			}
 		} else {
-			executeCommand(commands[idx], args[idx])
+			i.executeCommand(commands[idx], args[idx])
 		}
 	}
 }
 
-func readConfigs(configPath string) []Optcmd {
-	jsonFile, err := os.Open(configPath)
+func (o *OutputRunner) readConfigs(configPath string) []Optcmd {
+	workspacePath, err := o.wf.FindWorkspace()
 	if err != nil {
+		log.Fatalf("Error finding workspace: %v", err)
+		os.Exit(5)
+	}
+
+	jsonFile, err := os.Open(filepath.Join(workspacePath, configPath))
+	if os.IsNotExist(err) {
+		// Note this is not attached to the os.IsNotExist because we don't want the
+		// other error handler to catch if we hav already notified.
+		if !notifiedUser {
+			log.Banner(
+				"Did you know iBazel can invoke programs like Gazelle, buildozer, and",
+				"other BUILD file generators for you automatically based on bazel output?",
+				"Documentation at: https://github.com/bazelbuild/bazel-watcher#output-runner")
+		}
+		notifiedUser = true
+		return nil
+	} else if err != nil {
 		log.Errorf("Error reading config: %s", err)
 		return nil
 	}
@@ -153,7 +178,7 @@ func convertArgs(matches []string, args []string) []string {
 	return rst
 }
 
-func promptCommand(command string) bool {
+func (_ *OutputRunner) promptCommand(command string) bool {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Fprintf(os.Stderr, "Do you want to execute this command?\n%s\n[y/N]", command)
 	text, _ := reader.ReadString('\n')
@@ -167,13 +192,12 @@ func promptCommand(command string) bool {
 	}
 }
 
-func executeCommand(command string, args []string) {
+func (o *OutputRunner) executeCommand(command string, args []string) {
 	for i, arg := range args {
 		args[i] = strings.TrimSpace(arg)
 	}
 	log.Logf("Executing command: %s", command)
-	workspaceFinder := &workspace_finder.MainWorkspaceFinder{}
-	workspacePath, err := workspaceFinder.FindWorkspace()
+	workspacePath, err := o.wf.FindWorkspace()
 	if err != nil {
 		log.Fatalf("Error finding workspace: %v", err)
 		os.Exit(5)

@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 )
 
 func TestConvertArgs(t *testing.T) {
@@ -56,7 +58,10 @@ func TestConvertArgs(t *testing.T) {
 }
 
 func TestReadConfigs(t *testing.T) {
-	optcmd := readConfigs("output_runner_test.json")
+	i := &OutputRunner{
+		wf: &workspace_finder.FakeWorkspaceFinder{},
+	}
+	optcmd := i.readConfigs("output_runner_test.json")
 
 	for idx, c := range []struct {
 		regex   string
@@ -153,7 +158,7 @@ func TestMatchCleanRegex(t *testing.T) {
 			buf.WriteString(tt.in)
 			cmdLines, _, _ := matchRegex(optcmd, &buf)
 
-			if (!reflect.DeepEqual(cmdLines, tt.out)) {
+			if !reflect.DeepEqual(cmdLines, tt.out) {
 				t.Errorf("Commands not equal!\nGot:  %v\nWant: %v", cmdLines, tt.out)
 			}
 		})
