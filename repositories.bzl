@@ -30,7 +30,7 @@ def go_repositories():
     go_repository(
         name = "com_github_bazelbuild_rules_go",
         importpath = "github.com/bazelbuild/rules_go",
-        tag = "v0.22.1",
+        tag = "v0.22.4",
     )
     go_repository(
         name = "com_github_jaschaephraim_lrserver",
