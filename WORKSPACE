@@ -49,6 +49,7 @@ rules_proto_toolchains()
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+# gazelle:repository go_repository name=com_github_bazelbuild_rules_go importpath=github.com/bazelbuild/rules_go
 http_archive(
     name = "io_bazel_rules_go",
     sha256 = "7b9bbe3ea1fccb46dcfa6c3f3e29ba7ec740d8733370e21cdc8937467b4a4349",
@@ -73,10 +74,11 @@ go_rules_dependencies()
 
 go_register_toolchains()
 
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 gazelle_dependencies()
 
 load(":repositories.bzl", "go_repositories")
 
+# gazelle:repository_macro repositories.bzl%go_repositories
 go_repositories()
