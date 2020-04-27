@@ -88,7 +88,6 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 
 	optcmd := i.readConfigs(jsonCommandPath)
 	if optcmd == nil {
-		log.Log("Use default regex")
 		optcmd = []Optcmd{defaultRegex}
 	}
 	commandLines, commands, args := matchRegex(optcmd, output)

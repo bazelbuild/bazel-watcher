@@ -9,6 +9,6 @@ go_bazel_test(
     importpath = "github.com/bazelbuild/bazel-watcher/e2e/error",
     deps = [
         "//e2e:go_default_library",
-        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "//e2e/example_client:go_default_library",
     ],
 )
