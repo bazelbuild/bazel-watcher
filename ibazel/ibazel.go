@@ -495,9 +495,9 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		case blaze_query.Target_SOURCE_FILE:
 			label := *target.SourceFile.Name
 			if strings.HasPrefix(label, "@") {
-				parts := strings.Split(strings.TrimPrefix(label, "@"), "//")
-				if realPath, ok := localRepositories[parts[0]]; ok {
-					label = strings.Replace(parts[1], ":", string(filepath.Separator), 1)
+				repo, target := parseTarget(label)
+				if realPath, ok := localRepositories[repo]; ok {
+					label = strings.Replace(target, ":", string(filepath.Separator), 1)
 					toWatch = append(toWatch, filepath.Join(realPath, label))
 					break
 				}
@@ -571,4 +571,9 @@ func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
 	}
 
 	i.filesWatched[watcher] = filesWatched
+}
+
+func parseTarget(label string) (repo string, target string) {
+	parts := strings.Split(strings.TrimPrefix(label, "@"), "//")
+	return parts[0], parts[1]
 }

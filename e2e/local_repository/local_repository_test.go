@@ -1,4 +1,4 @@
-package local_repository
+package simple
 
 import (
 	"fmt"
@@ -12,54 +12,66 @@ import (
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
+const secondaryBuild = `
+sh_library(
+	name = "lib",
+	data = ["lib.sh"],
+	visibility = ["//visibility:public"],
+)
+`
+
+const secondaryLib = `
+function say_hello {
+	printf "hello!"
+}
+`
+
+const secondaryLibAlt = `
+function say_hello {
+	printf "hello2!"
+}
+`
+
 const mainFiles = `
 -- BUILD.bazel --
-# Base case test
 sh_binary(
-  name = "simple",
-  srcs = ["simple.sh"],
+	name = "test",
+	srcs = ["test.sh"],
+	deps = [
+		"@secondary//:lib",
+	],
 )
-
-# Environment variable tests
-sh_binary(
-  name = "environment",
-  srcs = ["environment.sh"],
+-- test.sh --
+#!/bin/bash
+source ../secondary/lib.sh
+say_hello
+-- WORKSPACE --
+local_repository(
+    name = "secondary",
+    path = "../secondary",
 )
-
-# --define tests
-config_setting(
-  name = "test_is_2",
-  values = {"define": "test_number=2"},
-)
-
-sh_binary(
-  name = "define",
-  srcs = select({
-        ":test_is_2": ["define_test_2.sh"],
-        "//conditions:default": ["define_test_1.sh"],
-    }),
-)
--- simple.sh --
-printf "Started!"
--- environment.sh --
-printf "Started and IBAZEL=${IBAZEL}!"
--- define_test_1.sh --
-printf "define_test_1"
--- define_test_2.sh --
-printf "define_test_2"
--- subdir/BUILD.bazel --
-sh_binary(
-  name = "subdir",
-  srcs = ["subdir.sh"],
-)
--- subdir/subdir.sh --
-printf "Hello subdir!"
 `
+
+var (
+	secondaryWd string
+)
 
 func TestMain(m *testing.M) {
 	bazel_testing.TestMain(m, bazel_testing.Args{
 		Main: mainFiles,
 		SetUp: func() error {
+			// Create a secondary workspace in a sibling folder of the main workspace.
+			secondaryWd, _ = filepath.Abs(filepath.Join("..", "secondary"))
+
+			// Manually create files in the secondary workspace.
+			os.Mkdir(secondaryWd, 0777)
+			ioutil.WriteFile(
+				filepath.Join(secondaryWd, "BUILD.bazel"), []byte(secondaryBuild), 0777)
+			ioutil.WriteFile(
+				filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLib), 0777)
+			ioutil.WriteFile(
+				filepath.Join(secondaryWd, "WORKSPACE"), []byte(""), 0777)
+
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
@@ -85,36 +97,14 @@ func TestMain(m *testing.M) {
 	})
 }
 
-func TestSimpleRunWithModifiedFile(t *testing.T) {
+func TestRunWithModifiedFile(t *testing.T) {
 	ibazel := e2e.SetUp(t)
-	ibazel.Run([]string{}, "//:simple")
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Started!")
+	ibazel.ExpectOutput("hello!")
 
-	// Give it time to start up and query.
-	e2e.MustWriteFile(t, "simple.sh", `printf "Started2!"`)
-	ibazel.ExpectOutput("Started2!")
-
-	// Manipulate a source file and sleep past the debounce.
-	e2e.MustWriteFile(t, "simple.sh", `printf "Started3!"`)
-	ibazel.ExpectOutput("Started3!")
-
-	// TODO: put these in directories instead of storing the old value and rewriting it
-	oldValue, err := ioutil.ReadFile("BUILD.bazel")
-	if err != nil {
-		t.Errorf("Unable to Readfile(\"BUILD.bazel\"): %v", err)
-	}
-	defer e2e.MustWriteFile(t, "BUILD.bazel", string(oldValue))
-	// END TODO
-
-	// Now a BUILD.bazel file.
-	e2e.MustWriteFile(t, "BUILD.bazel", `
-sh_binary(
-	# New comment
-	name = "test",
-	srcs = ["test.sh"],
-)
-`)
-	ibazel.ExpectOutput("Started3!")
+	ioutil.WriteFile(
+		filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLibAlt), 0777)
+	ibazel.ExpectOutput("hello2!")
 }
