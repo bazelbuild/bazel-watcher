@@ -449,37 +449,43 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 	return &res, nil
 }
 
-func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
-	b := i.newBazel()
-
+func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 	info, _ := i.getInfo()
 	outputBase := (*info)["output_base"]
 	installBase := (*info)["install_base"]
-	externalPath := outputBase + string(filepath.Separator) + "external"
-	localRepositories := map[string]string{}
+	externalPath := filepath.Join(outputBase, "external")
 
 	files, err := ioutil.ReadDir(externalPath)
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding remote repositories directory: %v\n", err)
-		return []string{}, err
+		return map[string]string{}, err
 	}
 
-	findRealPath := func(f os.FileInfo) (found bool, name string, realPath string) {
+	localRepositories := map[string]string{}
+
+	for _, f := range files {
 		if !f.IsDir() && (f.Mode()&os.ModeSymlink) == os.ModeSymlink {
 			name := f.Name()
-			realPath, _ := os.Readlink(externalPath + string(filepath.Separator) + f.Name())
+			realPath, _ := os.Readlink(filepath.Join(externalPath, f.Name()))
 
 			// Skipping symlinked repositories that are located in `install_base` because local
 			// repositories can't be placed there.
-			return !strings.Contains(realPath, installBase), name, realPath
+			if !strings.Contains(realPath, installBase) {
+				localRepositories[name] = realPath
+			}
 		}
-		return false, "", ""
 	}
+	return localRepositories, nil
+}
 
-	for _, f := range files {
-		if found, name, realPath := findRealPath(f); found == true {
-			localRepositories[name] = realPath
-		}
+func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
+	b := i.newBazel()
+
+	localRepositories, err := i.realLocalRepositoryPaths()
+
+	if err != nil {
+		return []string{}, err
 	}
 
 	res, err := b.Query(query)
