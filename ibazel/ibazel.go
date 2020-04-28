@@ -464,16 +464,21 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return []string{}, err
 	}
 
-	for _, f := range files {
+	findRealPath := func(f os.FileInfo) (found bool, name string, realPath string) {
 		if !f.IsDir() && (f.Mode()&os.ModeSymlink) == os.ModeSymlink {
 			name := f.Name()
 			realPath, _ := os.Readlink(externalPath + string(filepath.Separator) + f.Name())
 
 			// Skipping symlinked repositories that are located in `install_base` because local
 			// repositories can't be placed there.
-			if !strings.Contains(realPath, installBase) {
-				localRepositories[name] = realPath
-			}
+			return !strings.Contains(realPath, installBase), name, realPath
+		}
+		return false, "", ""
+	}
+
+	for _, f := range files {
+		if found, name, realPath := findRealPath(f); found == true {
+			localRepositories[name] = realPath
 		}
 	}
 
