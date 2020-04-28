@@ -3,6 +3,7 @@ package simple
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,13 +68,18 @@ func TestMain(m *testing.M) {
 
 			// Manually create files in the secondary workspaces.
 			for _, wd := range []string{secondaryWd, secondaryWd2} {
-				os.Mkdir(wd, 0777)
-				ioutil.WriteFile(
-					filepath.Join(wd, "BUILD.bazel"), []byte(secondaryBuild), 0777)
-				ioutil.WriteFile(
-					filepath.Join(wd, "lib.sh"), []byte(secondaryLib), 0777)
-				ioutil.WriteFile(
-					filepath.Join(wd, "WORKSPACE"), []byte(""), 0777)
+				if err := os.Mkdir(wd, 0777); err != nil {
+					log.Fatalf("os.Mkdir(%q): %v", wd, err)
+				}
+				for file, contents := range map[string]string{
+					"BUILD.bazel": secondaryBuild,
+					"lib.sh":      secondaryLib,
+					"WORKSPACE":   "",
+				} {
+					if err := ioutil.WriteFile(filepath.Join(wd, file), []byte(contents), 0777); err != nil {
+						log.Fatalf("Failed to write file %q: %v", file, err)
+					}
+				}
 			}
 			wd, err := os.Getwd()
 			if err != nil {

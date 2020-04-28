@@ -7,6 +7,9 @@ go_bazel_test(
         "//ibazel",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/e2e/local_repository",
+    tags = [
+        "nowindows",
+    ],
     deps = [
         "//e2e:go_default_library",
         "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",

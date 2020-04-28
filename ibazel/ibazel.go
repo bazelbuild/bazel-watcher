@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -450,6 +451,10 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 }
 
 func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
+	if runtime.GOOS == "windows" {
+		return map[string]string{}, nil
+	}
+
 	info, _ := i.getInfo()
 	outputBase := (*info)["output_base"]
 	installBase := (*info)["install_base"]
@@ -478,9 +483,14 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 	}
 
 	// Apply overrides set via arguments. Overrides must already be absolute.
+	// https://docs.bazel.build/versions/master/external.html#overriding-repositories-from-the-command-line
 	for _, arg := range i.bazelArgs {
 		if strings.HasPrefix(arg, "--override_repository") {
 			parts := strings.Split(arg, "=")
+			if len(parts) != 3 {
+				log.Errorf("ibazel cannot parse argument: %v", arg)
+				continue
+			}
 			localRepositories[parts[1]] = parts[2]
 		}
 	}
