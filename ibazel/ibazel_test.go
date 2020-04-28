@@ -389,24 +389,24 @@ func TestHandleSignals_SIGTERM(t *testing.T) {
 }
 
 func TestParseTarget(t *testing.T) {
-	tests := []struct{
-	  in string
-	  repo string
-	  target string
+	tests := []struct {
+		in     string
+		repo   string
+		target string
 	}{
-	  {"@//my:target", "", "my:target"},
-	  {"@repo//my:target", "repo", "my:target"},
-	  {"@bazel_tools//:strange/target", "bazel_tools", ":strange/target"},
+		{"@//my:target", "", "my:target"},
+		{"@repo//my:target", "repo", "my:target"},
+		{"@bazel_tools//:strange/target", "bazel_tools", ":strange/target"},
 	}
 	for _, test := range tests {
-	  t.Run(test.in, func(t *testing.T) {
-		gotRepo, gotTarget := parseTarget(test.in)
-		if gotRepo != test.repo {
-		  t.Errorf("parseTarget(%q).repo = %q, want %q", test.in, gotRepo, test.repo)
-		}
-		if gotTarget != test.target {
-		 t.Errorf("parseTarget(%q).target = %q, want %q", test.in, gotTarget, test.target)
-		}
-	  })
+		t.Run(test.in, func(t *testing.T) {
+			gotRepo, gotTarget := parseTarget(test.in)
+			if gotRepo != test.repo {
+				t.Errorf("parseTarget(%q).repo = %q, want %q", test.in, gotRepo, test.repo)
+			}
+			if gotTarget != test.target {
+				t.Errorf("parseTarget(%q).target = %q, want %q", test.in, gotTarget, test.target)
+			}
+		})
 	}
-  }
+}
