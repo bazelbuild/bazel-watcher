@@ -5,14 +5,29 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
-	"runtime/debug"
+	"os"
 	"strings"
 	"testing"
 
-	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
+	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
+
+const mainFiles = `
+-- BUILD --
+sh_binary(
+	name = "test",
+	srcs = ["test.sh"],
+)
+-- test.sh --
+printf "Profiler url: ${IBAZEL_PROFILER_URL}"
+`
+
+func TestMain(m *testing.M) {
+	bazel_testing.TestMain(m, bazel_testing.Args{
+		Main: mainFiles,
+	})
+}
 
 const printLivereload = `printf "Profiler url: ${IBAZEL_PROFILER_URL}"`
 
@@ -20,41 +35,20 @@ type profileEvent struct {
 	Type string `json:"type"`
 }
 
-func must(t *testing.T, e error) {
-	if e != nil {
-		t.Errorf("Error: %s", e)
-		debug.PrintStack()
-	}
-}
-
-func assertEqual(t *testing.T, want, got interface{}, msg string) {
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
-		debug.PrintStack()
-	}
-}
-
 func TestProfiler(t *testing.T) {
-	b, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	must(t, b.ScratchFile("WORKSPACE", ""))
-	must(t, b.ScratchFileWithMode("test.sh", printLivereload, 0777))
-	must(t, b.ScratchFile("BUILD", `
-sh_binary(
-	name = "profiler",
-	srcs = ["test.sh"],
-)
-`))
-
+	// Make a tempfile the profiler can write to.
 	tempFile, err := ioutil.TempFile("", "ibazel_profiler_json")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		if err := os.Remove(tempFile.Name()); err != nil {
+			t.Logf("os.Remove(%q): %v", tempFile.Name(), err)
+		}
+	}()
 
-	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.RunWithProfiler("//:profiler", tempFile.Name())
+	ibazel := e2e.SetUp(t)
+	ibazel.RunWithProfiler("//:test", tempFile.Name())
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Profiler url: http://.+:\\d+")
@@ -110,44 +104,40 @@ sh_binary(
 
 	err = json.Unmarshal([]byte(events[0]), &event)
 	if err != nil {
-		t.Errorf("Failed to decode IBAZEL_START event: %v", err)
+		t.Errorf("json.Unmarshal([]byte(%q), &event): %v", events[0], err)
 	}
-	assertEqual(t, event.Type, "IBAZEL_START", "Expected IBAZEL_START")
+	if event.Type != "IBAZEL_START" {
+		t.Errorf("Expected IBAZEL_START, got %q", event.Type)
+	}
 
 	err = json.Unmarshal([]byte(events[1]), &event)
 	if err != nil {
-		t.Errorf("Failed to decode RUN_START event: %v", err)
+		t.Errorf("json.Unmarshal([]byte(%q), &event): %v", events[1], err)
 	}
-	assertEqual(t, event.Type, "RUN_START", "Expected RUN_START")
+	if event.Type != "RUN_START" {
+		t.Errorf("Expected RUN_START, got %q", event.Type)
+	}
 
 	err = json.Unmarshal([]byte(events[2]), &event)
 	if err != nil {
-		t.Errorf("Failed to decode RUN_DONE event: %v", err)
+		t.Errorf("json.Unmarshal([]byte(%q), &event): %v", events[2], err)
 	}
-	assertEqual(t, event.Type, "RUN_DONE", "Expected RUN_DONE")
+	if event.Type != "RUN_DONE" {
+		t.Errorf("Expected RUN_DONE, got %q", event.Type)
+	}
 }
 
 func TestNoProfiler(t *testing.T) {
-	b, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	must(t, b.ScratchFile("WORKSPACE", ""))
-	must(t, b.ScratchFileWithMode("test.sh", printLivereload, 0777))
-	must(t, b.ScratchFile("BUILD", `
-sh_binary(
-	name = "no_profiler",
-	srcs = ["test.sh"],
-)
-`))
-
-	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.Run([]string{}, "//:no_profiler")
+	ibazel := e2e.SetUp(t)
+	// Note that there is nothing special about the test that makes it a profile
+	// run vs a non-profiling run, only command line arguments to ibazel.
+	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Profiler url: $")
 }
 
+// compact provided slice to only contain non-empty strings.
 func compact(a []string) []string {
 	var r []string
 	for _, str := range a {

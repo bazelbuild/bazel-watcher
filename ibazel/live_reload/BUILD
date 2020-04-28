@@ -9,7 +9,8 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/live_reload",
     visibility = ["//visibility:public"],
     deps = [
-        "//third_party/bazel/master/src/main/protobuf:go_default_library",
+        "//ibazel/log:go_default_library",
+        "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
         "@com_github_jaschaephraim_lrserver//:go_default_library",
     ],
 )

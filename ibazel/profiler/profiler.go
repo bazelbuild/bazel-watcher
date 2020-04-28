@@ -20,7 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
+	golog "log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -29,7 +29,8 @@ import (
 	"sync"
 	"time"
 
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
 var profileDev = flag.String("profile_dev", "", "Turn on profiling and append report to file")
@@ -101,11 +102,11 @@ func (i *Profiler) Initialize(info *map[string]string) {
 	var err error
 	i.file, err = os.OpenFile(*profileDev, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open profile output file: %s\n", *profileDev)
+		log.Errorf("Failed to open profile output file: %s", *profileDev)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "Profile output: %s\n", *profileDev)
+	log.Errorf("Profile output: %s", *profileDev)
 
 	i.iterationBuildStart = true
 	i.newIteration()
@@ -191,7 +192,7 @@ func (i *Profiler) startProfilerServer() {
 			go func() {
 				err := i.listen(port)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Profiler server failed to start: %v\n", err)
+					log.Errorf("Profiler server failed to start: %v", err)
 				}
 			}()
 			url := fmt.Sprintf("http://localhost:%d/profiler.js", port)
@@ -199,7 +200,7 @@ func (i *Profiler) startProfilerServer() {
 			return
 		}
 	}
-	fmt.Fprintf(os.Stderr, "Could not find open port for profiler server\n")
+	log.Log("Could not find open port for profiler server")
 }
 
 func (i *Profiler) listen(port uint16) error {
@@ -213,7 +214,7 @@ func (i *Profiler) listen(port uint16) error {
 	// Create server
 	i.server = &http.Server{
 		Handler:  router,
-		ErrorLog: log.New(os.Stderr, "[profiler]", 0),
+		ErrorLog: golog.New(os.Stderr, "[profiler]", 0),
 	}
 	i.server.Addr = makeAddr(port)
 
@@ -230,7 +231,7 @@ func (i *Profiler) listen(port uint16) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "[profiler] listening on %s\n", i.server.Addr)
+	log.Logf("[profiler] listening on %s", i.server.Addr)
 	err = i.server.Serve(l)
 	i.closeServer()
 	return err
@@ -284,7 +285,7 @@ func (i *Profiler) reloadTriggeredEvent() {
 func (i *Profiler) remoteEvent(remoteEvent *profilerRemoteEvent) {
 	i.lock.Lock()
 	if !i.iterationReloadTriggered {
-		fmt.Fprintf(os.Stderr, "Ignoring unexpected remote event\n")
+		log.Logf("Ignoring unexpected remote event")
 		return
 	}
 	event := profileEvent{}
@@ -310,7 +311,7 @@ func (i *Profiler) processEvent(event *profileEvent) {
 		eventJson = append(eventJson, 10) // \n
 		_, err := i.file.Write(eventJson)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing to profile file: %v\n", err)
+			log.Errorf("Error writing to profile file: %v", err)
 		}
 	}
 }
@@ -331,7 +332,7 @@ func (i *Profiler) buildingIteration() {
 
 func (i *Profiler) jsHandler(rw http.ResponseWriter, req *http.Request) {
 	if req.Method != "GET" {
-		fmt.Fprintf(os.Stderr, "profiler.js invalid request method: %s\n", req.Method)
+		log.Errorf("profiler.js invalid request method: %s", req.Method)
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -339,13 +340,13 @@ func (i *Profiler) jsHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/javascript")
 	_, err := rw.Write(js)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error handling profile.js request: %v\n", err)
+		log.Errorf("Error handling profile.js request: %v", err)
 	}
 }
 
 func (i *Profiler) profilerEventHandler(rw http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
-		fmt.Fprintf(os.Stderr, "Profiler invalid request method: %s\n", req.Method)
+		log.Errorf("Profiler invalid request method: %s", req.Method)
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -356,12 +357,12 @@ func (i *Profiler) profilerEventHandler(rw http.ResponseWriter, req *http.Reques
 	err := decoder.Decode(&remoteEvent)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to decode profile post data: %v\n", err)
+		log.Errorf("Failed to decode profile post data: %v", err)
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "Remote event: %s\n", remoteEvent.Type)
+	log.Logf("Remote event: %s", remoteEvent.Type)
 	i.remoteEvent(&remoteEvent)
 }
 
@@ -369,7 +370,7 @@ func (i *Profiler) closeServer() {
 	if i.server != nil {
 		err := i.server.Close()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error closing profiler server: %v\n", err)
+			log.Errorf("Error closing profiler server: %v", err)
 		}
 		i.server = nil
 	}
@@ -388,7 +389,7 @@ func testPort(port uint16) bool {
 	ln, err := net.Listen("tcp", ":"+strconv.FormatInt(int64(port), 10))
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Port %d: %v\n", port, err)
+		log.Errorf("Error opening port %d: %v", port, err)
 		return false
 	}
 

@@ -1,18 +1,14 @@
-# gazelle:exclude simple_test.go
+load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
-load("@com_github_bazelbuild_bazel_integration_testing//go:bazel_integration_test.bzl", "bazel_go_integration_test")
-load("@com_github_bazelbuild_bazel_integration_testing//tools:common.bzl", "GET_LATEST_BAZEL_VERSIONS")
-
-bazel_go_integration_test(
+go_bazel_test(
     name = "go_default_test",
     srcs = ["simple_test.go"],
     data = [
         "//ibazel",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/e2e/simple",
-    versions = GET_LATEST_BAZEL_VERSIONS(),
     deps = [
         "//e2e:go_default_library",
-        "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
     ],
 )

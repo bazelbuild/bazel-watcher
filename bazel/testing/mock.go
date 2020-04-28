@@ -20,13 +20,16 @@ import (
 	"regexp"
 	"testing"
 
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
 type MockBazel struct {
-	actions       [][]string
-	queryResponse map[string]*blaze_query.QueryResult
-	args          []string
+	actions        [][]string
+	queryResponse  map[string]*blaze_query.QueryResult
+	cqueryResponse map[string]*analysis.CqueryResult
+	args           []string
+	startupArgs    []string
 
 	buildError error
 	waitError  error
@@ -34,6 +37,10 @@ type MockBazel struct {
 
 func (b *MockBazel) SetArguments(args []string) {
 	b.args = args
+}
+
+func (b *MockBazel) SetStartupArgs(args []string) {
+	b.startupArgs = args
 }
 
 func (b *MockBazel) WriteToStderr(v bool) {
@@ -59,6 +66,23 @@ func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 
 	if !ok || res == nil {
 		res = &blaze_query.QueryResult{}
+	}
+
+	return res, nil
+}
+func (b *MockBazel) AddCQueryResponse(query string, res *analysis.CqueryResult) {
+	if b.queryResponse == nil {
+		b.cqueryResponse = map[string]*analysis.CqueryResult{}
+	}
+	b.cqueryResponse[query] = res
+}
+func (b *MockBazel) CQuery(args ...string) (*analysis.CqueryResult, error) {
+	b.actions = append(b.actions, append([]string{"CQuery"}, args...))
+	query := args[0]
+	res, ok := b.cqueryResponse[query]
+
+	if !ok || res == nil {
+		res = &analysis.CqueryResult{}
 	}
 
 	return res, nil

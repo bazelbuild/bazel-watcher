@@ -16,7 +16,10 @@
 
 package main
 
-import "syscall"
+import (
+	"runtime"
+	"syscall"
+)
 
 func setUlimit() error {
 	var lim syscall.Rlimit
@@ -30,6 +33,15 @@ func setUlimit() error {
 	// allowed by a userspace program.
 	// http://man7.org/linux/man-pages/man2/getrlimit.2.html
 	lim.Cur = lim.Max
+
+	// If we're on darwin, work around the fact that Getrlimit reports
+	// the wrong value. See https://github.com/golang/go/issues/30401
+	if runtime.GOOS == "darwin" && lim.Cur > 10240 {
+		// The max file limit is 10240, even though
+		// the max returned by Getrlimit is 1<<63-1.
+		// This is OPEN_MAX in sys/syslimits.h.
+		lim.Cur = 10240
+	}
 
 	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
 	if err != nil {

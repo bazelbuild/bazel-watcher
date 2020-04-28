@@ -16,17 +16,18 @@ package command
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 type notifyCommand struct {
-	target    string
-	bazelArgs []string
-	args      []string
+	target      string
+	startupArgs []string
+	bazelArgs   []string
+	args        []string
 
 	pg    process_group.ProcessGroup
 	stdin io.WriteCloser
@@ -34,11 +35,12 @@ type notifyCommand struct {
 
 // NotifyCommand is an alternate mode for starting a command. In this mode the
 // command will be notified on stdin that the source files have changed.
-func NotifyCommand(bazelArgs []string, target string, args []string) Command {
+func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string) Command {
 	return &notifyCommand{
-		target:    target,
-		bazelArgs: bazelArgs,
-		args:      args,
+		startupArgs: startupArgs,
+		target:      target,
+		bazelArgs:   bazelArgs,
+		args:        args,
 	}
 }
 
@@ -60,6 +62,7 @@ func (c *notifyCommand) Terminate() {
 
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
+	b.SetStartupArgs(c.startupArgs)
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
@@ -71,22 +74,23 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	var err error
 	c.stdin, err = c.pg.RootProcess().StdinPipe()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting stdin pipe: %v\n", err)
+		log.Errorf("Error getting stdin pipe: %v", err)
 		return outputBuffer, err
 	}
 
 	c.pg.RootProcess().Env = append(os.Environ(), "IBAZEL_NOTIFY_CHANGES=y")
 
 	if err = c.pg.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting process: %v\n", err)
+		log.Errorf("Error starting process: %v", err)
 		return outputBuffer, err
 	}
-	fmt.Fprintf(os.Stderr, "Starting...\n")
+	log.Log("Starting...")
 	return outputBuffer, nil
 }
 
 func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 	b := bazelNew()
+	b.SetStartupArgs(c.startupArgs)
 	b.SetArguments(c.bazelArgs)
 
 	b.WriteToStderr(true)
@@ -94,21 +98,21 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 
 	_, err := c.stdin.Write([]byte("IBAZEL_BUILD_STARTED\n"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing build to stdin: %s\n", err)
+		log.Errorf("Error writing build to stdin: %s", err)
 	}
 
 	outputBuffer, res := b.Build(c.target)
 	if res != nil {
-		fmt.Fprintf(os.Stderr, "FAILURE: %v\n", res)
+		log.Errorf("IBAZEL BUILD FAILURE: %v", res)
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing failure to stdin: %s\n", err)
+			log.Errorf("Error writing failure to stdin: %s", err)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "SUCCESS\n")
+		log.Log("IBAZEL BUILD SUCCESS")
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing success to stdin: %v\n", err)
+			log.Errorf("Error writing success to stdin: %v", err)
 		}
 	}
 	return outputBuffer

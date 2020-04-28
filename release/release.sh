@@ -33,7 +33,6 @@ This will update the changelog, tag a release and release it.
 
 Press enter to continue
 EOF
-
 read
 
 docker run --rm \
@@ -50,9 +49,16 @@ docker run --rm \
       --unreleased-label "**Next release**" \
       --future-release="${GIT_TAG}"
 
+git checkout -b release
+
 # Add the newly generated changelog and commit it.
 git add CHANGELOG.md
 git commit -m "Generating CHANGELOG.md for release ${GIT_TAG}"
+
+cat - <<EOF
+Upload the current branch for review. Merge it, sync this branch and then hit enter.
+EOF
+read
 
 # Tag the release.
 git tag "${GIT_TAG}"

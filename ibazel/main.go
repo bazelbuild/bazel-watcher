@@ -20,30 +20,42 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 )
 
 var Version = "Development"
 
+var overrideableStartupFlags []string = []string{
+	"--bazelrc",
+}
+
 var overrideableBazelFlags []string = []string{
 	"--action_env",
+	"--announce_rc",
+	"--compilation_mode",
 	"--config=",
+	"--copt=",
 	"--curses=no",
-	"--define",
+	"-c",
+	"--define=",
 	"--features=",
 	"--keep_going",
 	"-k",
+	"--nocache_test_results",
 	"--nostamp",
 	"--output_groups=",
-	"--override_repository",
+	"--override_repository=",
 	"--repo_env",
-	"--runs_per_test",
+	"--runs_per_test=",
 	"--stamp",
-	"--strategy",
-	"--test_arg",
-	"--test_env",
-	"--test_filter",
+	"--strategy=",
+	"--test_arg=",
+	"--test_env=",
+	"--test_filter=",
 	"--test_output=",
-	"--test_timeout",
+	"--test_tag_filters=",
+	"--test_timeout=",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
@@ -57,7 +69,7 @@ target, run, build, or test the specified targets.
 
 Usage:
 
-ibazel [flags] build|test|run targets...
+ibazel build|test|run [flags] targets...
 
 Example:
 
@@ -66,19 +78,22 @@ ibazel test //path/to/my/testing/targets/...
 ibazel run //path/to/my/runnable:target -- --arguments --for_your=binary
 ibazel build //path/to/my/buildable:target
 
-Supported Bazel flags:
+Supported Bazel startup flags:
+  %s
+
+Supported Bazel command flags:
   %s
 
 To add to this list, edit
 https://github.com/bazelbuild/bazel-watcher/blob/master/ibazel/main.go
 
 iBazel flags:
-`, Version, strings.Join(overrideableBazelFlags, "\n  "))
+`, Version, strings.Join(overrideableStartupFlags, "\n  "), strings.Join(overrideableBazelFlags, "\n  "))
 	flag.PrintDefaults()
 }
 
-func isOverrideableBazelFlag(arg string) bool {
-	for _, overrideable := range overrideableBazelFlags {
+func isOverrideable(arg string, overrideables []string) bool {
+	for _, overrideable := range overrideables {
 		if strings.HasPrefix(arg, overrideable) {
 			return true
 		}
@@ -86,7 +101,15 @@ func isOverrideableBazelFlag(arg string) bool {
 	return false
 }
 
-func parseArgs(in []string) (targets, bazelArgs, args []string) {
+func isOverrideableStartupFlag(arg string) bool {
+	return isOverrideable(arg, overrideableStartupFlags)
+}
+
+func isOverrideableBazelFlag(arg string) bool {
+	return isOverrideable(arg, overrideableBazelFlags)
+}
+
+func parseArgs(in []string) (targets, startupArgs, bazelArgs, args []string) {
 	afterDoubleDash := false
 	for _, arg := range in {
 		if afterDoubleDash {
@@ -99,14 +122,15 @@ func parseArgs(in []string) (targets, bazelArgs, args []string) {
 				continue
 			}
 
-			// Check to see if this flag is on the bazel whitelist of flags.
-			if isOverrideableBazelFlag(arg) {
+			// Check to see if this startup option or command flag is on the bazel whitelist of flags.
+			if isOverrideableStartupFlag(arg) {
+				startupArgs = append(startupArgs, arg)
+			} else if isOverrideableBazelFlag(arg) {
 				bazelArgs = append(bazelArgs, arg)
-				continue
+			} else {
+				// If none of those things then it's probably a target.
+				targets = append(targets, arg)
 			}
-
-			// If none of those things then it's probably a target.
-			targets = append(targets, arg)
 		}
 	}
 	return
@@ -123,7 +147,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		os.Stderr = logFile
+		log.SetWriter(logFile)
 	}
 
 	if len(flag.Args()) < 2 {
@@ -133,11 +157,11 @@ func main() {
 
 	command := strings.ToLower(flag.Args()[0])
 	args := flag.Args()[1:]
+	os.Setenv("IBAZEL", "true")
 
 	i, err := New()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating iBazel: %s\n", err)
-		os.Exit(1)
+		log.Fatalf("Error creating iBazel: %s", err)
 	}
 	i.SetDebounceDuration(*debounceDuration)
 	defer i.Cleanup()
@@ -146,14 +170,15 @@ func main() {
 	// have open.
 	err = setUlimit()
 	if err != nil {
-		fmt.Fprint(os.Stderr, "error setting higher file descriptor limit for this process: ", err)
+		log.Errorf("error setting higher file descriptor limit for this process: %v", err)
 	}
 
 	handle(i, command, args)
 }
 
 func handle(i *IBazel, command string, args []string) {
-	targets, bazelArgs, args := parseArgs(args)
+	targets, startupArgs, bazelArgs, args := parseArgs(args)
+	i.SetStartupArgs(startupArgs)
 	i.SetBazelArgs(bazelArgs)
 
 	switch command {

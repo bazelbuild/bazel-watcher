@@ -20,3 +20,5 @@ gazelle(
 )
 
 exports_files(["CONTRIBUTORS"])
+
+# gazelle:prefix github.com/bazelbuild/bazel-watcher

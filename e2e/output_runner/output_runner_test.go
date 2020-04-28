@@ -4,131 +4,135 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime/debug"
 	"strings"
 	"testing"
 
-	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
+	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
-func must(t *testing.T, e error) {
-	if e != nil {
-		t.Errorf("Error: %s\n", e)
-		t.Logf("Stack:\n%s", string(debug.Stack()))
-	}
+const mainFiles = `
+-- defs.bzl --
+def fix_deps():
+  print("runacommand")
+-- BUILD --
+load("//:defs.bzl", "fix_deps")
+
+fix_deps()
+
+sh_binary(
+  name = "test",
+  srcs = ["test.sh"],
+)
+
+sh_binary(
+  name = "overwrite",
+  srcs = ["overwrite.sh"],
+)
+-- test.sh --
+printf "action"
+-- overwrite.sh --
+printf "overwrite"
+`
+
+func TestMain(m *testing.M) {
+	bazel_testing.TestMain(m, bazel_testing.Args{
+		Main: mainFiles,
+	})
 }
 
 func checkNoSentinel(t *testing.T, sentinelFile *os.File, msg string) {
+	t.Helper()
+
 	if _, err := os.Stat(sentinelFile.Name()); !os.IsNotExist(err) {
-		must(t, fmt.Errorf("Found a sentinel when expecting none: %s\n", msg))
+		t.Errorf("Found a sentinel when expecting none: %s\n", msg)
 	}
 }
 
 func checkSentinel(t *testing.T, sentinelFile *os.File, msg string) {
-	if _, err := os.Stat(sentinelFile.Name()); os.IsNotExist(err) {
-		t.Error(err)
-		must(t, fmt.Errorf("Couldn't find a sentinel: %s\n%s\n", msg, err))
+	t.Helper()
+
+	sentinalFileName := sentinelFile.Name()
+	if _, err := os.Stat(sentinalFileName); os.IsNotExist(err) {
+		t.Errorf("Couldn't find sentinal. os.Stat(%q): %s\n%s\n", sentinalFileName, err, msg)
 	}
 
 	os.Remove(sentinelFile.Name())
 }
 
 func TestOutputRunner(t *testing.T) {
-	b, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	e2e.SetExecuteBit(t)
 
 	sentinelFile, err := ioutil.TempFile("", "fixCommandSentinel")
-	must(t, err)
-	must(t, sentinelFile.Close())
+	if err != nil {
+		t.Errorf("ioutil.TempFile(\"\", \"fixCommandSentinel\": %v", err)
+	}
+	sentinalFileName := strings.Replace(sentinelFile.Name(), "\\", "/", -1)
+
+	e2e.Must(t, sentinelFile.Close())
 	checkSentinel(t, sentinelFile, "ioutil.TempFile creates the file by default. Delete it.")
 	checkNoSentinel(t, sentinelFile, "The sentinal should now be deleted.")
 
-	must(t, b.ScratchFile(".bazel_fix_commands.json", fmt.Sprintf(`
-[{
-	"regex": "^(.*)runacommand(.*)$",
-	"command": "touch",
-	"args": ["%s"]
-}]
-`, strings.Replace(sentinelFile.Name(), "\\", "/", -1))))
-	must(t, b.ScratchFile("WORKSPACE", ""))
-	must(t, b.ScratchFileWithMode("test.sh", `printf "action"`, 0777))
-	must(t, b.ScratchFile("defs.bzl", `
-def doit():
-  print("runacommand")
-`))
-	must(t, b.ScratchFile("BUILD", `
-load("//:defs.bzl", "doit")
+	// First check that it doesn't run if there isn't a `.bazel_fix_commands.json` file.
+	ibazel := e2e.NewIBazelTester(t)
+	ibazel.RunWithBazelFixCommands("//:overwrite")
 
-doit()
+	// Ensure it prints out the banner.
+	ibazel.ExpectIBazelError("Did you know")
 
-sh_binary(
-  name = "test",
-  srcs = ["test.sh"],
-)
-`))
+	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
+	[{
+		"regex": "^(.*)runacommand(.*)$",
+		"command": "touch",
+		"args": ["%s"]
+	}]`, sentinalFileName))
 
-	ibazel := e2e.NewIBazelTester(t, b)
-	ibazel.RunWithBazelFixCommands("//:test")
+	e2e.MustWriteFile(t, "overwrite.sh", `
+printf "overwrite1"
+`)
 
-	ibazel.ExpectOutput("action")
+	ibazel.RunWithBazelFixCommands("//:overwrite")
+
+	ibazel.ExpectOutput("overwrite1")
 	checkSentinel(t, sentinelFile, "The first run should create a sentinel.")
 
 	ibazel.Kill()
 
-	// TODO: Running the test a second time fails. I think there is a bug in the way
-	// buffers are registered and they are lost between runs. Interestingly it
-	// works if you reinvoke ibazel.
-	ibazel = e2e.NewIBazelTester(t, b)
-	ibazel.RunWithBazelFixCommands("//:test")
+	// Invoke the test a 2nd time to ensure it works over multiple separate
+	// invocations of ibazel.
+	ibazel = e2e.NewIBazelTester(t)
+	ibazel.RunWithBazelFixCommands("//:overwrite")
+	ibazel.ExpectOutput("overwrite1")
+	checkSentinel(t, sentinelFile, "The second run should create a sentinel.")
 
-	ibazel.ExpectOutput("action")
-	checkSentinel(t, sentinelFile, "The first run should create a sentinel.")
+	// TODO: Figure out why the 2nd invocation doesn't touch the file.
+	// Test that the command is run again.
+	//e2e.MustWriteFile(t, "overwrite.sh", `printf "overwrite2"`)
 
-	ibazel.Kill()
+	//ibazel.ExpectOutput("overwrite2")
+	//checkSentinel(t, sentinelFile, "The third run should create a sentinel.")
 
-	//// Test that the command is run again.
-	//must(t, b.ScratchFileWithMode("test.sh", `printf "action"`, 0777))
-
-	//ibazel.ExpectOutput("action2")
-	//checkSentinel(t, sentinelFile, "The second run should create a sentinel.")
-
-	// Now remove the print and it shouldn't fire.
-	must(t, b.ScratchFile("defs.bzl", `
-def doit():
+	// Now replace the print and it shouldn't fire.
+	e2e.MustWriteFile(t, "defs.bzl", `
+def fix_deps():
   print("not it")
-`))
+`)
 
-	ibazel.ExpectOutput("action")
+	ibazel.ExpectOutput("overwrite1")
 	checkNoSentinel(t, sentinelFile, "The third run should not create a sentinel.")
 }
 
 func TestNotifyWhenInvalidConfig(t *testing.T) {
-	b, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	must(t, b.ScratchFile(".bazel_fix_commands.json", `
+	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
 invalid json file
-`))
-	must(t, b.ScratchFile("WORKSPACE", ""))
-	must(t, b.ScratchFileWithMode("test.sh", `printf "Hello world"`, 0777))
-	must(t, b.ScratchFile("BUILD", `
-sh_binary(
-	name = "test",
-	srcs = ["test.sh"],
-)
-`))
+`)
 
-	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel := e2e.SetUp(t)
 	ibazel.RunWithBazelFixCommands("//:test")
 	defer ibazel.Kill()
 
 	// It should run the program and print out an error that says your JSON is
 	// invalid.
 	ibazel.ExpectIBazelError("Error in .bazel_fix_commands.json")
-	ibazel.ExpectOutput("Hello world")
+	ibazel.ExpectOutput("action")
 }

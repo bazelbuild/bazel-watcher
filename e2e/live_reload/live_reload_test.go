@@ -5,74 +5,69 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
 
-	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
+	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 	"github.com/gorilla/websocket"
 )
+
+const mainFiles = `
+-- BUILD --
+sh_binary(
+  name = "live_reload",
+  srcs = ["test.sh"],
+  # Add a simple data dependency that you can modify.
+  data = ["test.txt"],
+  tags = ["ibazel_live_reload"],
+)
+sh_binary(
+	name = "no_live_reload",
+	srcs = ["test.sh"],
+)
+-- test.txt --
+1
+-- test.sh --
+printf "Live reload url: ${IBAZEL_LIVERELOAD_URL}"
+`
+
+func TestMain(m *testing.M) {
+	bazel_testing.TestMain(m, bazel_testing.Args{
+		Main: mainFiles,
+	})
+}
 
 type liveReloadHello struct {
 	Command   string   `json:"command"`
 	Protocols []string `json:"protocols"`
 }
 
-const printLivereload = `printf "Live reload url: ${IBAZEL_LIVERELOAD_URL}"`
-
-func must(t *testing.T, e error) {
-	if e != nil {
-		t.Fatalf("Error: %s", e)
-		t.Logf("Stack trace:\n%s", string(debug.Stack()))
-	}
-}
-
-func assertNotEqual(t *testing.T, want, got interface{}, msg string) {
-	if reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted %s, got %s. %s", want, got, msg)
-		t.Logf("Stack trace:\n%s", string(debug.Stack()))
-	}
-}
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("Wanted [%v], got [%v]. %s", want, got, msg)
-		t.Logf("Stack trace:\n%s", string(debug.Stack()))
-	}
+	t.Helper()
+
 }
 
-func verify(t *testing.T, conn *websocket.Conn, expected interface{}) {
+func verify(t *testing.T, conn *websocket.Conn, want interface{}) {
+	t.Helper()
+
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 
 	_, v, err := conn.ReadMessage()
-	m := strings.TrimSpace(string(v))
-	t.Logf("v: %s, err: %s\n", m, err)
 	if err != nil {
-		t.Errorf("Error ReadJSONing from websocket: %s", err)
+		t.Errorf("conn.ReadMessage(): %s", err)
 	}
 
-	assertEqual(t, expected, m, "Expected response match")
+	got := strings.TrimSpace(string(v))
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("websocket read diff: got [%v], want [%v]", got, want)
+	}
 }
 
 func TestLiveReload(t *testing.T) {
-	b, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	must(t, b.ScratchFile("WORKSPACE", ""))
-	must(t, b.ScratchFileWithMode("test.sh", printLivereload, 0777))
-	must(t, b.ScratchFile("test.txt", "1"))
-	must(t, b.ScratchFile("BUILD", `
-sh_binary(
-	name = "live_reload",
-	srcs = ["test.sh"],
-	data = ["test.txt"],
-	tags = ["ibazel_live_reload"],
-)
-`))
-
-	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//:live_reload")
 	defer ibazel.Kill()
 
@@ -137,32 +132,19 @@ sh_binary(
 	// Verify the hello message
 	verify(t, conn, `{"command":"hello","protocols":["http://livereload.com/protocols/official-7","http://livereload.com/protocols/official-8","http://livereload.com/protocols/official-9","http://livereload.com/protocols/2.x-origin-version-negotiation","http://livereload.com/protocols/2.x-remote-control"],"serverName":"live reload"}`)
 
-	must(t, b.ScratchFile("test.txt", "2"))
+	e2e.MustWriteFile(t, "test.txt", "2")
 	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
 
 	verify(t, conn, `{"command":"reload","path":"reload","liveCSS":true}`)
 
-	must(t, b.ScratchFile("test.txt", "3"))
+	e2e.MustWriteFile(t, "test.txt", "3")
 	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
 
 	verify(t, conn, `{"command":"reload","path":"reload","liveCSS":true}`)
 }
 
 func TestNoLiveReload(t *testing.T) {
-	b, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	must(t, b.ScratchFile("WORKSPACE", ""))
-	must(t, b.ScratchFileWithMode("test.sh", printLivereload, 0777))
-	must(t, b.ScratchFile("BUILD", `
-sh_binary(
-	name = "no_live_reload",
-	srcs = ["test.sh"],
-)
-`))
-
-	ibazel := e2e.NewIBazelTester(t, b)
+	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//:no_live_reload")
 	defer ibazel.Kill()
 

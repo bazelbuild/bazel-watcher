@@ -1,90 +1,152 @@
 package e2e
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"strconv"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 
-	bazel "github.com/bazelbuild/bazel-integration-testing/go"
+	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 // Maximum amount of time to wait before failing a test for not matching your expectations.
-var delay = 20 * time.Second
+const (
+	defaultDelay = 20 * time.Second
+)
 
 type IBazelTester struct {
-	bazel *bazel.TestingBazel
-	t     *testing.T
+	t             *testing.T
+	ibazelLogFile string
 
 	cmd          *exec.Cmd
 	stderrBuffer *Buffer
 	stderrOld    string
 	stdoutBuffer *Buffer
 	stdoutOld    string
+	ibazelErrOld string
 }
 
-func NewIBazelTester(t *testing.T, bazel *bazel.TestingBazel) *IBazelTester {
+func NewIBazelTester(t *testing.T) *IBazelTester {
+	f, err := ioutil.TempFile("", "ibazel_output.*.log")
+	if err != nil {
+		panic(fmt.Sprintf("Error ioutil.Tempfile: %v", err))
+	}
+
 	return &IBazelTester{
-		bazel: bazel,
-		t:     t,
+		t:             t,
+		ibazelLogFile: f.Name(),
 	}
 }
 
 func (i *IBazelTester) bazelPath() string {
-	return i.bazel.GetBazel()
+	i.t.Helper()
+	path, err := exec.LookPath("bazel")
+	if err != nil {
+		i.t.Fatalf("Unable to find bazel binary: %v", err)
+	}
+	return path
 }
 
 func (i *IBazelTester) Build(target string) {
+	i.t.Helper()
 	i.build(target, []string{})
 }
 
 func (i *IBazelTester) Run(bazelArgs []string, target string) {
-	i.run(target, bazelArgs, []string{})
+	i.t.Helper()
+	i.run(target, bazelArgs, []string{
+		"--log_to_file=" + i.ibazelLogFile,
+	})
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
-	i.run(target, []string{}, []string{"--profile_dev=" + profiler})
+	i.t.Helper()
+	i.run(target, []string{}, []string{
+		"--log_to_file=" + i.ibazelLogFile,
+		"--profile_dev=" + profiler,
+	})
 }
 
 func (i *IBazelTester) RunWithBazelFixCommands(target string) {
+	i.t.Helper()
 	i.run(target, []string{}, []string{
+		"--log_to_file=" + i.ibazelLogFile,
 		"--run_output=true",
 		"--run_output_interactive=false",
 	})
 }
 
 func (i *IBazelTester) GetOutput() string {
+	i.t.Helper()
 	return i.stdoutBuffer.String()
 }
 
-func (i *IBazelTester) ExpectOutput(want string) {
-	i.Expect(want, i.GetOutput, &i.stdoutOld)
+func (i *IBazelTester) ExpectOutput(want string, delay ...time.Duration) {
+	i.t.Helper()
+
+	i.checkExit()
+
+	d := defaultDelay
+	if len(delay) == 1 {
+		d = delay[0]
+	}
+	i.Expect(want, i.GetOutput, &i.stdoutOld, d)
 }
 
-func (i *IBazelTester) ExpectError(want string) {
-	i.Expect(want, i.GetError, &i.stderrOld)
+func (i *IBazelTester) ExpectError(want string, delay ...time.Duration) {
+	i.t.Helper()
+
+	i.checkExit()
+
+	d := defaultDelay
+	if len(delay) == 1 {
+		d = delay[0]
+	}
+	i.Expect(want, i.GetError, &i.stderrOld, d)
 }
 
-func (i *IBazelTester) ExpectIBazelError(want string) {
+func (i *IBazelTester) ExpectIBazelError(want string, delay ...time.Duration) {
+	i.t.Helper()
+
+	i.checkExit()
+
+	d := defaultDelay
+	if len(delay) == 1 {
+		d = delay[0]
+	}
+	i.Expect(want, i.GetIBazelError, &i.ibazelErrOld, d)
 }
 
 func (i *IBazelTester) GetIBazelError() string {
-	iBazelError, err := os.Open("/tmp/ibazel_output.log")
+	i.t.Helper()
+
+	i.checkExit()
+
+	iBazelError, err := os.Open(i.ibazelLogFile)
+	if err != nil {
+		i.t.Errorf("Error os.Open(%q): %v", i.ibazelLogFile, err)
+		return ""
+	}
 
 	b, err := ioutil.ReadAll(iBazelError)
 	if err != nil {
-		i.t.Fatal(err)
+		i.t.Fatalf("Error ioutil.ReadAll(iBazelError): %v", err)
 	}
 
 	return string(b)
 }
 
-func (i *IBazelTester) Expect(want string, stream func() string, history *string) {
+func (i *IBazelTester) Expect(want string, stream func() string, history *string, delay time.Duration) {
+	i.t.Helper()
+
 	stopAt := time.Now().Add(delay)
 	for time.Now().Before(stopAt) {
 		time.Sleep(5 * time.Millisecond)
@@ -101,7 +163,8 @@ func (i *IBazelTester) Expect(want string, stream func() string, history *string
 
 	if match, err := regexp.MatchString(want, stream()); match == false || err != nil {
 		i.t.Errorf("Expected iBazel output after %v to be:\nWanted [%v], got [%v]", delay, want, stream())
-		i.t.Log(string(debug.Stack()))
+		i.t.Errorf("Stderr: [%v]\niBazelStderr: [%v]", i.GetError(), i.GetIBazelError())
+		//i.t.Log(string(debug.Stack()))
 
 		// In order to prevent cascading errors where the first result failing to
 		// match ruins the error output for the rest of the runs, persist the old
@@ -111,10 +174,12 @@ func (i *IBazelTester) Expect(want string, stream func() string, history *string
 }
 
 func (i *IBazelTester) GetError() string {
+	i.t.Helper()
 	return i.stderrBuffer.String()
 }
 
 func (i *IBazelTester) GetSubprocessPid() int64 {
+	i.t.Helper()
 	f, err := os.Open(filepath.Join(os.TempDir(), "ibazel_e2e_subprocess_launcher.pid"))
 	if err != nil {
 		panic(err)
@@ -133,12 +198,14 @@ func (i *IBazelTester) GetSubprocessPid() int64 {
 }
 
 func (i *IBazelTester) Kill() {
+	i.t.Helper()
 	if err := i.cmd.Process.Kill(); err != nil {
 		panic(err)
 	}
 }
 
 func (i *IBazelTester) build(target string, additionalArgs []string) {
+	i.t.Helper()
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "build")
@@ -152,22 +219,40 @@ func (i *IBazelTester) build(target string, additionalArgs []string) {
 	i.cmd.Stderr = i.stderrBuffer
 
 	if err := i.cmd.Start(); err != nil {
-		i.t.Logf("Command: %s", i.cmd)
-		panic(err)
+		i.t.Fatalf("Command: %s\nError: %v", i.cmd, err)
+	}
+}
+
+func (i *IBazelTester) checkExit() {
+	if i.cmd != nil && i.cmd.ProcessState != nil && i.cmd.ProcessState.Exited() == true {
+		i.t.Errorf("ibazel is exited")
 	}
 }
 
 func (i *IBazelTester) run(target string, bazelArgs []string, additionalArgs []string) {
+	i.t.Helper()
+
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
 	args = append(args, target)
 	args = append(args, bazelArgs...)
 	i.cmd = exec.Command(ibazelPath, args...)
+	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
 
-	errCode, buildStdout, buildStderr := i.bazel.RunBazel([]string{"build", target})
-	if errCode != 0 {
-		i.t.Fatalf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", errCode, buildStdout, buildStderr)
+	cmd := bazel_testing.BazelCmd("build", target)
+
+	var buildStdout, buildStderr bytes.Buffer
+	cmd.Stdout = &buildStdout
+	cmd.Stderr = &buildStderr
+
+	// Before doing anything crazy, let's build the target to make sure it works.
+
+	if err := cmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			status := exitErr.Sys().(syscall.WaitStatus)
+			i.t.Fatalf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", status.ExitStatus(), buildStdout.String(), buildStderr.String())
+		}
 	}
 
 	i.stdoutBuffer = &Buffer{}

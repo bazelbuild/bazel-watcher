@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 )
 
 func TestConvertArgs(t *testing.T) {
@@ -56,7 +58,10 @@ func TestConvertArgs(t *testing.T) {
 }
 
 func TestReadConfigs(t *testing.T) {
-	optcmd := readConfigs("output_runner_test.json")
+	i := &OutputRunner{
+		wf: &workspace_finder.FakeWorkspaceFinder{},
+	}
+	optcmd := i.readConfigs("output_runner_test.json")
 
 	for idx, c := range []struct {
 		regex   string
@@ -114,4 +119,49 @@ func TestMatchRegex(t *testing.T) {
 				c.cls, args[idx], c.as)
 		}
 	}
+}
+
+var cleanerTests = []struct {
+	in  string
+	out []string
+}{
+	{
+		"buildozer 'add deps //wow' //fake:target0",
+		[]string{"buildozer 'add deps //wow' //fake:target0"},
+	},
+	{
+		"[96mbuildozer [0m[93m[0m[93m[0m[91m'add deps [0m[90m//wow'[0m //fake:target1",
+		[]string{"buildozer 'add deps //wow' //fake:target1"},
+	},
+	{
+		"build[96mozer 'add d[96meps //w[96mow' //fake:tar[96mget2",
+		[]string{"buildozer 'add deps //wow' //fake:target2"},
+	},
+	{
+		"[0m[90mbuildozer 'a[0m[93mdd deps //wow' [0m[93m//fake:target3[91m",
+		[]string{"buildozer 'add deps //wow' //fake:target3"},
+	},
+	{
+		"buildozer 'add deps //wow[0m[93m //fake:target4",
+		[]string(nil),
+	},
+}
+
+func TestMatchCleanRegex(t *testing.T) {
+	optcmd := []Optcmd{
+		{Regex: "^(buildozer) '(.*)'\\s+(.*)$", Command: "$1", Args: []string{"$2", "$3"}},
+	}
+
+	for _, tt := range cleanerTests {
+		t.Run(tt.in, func(t *testing.T) {
+			buf := bytes.Buffer{}
+			buf.WriteString(tt.in)
+			cmdLines, _, _ := matchRegex(optcmd, &buf)
+
+			if !reflect.DeepEqual(cmdLines, tt.out) {
+				t.Errorf("Commands not equal!\nGot:  %v\nWant: %v", cmdLines, tt.out)
+			}
+		})
+	}
+
 }

@@ -21,25 +21,32 @@ import (
 
 func TestParsingArgs(t *testing.T) {
 	for _, c := range []struct {
-		in        []string
-		targets   []string
-		bazelArgs []string
-		args      []string
+		in          []string
+		targets     []string
+		startupArgs []string
+		bazelArgs   []string
+		args        []string
 	}{
 		// Empty case.
-		{[]string{}, nil, nil, nil},
+		{[]string{}, nil, nil, nil, nil},
 		// Only targets.
-		{[]string{"//my/target"}, []string{"//my/target"}, nil, nil},
+		{[]string{"//my/target"}, []string{"//my/target"}, nil, nil, nil},
 		// arguments after a --.
-		{[]string{"--", "--my_program_flag"}, nil, nil, []string{"--my_program_flag"}},
+		{[]string{"--", "--my_program_flag"}, nil, nil, nil, []string{"--my_program_flag"}},
+		// Whitelisted startup argument.
+		{[]string{"--bazelrc=/home/libsamek/bazelrc"}, nil, []string{"--bazelrc=/home/libsamek/bazelrc"}, nil, nil},
 		// Whitelisted bazel flag.
-		{[]string{"--test_output=streaming"}, nil, []string{"--test_output=streaming"}, nil},
+		{[]string{"--test_output=streaming"}, nil, nil, []string{"--test_output=streaming"}, nil},
 		// Whitelisted bazel flag, arg, and target.
-		{[]string{"--test_output=streaming", "--", "--my_program_flag"}, nil, []string{"--test_output=streaming"}, []string{"--my_program_flag"}},
+		{[]string{"--test_output=streaming", "--", "--my_program_flag"}, nil, nil,[]string{"--test_output=streaming"}, []string{"--my_program_flag"}},
 	} {
-		targets, bazelArgs, args := parseArgs(c.in)
+		targets, startupArgs, bazelArgs, args := parseArgs(c.in)
 		if !reflect.DeepEqual(c.targets, targets) {
 			t.Errorf("Targets not equal for args: %v\nGot:  %v\nWant: %v",
+				c.in, targets, c.targets)
+		}
+		if !reflect.DeepEqual(c.startupArgs, startupArgs) {
+			t.Errorf("Startup arguments not equal for args: %v\nGot:  %v\nWant: %v",
 				c.in, targets, c.targets)
 		}
 		if !reflect.DeepEqual(c.bazelArgs, bazelArgs) {

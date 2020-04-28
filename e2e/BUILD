@@ -1,5 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
+# gazelle:map_kind go_test go_bazel_test @io_bazel_rules_go//go/tools/bazel_testing:def.bzl
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -10,7 +12,7 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-watcher/e2e",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_bazelbuild_bazel_integration_testing//go:go_default_library",
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
     ],
 )

@@ -18,13 +18,16 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strconv"
 
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 	"github.com/jaschaephraim/lrserver"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+
+	golog "log"
 )
 
 var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
@@ -57,7 +60,7 @@ func (l *LiveReloadServer) TargetDecider(rule *blaze_query.Rule) {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
 			if contains(attr.StringListValue, "ibazel_live_reload") {
 				if *noLiveReload {
-					fmt.Fprintf(os.Stderr, "Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.\n")
+					log.Log("Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.")
 					return
 				}
 				l.startLiveReloadServer()
@@ -88,11 +91,11 @@ func (l *LiveReloadServer) startLiveReloadServer() {
 		if testPort(port) {
 			l.lrserver = lrserver.New("live reload", port)
 			// Live reload server shouldn't log.
-			l.lrserver.SetStatusLog(log.New(os.Stderr, "", 0))
+			l.lrserver.SetStatusLog(golog.New(os.Stderr, "", 0))
 			go func() {
 				err := l.lrserver.ListenAndServe()
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Live reload server failed to start: %v\n", err)
+					log.Errorf("Live reload server failed to start: %v", err)
 				}
 			}()
 			url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
@@ -100,12 +103,12 @@ func (l *LiveReloadServer) startLiveReloadServer() {
 			return
 		}
 	}
-	fmt.Fprintf(os.Stderr, "Could not find open port for live reload server\n")
+	log.Errorf("Could not find open port for live reload server")
 }
 
 func (l *LiveReloadServer) triggerReload(targets []string) {
 	if l.lrserver != nil {
-		fmt.Fprintf(os.Stderr, "Triggering live reload\n")
+		log.Log("Triggering live reload")
 		l.lrserver.Reload("reload")
 		for _, e := range l.eventListeners {
 			e.ReloadTriggered(targets)
@@ -117,7 +120,7 @@ func testPort(port uint16) bool {
 	ln, err := net.Listen("tcp", ":"+strconv.FormatInt(int64(port), 10))
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Port %d: %v\n", port, err)
+		log.Logf("Port %d: %v", port, err)
 		return false
 	}
 

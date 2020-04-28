@@ -24,15 +24,21 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/bazelbuild/bazel-watcher/bazel"
-	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
-	"github.com/bazelbuild/bazel-watcher/ibazel/command"
-	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
 	"github.com/fsnotify/fsnotify"
-
-	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf"
 	"github.com/golang/protobuf/proto"
+
+	"github.com/bazelbuild/bazel-watcher/bazel"
+	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+
+	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
 )
+
+func init() {
+	log.FakeExit()
+}
 
 type fakeFSNotifyWatcher struct {
 	ErrorChan chan error
@@ -58,9 +64,10 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 }
 
 type mockCommand struct {
-	bazelArgs []string
-	target    string
-	args      []string
+	startupArgs []string
+	bazelArgs   []string
+	target      string
+	args        []string
 
 	notifiedOfChanges bool
 	started           bool
@@ -125,12 +132,13 @@ func init() {
 		})
 		return mockBazel
 	}
-	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {
+	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
 		// Don't do anything
 		return &mockCommand{
-			bazelArgs: bazelArgs,
-			target:    target,
-			args:      args,
+			startupArgs: startupArgs,
+			bazelArgs:   bazelArgs,
+			target:      target,
+			args:        args,
 		}
 	}
 }
@@ -261,15 +269,9 @@ func TestIBazelTest(t *testing.T) {
 	mockBazel.AssertActions(t, expected)
 }
 
-func TestIBazelRun_firstPass(t *testing.T) {
-	i := newIBazel(t)
-	defer i.Cleanup()
-
-	i.run("//path/to:target")
-}
-
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
-	commandDefaultCommand = func(bazelArgs []string, target string, args []string) command.Command {
+	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
+		assertEqual(t, startupArgs, []string{}, "Startup args")
 		assertEqual(t, bazelArgs, []string{}, "Bazel args")
 		assertEqual(t, target, "", "Target")
 		assertEqual(t, args, []string{}, "Args")
