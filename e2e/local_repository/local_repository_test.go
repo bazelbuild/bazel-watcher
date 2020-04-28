@@ -53,25 +53,28 @@ local_repository(
 `
 
 var (
-	secondaryWd string
+	secondaryWd  string
+	secondaryWd2 string
 )
 
 func TestMain(m *testing.M) {
 	bazel_testing.TestMain(m, bazel_testing.Args{
 		Main: mainFiles,
 		SetUp: func() error {
-			// Create a secondary workspace in a sibling folder of the main workspace.
+			// Create two secondary workspaces in sibling folders of the main workspace.
 			secondaryWd, _ = filepath.Abs(filepath.Join("..", "secondary"))
+			secondaryWd2, _ = filepath.Abs(filepath.Join("..", "secondary-2"))
 
-			// Manually create files in the secondary workspace.
-			os.Mkdir(secondaryWd, 0777)
-			ioutil.WriteFile(
-				filepath.Join(secondaryWd, "BUILD.bazel"), []byte(secondaryBuild), 0777)
-			ioutil.WriteFile(
-				filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLib), 0777)
-			ioutil.WriteFile(
-				filepath.Join(secondaryWd, "WORKSPACE"), []byte(""), 0777)
-
+			// Manually create files in the secondary workspaces.
+			for _, wd := range []string{secondaryWd, secondaryWd2} {
+				os.Mkdir(wd, 0777)
+				ioutil.WriteFile(
+					filepath.Join(wd, "BUILD.bazel"), []byte(secondaryBuild), 0777)
+				ioutil.WriteFile(
+					filepath.Join(wd, "lib.sh"), []byte(secondaryLib), 0777)
+				ioutil.WriteFile(
+					filepath.Join(wd, "WORKSPACE"), []byte(""), 0777)
+			}
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
@@ -106,5 +109,17 @@ func TestRunWithModifiedFile(t *testing.T) {
 
 	ioutil.WriteFile(
 		filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLibAlt), 0777)
+	ibazel.ExpectOutput("hello2!")
+}
+
+func TestRunWithRepositoryOverrideModifiedFile(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	ibazel.Run([]string{fmt.Sprintf("--override_repository=secondary=%s", secondaryWd2)}, "//:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("hello!")
+
+	ioutil.WriteFile(
+		filepath.Join(secondaryWd2, "lib.sh"), []byte(secondaryLibAlt), 0777)
 	ibazel.ExpectOutput("hello2!")
 }

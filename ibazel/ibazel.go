@@ -476,6 +476,15 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 			}
 		}
 	}
+
+	// Apply overrides set via arguments. Overrides must already be absolute.
+	for _, arg := range i.bazelArgs {
+		if strings.HasPrefix(arg, "--override_repository") {
+			parts := strings.Split(arg, "=")
+			localRepositories[parts[1]] = parts[2]
+		}
+	}
+
 	return localRepositories, nil
 }
 
