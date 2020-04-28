@@ -2,95 +2,119 @@ package local_repository
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
-	"runtime/debug"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	bazel "github.com/bazelbuild/bazel-integration-testing/go"
 	"github.com/bazelbuild/bazel-watcher/e2e"
+	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
-func must(t *testing.T, e error) {
-	if e != nil {
-		t.Fatalf("Error: %s", e)
-		t.Logf("Stack trace:\n%s", string(debug.Stack()))
-	}
-}
+const mainFiles = `
+-- BUILD.bazel --
+# Base case test
+sh_binary(
+  name = "simple",
+  srcs = ["simple.sh"],
+)
 
-func TestLocalRepositoryRunWithModifiedFile(t *testing.T) {
-	secondary, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+# Environment variable tests
+sh_binary(
+  name = "environment",
+  srcs = ["environment.sh"],
+)
 
-	must(t, secondary.ScratchFile("WORKSPACE", `workspace(name = "secondary")`))
-	must(t, secondary.ScratchFile("BUILD", `
-sh_library(
-	name = "lib",
-	data = ["lib.sh"],
-	visibility = ["//visibility:public"],
+# --define tests
+config_setting(
+  name = "test_is_2",
+  values = {"define": "test_number=2"},
 )
 
 sh_binary(
-	name = "workspace",
-	srcs = ["workspace.sh"],
+  name = "define",
+  srcs = select({
+        ":test_is_2": ["define_test_2.sh"],
+        "//conditions:default": ["define_test_1.sh"],
+    }),
 )
-`))
-	must(t, secondary.ScratchFileWithMode("lib.sh", `
-function say_hello {
-	printf "hello!"
-}
-`, 0777))
-	must(t, secondary.ScratchFileWithMode("workspace.sh", `
-echo $BUILD_WORKSPACE_DIRECTORY
-`, 0777))
-
-	_, stdout, _ := secondary.RunBazel([]string{"run", "//:workspace"})
-	secondaryWorkspacePath := strings.TrimSpace(stdout)
-
-	main, err := bazel.New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	must(t, main.ScratchFile("WORKSPACE", fmt.Sprintf(`
-workspace(name = "main")
-
-local_repository(
-    name = "secondary",
-    path = "%s",
-)
-`, secondaryWorkspacePath)))
-	must(t, main.ScratchFile("BUILD", `
+-- simple.sh --
+printf "Started!"
+-- environment.sh --
+printf "Started and IBAZEL=${IBAZEL}!"
+-- define_test_1.sh --
+printf "define_test_1"
+-- define_test_2.sh --
+printf "define_test_2"
+-- subdir/BUILD.bazel --
 sh_binary(
-	name = "test",
-	srcs = ["test.sh"],
-	deps = [
-		"@secondary//:lib",
-	],
+  name = "subdir",
+  srcs = ["subdir.sh"],
 )
-`))
-	must(t, main.ScratchFileWithMode("test.sh", `
-#!/bin/bash
-source ../secondary/lib.sh
-say_hello
-`, 0777))
+-- subdir/subdir.sh --
+printf "Hello subdir!"
+`
 
-	ibazel := e2e.NewIBazelTester(t, main)
-	ibazel.Run([]string{}, "//:test")
+func TestMain(m *testing.M) {
+	bazel_testing.TestMain(m, bazel_testing.Args{
+		Main: mainFiles,
+		SetUp: func() error {
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+
+			if err := filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if strings.HasSuffix(path, ".sh") {
+					if err := os.Chmod(path, 0777); err != nil {
+						return fmt.Errorf("Error os.Chmod(%q, 0777): %v", path, err)
+					}
+				}
+				return nil
+			}); err != nil {
+				fmt.Printf("Error walking dir: %v\n", err)
+				return err
+			}
+			return nil
+		},
+	})
+}
+
+func TestSimpleRunWithModifiedFile(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	ibazel.Run([]string{}, "//:simple")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!")
+	ibazel.ExpectOutput("Started!")
 
-	// File operations in `TestingBazel` doesn't respect their own `tmpDir` all instances
-	// will work in the same directory so in order to update files in `secondary` workspace
-	// we need to change directory manualy.
-	os.Chdir(secondaryWorkspacePath)
+	// Give it time to start up and query.
+	e2e.MustWriteFile(t, "simple.sh", `printf "Started2!"`)
+	ibazel.ExpectOutput("Started2!")
 
-	must(t, secondary.ScratchFileWithMode("lib.sh", `
-function say_hello {
-	printf "hello2!"
-}
-`, 0777))
-	ibazel.ExpectOutput("hello2!")
+	// Manipulate a source file and sleep past the debounce.
+	e2e.MustWriteFile(t, "simple.sh", `printf "Started3!"`)
+	ibazel.ExpectOutput("Started3!")
+
+	// TODO: put these in directories instead of storing the old value and rewriting it
+	oldValue, err := ioutil.ReadFile("BUILD.bazel")
+	if err != nil {
+		t.Errorf("Unable to Readfile(\"BUILD.bazel\"): %v", err)
+	}
+	defer e2e.MustWriteFile(t, "BUILD.bazel", string(oldValue))
+	// END TODO
+
+	// Now a BUILD.bazel file.
+	e2e.MustWriteFile(t, "BUILD.bazel", `
+sh_binary(
+	# New comment
+	name = "test",
+	srcs = ["test.sh"],
+)
+`)
+	ibazel.ExpectOutput("Started3!")
 }
