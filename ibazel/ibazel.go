@@ -18,11 +18,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -448,54 +446,6 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 	}
 
 	return &res, nil
-}
-
-func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
-	if runtime.GOOS == "windows" {
-		return map[string]string{}, nil
-	}
-
-	info, _ := i.getInfo()
-	outputBase := (*info)["output_base"]
-	installBase := (*info)["install_base"]
-	externalPath := filepath.Join(outputBase, "external")
-
-	files, err := ioutil.ReadDir(externalPath)
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding remote repositories directory: %v\n", err)
-		return map[string]string{}, err
-	}
-
-	localRepositories := map[string]string{}
-
-	for _, f := range files {
-		if !f.IsDir() && (f.Mode()&os.ModeSymlink) == os.ModeSymlink {
-			name := f.Name()
-			realPath, _ := os.Readlink(filepath.Join(externalPath, f.Name()))
-
-			// Skipping symlinked repositories that are located in `install_base` because local
-			// repositories can't be placed there.
-			if !strings.Contains(realPath, installBase) {
-				localRepositories[name] = realPath
-			}
-		}
-	}
-
-	// Apply overrides set via arguments. Overrides must already be absolute.
-	// https://docs.bazel.build/versions/master/external.html#overriding-repositories-from-the-command-line
-	for _, arg := range i.bazelArgs {
-		if strings.HasPrefix(arg, "--override_repository") {
-			parts := strings.Split(arg, "=")
-			if len(parts) != 3 {
-				log.Errorf("ibazel cannot parse argument: %v", arg)
-				continue
-			}
-			localRepositories[parts[1]] = parts[2]
-		}
-	}
-
-	return localRepositories, nil
 }
 
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
