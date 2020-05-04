@@ -12,7 +12,7 @@ restart your webserver when one of the source files change? Look no further.
 Install `ibazel` using one of the 3 methods [described below](#installation). Then:
 
 ```bash
-# ibazel build //path/to/my:target
+$ ibazel build //path/to/my:target
 ```
 
 Hack hack hack. Save and your target will be rebuilt.
@@ -37,7 +37,7 @@ $ brew install bazelbuild/tap/ibazel
 If you're a JS developer you can install it as a `devDependency` or by calling `npm install` directly in your project
 
 ```
-npm install @bazel/ibazel
+$ npm install @bazel/ibazel
 ```
 
 ### Linux
@@ -53,15 +53,15 @@ Packages are available for the following distributions:
 You can, of course, build iBazel using Bazel.
 
 ```
-git clone git@github.com:bazelbuild/bazel-watcher
-cd bazel-watcher
-bazel build //ibazel
+$ git clone git@github.com:bazelbuild/bazel-watcher
+$ cd bazel-watcher
+$ bazel build //ibazel
 ```
 
 Now copy the generated binary onto your path:
 
 ```bash
-export PATH=$PATH:$PWD/bazel-bin/ibazel/$GOOS_$GOARCH_pure_stripped
+$ export PATH=$PATH:$PWD/bazel-bin/ibazel/$GOOS_$GOARCH_pure_stripped
 ```
 
 where `$GOOS` and `$GOARCH` are your host OS (e.g., `darwin` or `linux`) and architecture (e.g., `amd64`).
@@ -89,12 +89,12 @@ it detects a missing import for your go code.
   {
     "regex": "^Check that imports in Go sources match importpath attributes in deps.$",
     "command": "bazel",
-    "args":    ["run", "//:gazelle"]
+    "args": [ "run", "//:gazelle" ]
   },
-  }
+  {
     "regex": "^buildozer '(.*)'\\s+(.*)$",
     "command": "buildozer",
-    "args":    ["$1", "$2"],
+    "args": [ "$1", "$2" ]
   }
 ]
 ```
@@ -122,7 +122,7 @@ iBazel has a `--profile_dev` flag which turns on a generated profile output file
 about the build process and timing. To use it include this flag in the command line. For example,
 
 ```
-iBazel --profile_dev=profile.json run devserver
+ibazel --profile_dev=profile.json run devserver
 ```
 
 The profile outfile is in concatenated JSON format. Events are outputted one per line.
@@ -173,76 +173,98 @@ You can find an example profile output JSON file [here](https://github.com/bazel
 
 ```
 {
-   "type":"IBAZEL_START",
-   "iteration":"4214114686684e0f",
-   "time":1513706108351,
-   "iBazelVersion":"v0.2.0-dirty",
-   "bazelVersion":"release 0.8.1-homebrew",
-   "maxHeapSize":"3817MB",
-   "committedHeapSize":"1372MB"
+  "type": "IBAZEL_START",
+  "iteration": "4214114686684e0f",
+  "time": 1513706108351,
+  "iBazelVersion": "v0.2.0-dirty",
+  "bazelVersion": "release 0.8.1-homebrew",
+  "maxHeapSize": "3817MB",
+  "committedHeapSize": "1372MB"
 }
 {
-   "type":"RUN_START",
-   "iteration":"4214114686684e0f",
-   "time":1513706109329,
-   "targets":["//src:devserver"],
-   "elapsed":978
+  "type": "RUN_START",
+  "iteration": "4214114686684e0f",
+  "time": 1513706109329,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 978
 }
 {
-   "type":"RELOAD_TRIGGERED",
-   "iteration":"4214114686684e0f",
-   "time":1513706114595,
-   "targets":["//src:devserver"],
-   "elapsed":6244
+  "type": "RELOAD_TRIGGERED",
+  "iteration": "4214114686684e0f",
+  "time": 1513706114595,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 6244
 }
 {
-   "type":"RUN_DONE",
-   "iteration":"4214114686684e0f",
-   "time":1513706114595,
-   "targets":["//src:devserver"],
-   "elapsed":6244
+  "type": "RUN_DONE",
+  "iteration": "4214114686684e0f",
+  "time": 1513706114595,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 6244
 }
 {
-   "type":"SOURCE_CHANGE",
-   "iteration":"7e6f8e150e9a8367",
-   "time":1513706129384,
-   "targets":["//src:devserver"],
-   "change":"/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"
+  "type": "SOURCE_CHANGE",
+  "iteration": "7e6f8e150e9a8367",
+  "time": 1513706129384,
+  "targets": [
+    "//src:devserver"
+  ],
+  "change": "/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"
 }
 {
-   "type":"RUN_START",
-   "iteration":"7e6f8e150e9a8367",
-   "time":1513706129484,
-   "targets":["//src:devserver"],
-   "elapsed":100,
-   "changes":["/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"]
+  "type": "RUN_START",
+  "iteration": "7e6f8e150e9a8367",
+  "time": 1513706129484,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 100,
+  "changes": [
+    "/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"
+  ]
 }
 {
-   "type":"RELOAD_TRIGGERED",
-   "iteration":"7e6f8e150e9a8367",
-   "time":1513706133947,
-   "targets":["//src:devserver"],
-   "elapsed":4563,
-   "changes":["/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"]
+  "type": "RELOAD_TRIGGERED",
+  "iteration": "7e6f8e150e9a8367",
+  "time": 1513706133947,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 4563,
+  "changes": [
+    "/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"
+  ]
 }
 {
-   "type":"RUN_DONE",
-   "iteration":"7e6f8e150e9a8367",
-   "time":1513706133947,
-   "targets":["//src:devserver"],
-   "elapsed":4563,
-   "changes":["/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"]
+  "type": "RUN_DONE",
+  "iteration": "7e6f8e150e9a8367",
+  "time": 1513706133947,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 4563,
+  "changes": [
+    "/Users/greg/google/gregmagolan/angular-bazel-example/src/hello-world/hello-world.component.ts"
+  ]
 }
 {
-   "type":"REMOTE_EVENT",
-   "iteration":"7e6f8e150e9a8367",
-   "time":1513706134297,
-   "targets":["//src:devserver"],
-   "elapsed":4913,
-   "remoteType":"PAGE_LOAD",
-   "remoteTime":1513706134294,
-   "remoteElapsed":346,
-   "remoteData":"{\"pageLoadTime\":344,\"fetchTime\":9,\"connectTime\":0,\"requestTime\":6,\"responseTime\":6,\"renderTime\":325,\"navigationStart\":1513706133948,\"unloadEventStart\":1513706133962,\"unloadEventEnd\":1513706133962,\"redirectStart\":0,\"redirectEnd\":0,\"fetchStart\":1513706133952,\"domainLookupStart\":1513706133952,\"domainLookupEnd\":1513706133952,\"connectStart\":1513706133952,\"connectEnd\":1513706133952,\"secureConnectionStart\":0,\"requestStart\":1513706133955,\"responseStart\":1513706133955,\"responseEnd\":1513706133961,\"domLoading\":1513706133967,\"domInteractive\":1513706134222,\"domContentLoadedEventStart\":1513706134222,\"domContentLoadedEventEnd\":1513706134222,\"domComplete\":1513706134292,\"loadEventStart\":1513706134292}"
+  "type": "REMOTE_EVENT",
+  "iteration": "7e6f8e150e9a8367",
+  "time": 1513706134297,
+  "targets": [
+    "//src:devserver"
+  ],
+  "elapsed": 4913,
+  "remoteType": "PAGE_LOAD",
+  "remoteTime": 1513706134294,
+  "remoteElapsed": 346,
+  "remoteData": "{\"pageLoadTime\":344,\"fetchTime\":9,\"connectTime\":0,\"requestTime\":6,\"responseTime\":6,\"renderTime\":325,\"navigationStart\":1513706133948,\"unloadEventStart\":1513706133962,\"unloadEventEnd\":1513706133962,\"redirectStart\":0,\"redirectEnd\":0,\"fetchStart\":1513706133952,\"domainLookupStart\":1513706133952,\"domainLookupEnd\":1513706133952,\"connectStart\":1513706133952,\"connectEnd\":1513706133952,\"secureConnectionStart\":0,\"requestStart\":1513706133955,\"responseStart\":1513706133955,\"responseEnd\":1513706133961,\"domLoading\":1513706133967,\"domInteractive\":1513706134222,\"domContentLoadedEventStart\":1513706134222,\"domContentLoadedEventEnd\":1513706134222,\"domComplete\":1513706134292,\"loadEventStart\":1513706134292}"
 }
 ```
 
