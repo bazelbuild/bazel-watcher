@@ -32,6 +32,8 @@ go_library(
     srcs = [
         "fsnotify.go",
         "ibazel.go",
+        "ibazel_unix.go",
+        "ibazel_windows.go",
         "lifecycle.go",
         "main.go",
         "main_unix.go",

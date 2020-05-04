@@ -451,6 +451,12 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	b := i.newBazel()
 
+	localRepositories, err := i.realLocalRepositoryPaths()
+
+	if err != nil {
+		return []string{}, err
+	}
+
 	res, err := b.Query(query)
 	if err != nil {
 		log.Errorf("Bazel query failed: %v", err)
@@ -469,6 +475,12 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		case blaze_query.Target_SOURCE_FILE:
 			label := *target.SourceFile.Name
 			if strings.HasPrefix(label, "@") {
+				repo, target := parseTarget(label)
+				if realPath, ok := localRepositories[repo]; ok {
+					label = strings.Replace(target, ":", string(filepath.Separator), 1)
+					toWatch = append(toWatch, filepath.Join(realPath, label))
+					break
+				}
 				continue
 			}
 			if strings.HasPrefix(label, "//external") {
@@ -539,4 +551,9 @@ func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
 	}
 
 	i.filesWatched[watcher] = filesWatched
+}
+
+func parseTarget(label string) (repo string, target string) {
+	parts := strings.Split(strings.TrimPrefix(label, "@"), "//")
+	return parts[0], parts[1]
 }
