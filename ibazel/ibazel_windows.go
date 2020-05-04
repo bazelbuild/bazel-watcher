@@ -29,6 +29,6 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 			"https://github.com/bazelbuild/bazel-watcher/issues/274",
 		)
 	}
-  alreadyNotifiedOfLocalRepositories = true
-  return map[string]string{}, nil
+	alreadyNotifiedOfLocalRepositories = true
+	return map[string]string{}, nil
 }
