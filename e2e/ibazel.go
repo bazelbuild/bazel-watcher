@@ -240,7 +240,10 @@ func (i *IBazelTester) run(target string, bazelArgs []string, additionalArgs []s
 	i.cmd = exec.Command(ibazelPath, args...)
 	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
 
-	cmd := bazel_testing.BazelCmd("build", target)
+	checkArgs := []string{"build"}
+	checkArgs = append(checkArgs, target)
+	checkArgs = append(checkArgs, bazelArgs...)
+	cmd := bazel_testing.BazelCmd(checkArgs...)
 
 	var buildStdout, buildStderr bytes.Buffer
 	cmd.Stdout = &buildStdout

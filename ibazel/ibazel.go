@@ -420,7 +420,7 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b := i.newBazel()
 
-	res, err := b.CQuery(rule)
+	res, err := b.CQuery(i.queryArgs(rule)...)
 	if err != nil {
 		log.Errorf("Error running Bazel %v", err)
 		osExit(4)
@@ -457,7 +457,7 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return []string{}, err
 	}
 
-	res, err := b.Query(query)
+	res, err := b.Query(i.queryArgs(query)...)
 	if err != nil {
 		log.Errorf("Bazel query failed: %v", err)
 		return []string{}, err
@@ -551,6 +551,19 @@ func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
 	}
 
 	i.filesWatched[watcher] = filesWatched
+}
+
+func (i *IBazel) queryArgs(args ...string) []string {
+	queryArgs := append([]string(nil), args...)
+
+	for _, arg := range i.bazelArgs {
+		// List of args that should be passed to bazel query/cquery.
+		if strings.HasPrefix(arg, "--override_repository=") {
+			queryArgs = append(queryArgs, arg)
+		}
+	}
+
+	return queryArgs
 }
 
 func parseTarget(label string) (repo string, target string) {
