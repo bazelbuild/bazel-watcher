@@ -1,7 +1,7 @@
 module github.com/bazelbuild/bazel-watcher
 
 require (
-	github.com/bazelbuild/rules_go v0.22.1
+	github.com/bazelbuild/rules_go v0.23.1
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/websocket v1.4.1 // indirect
