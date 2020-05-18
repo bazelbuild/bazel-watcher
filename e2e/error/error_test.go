@@ -43,34 +43,35 @@ shh_binary(
 	ibazel.ExpectError("name 'shh_binary' is not defined")
 }
 
-/*
 func TestExampleClientWhoDies(t *testing.T) {
-	c := example_client.StartLiveReload(t)
-	defer c.Cleanup()
+	e2e.MustWriteFile(t, "BUILD", `
+sh_binary(
+	name = "live_reload",
+	srcs = ["test.sh"],
+	tags = ["ibazel_live_reload"],
+)`)
+	e2e.MustWriteFile(t, "test.sh", `
+echo "hello moto"`)
 
-	if v := c.GetRaw(t); v != "1" {
-		t.Errorf("Expected raw value to be 1, got %q", v)
+	ibazel := e2e.SetUp(t)
+	defer ibazel.Kill()
+	ibazel.Run([]string{}, "//:live_reload")
+
+	ibazel.ExpectOutput("hello moto")
+	out := ibazel.GetOutput()
+	t.Logf("Output: '%s'", out)
+
+	if out == "" {
+		t.Fatal("Output was empty. Expected at least some output")
 	}
 
-	// Simulate a crash in the server by killing it.
-	c.Kill(t)
+	e2e.MustWriteFile(t, "test.sh", `
+echo "moto hello"`)
+	ibazel.ExpectOutput("moto hello")
+	out = ibazel.GetOutput()
+	t.Logf("Output: '%s'", out)
 
-	// Give the server a bit of time to "crash".
-	time.Sleep(2 * time.Second)
-
-	// Now restart the crashed server by changing a file that it is watching.
-	// This should cause ibazel to relaunch the program that is running.
-	c.SetData(t, "2")
-
-	// Since we are restarting the server it might need a bit of time to restart.
-	time.Sleep(2 * time.Second)
-
-	// Redetect the paths that are associated with the freshly restarted
-	// instance.
-	c.DetectServerParameters(t)
-
-	if v := c.GetRaw(t); v != "2" {
-		t.Errorf("Expected raw value to be 2, got %q", v)
+	if out == "" {
+		t.Fatal("Output was empty. Expected at least some output")
 	}
 }
-*/

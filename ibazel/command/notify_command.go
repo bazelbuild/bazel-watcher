@@ -45,7 +45,8 @@ func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args
 }
 
 func (c *notifyCommand) Terminate() {
-	if c.pg != nil && !subprocessRunning(c.pg.RootProcess()) {
+	if c.pg == nil || !subprocessRunning(c.pg.RootProcess()) {
+		c.pg = nil
 		return
 	}
 
@@ -113,6 +114,11 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
 		if err != nil {
 			log.Errorf("Error writing success to stdin: %v", err)
+		}
+		if !c.IsSubprocessRunning() {
+			log.Log("Restarting process...")
+			c.Terminate()
+			c.Start()
 		}
 	}
 	return outputBuffer
