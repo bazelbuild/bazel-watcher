@@ -112,20 +112,25 @@ func (b *MockBazel) Cancel() {
 	b.actions = append(b.actions, []string{"Cancel"})
 }
 func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
-	failed := false
-	if len(b.actions) == len(expected) {
-		for i := range b.actions {
-			for j := range b.actions[i] {
-				match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
-				if !match {
-					failed = true
-				}
+	t.Helper()
+
+	if len(b.actions) != len(expected) {
+		t.Errorf("Test didn't meet expectations len(b.actions) == %d != len(expected) == %d.\nWant: %#v\nGot:  %#v", len(b.actions), len(expected), expected, b.actions)
+		return
+	}
+
+	for i := range b.actions {
+		if len(b.actions[i]) != len(expected[i]) {
+			t.Errorf("Test didn't meet expectations len(b.actions[%d]) == %d != len(expected[%d]) == %d.\nWant: %#v\nGot:  %#v", i, len(b.actions[i]), i, len(expected[i]), expected, b.actions)
+			return
+		}
+
+		for j := range b.actions[i] {
+			match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
+			if !match {
+				t.Errorf("Test didn't meet expectations.\nWant: %#v\nGot:  %#v", expected, b.actions)
+				return
 			}
 		}
-	} else {
-		failed = true
-	}
-	if failed {
-		t.Errorf("Test didn't meet expecations.\nWant: %s\nGot:  %s", expected, b.actions)
 	}
 }
