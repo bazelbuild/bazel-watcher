@@ -1,5 +1,41 @@
 # Change Log
 
+## [v0.13.1](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.13.1) (2020-05-18)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.13.0...v0.13.1)
+
+**Implemented enhancements:**
+
+- ibazel don't watch for changes in external repository [\#274](https://github.com/bazelbuild/bazel-watcher/issues/274)
+
+**Fixed bugs:**
+
+- Error reading config: open .bazel\_fix\_commands.json: no such file or directory [\#369](https://github.com/bazelbuild/bazel-watcher/issues/369)
+- If the inner program crashes or dies, ibazel should restart it [\#300](https://github.com/bazelbuild/bazel-watcher/issues/300)
+
+**Closed issues:**
+
+- process not restarted on failure [\#385](https://github.com/bazelbuild/bazel-watcher/issues/385)
+- ibazel with --override\_repository can't handle changes in the build tree [\#383](https://github.com/bazelbuild/bazel-watcher/issues/383)
+- How do you enable JS serving? [\#358](https://github.com/bazelbuild/bazel-watcher/issues/358)
+- Support multiple tartget [\#351](https://github.com/bazelbuild/bazel-watcher/issues/351)
+- ibazel can't locate bazel if not in $PATH [\#341](https://github.com/bazelbuild/bazel-watcher/issues/341)
+
+**Merged pull requests:**
+
+- Update module golang/protobuf to v1.4.2 [\#389](https://github.com/bazelbuild/bazel-watcher/pull/389) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_gazelle to v0.21.0 [\#387](https://github.com/bazelbuild/bazel-watcher/pull/387) ([renovate-bot](https://github.com/renovate-bot))
+- Pass override repository flags to query commands and add e2e test [\#384](https://github.com/bazelbuild/bazel-watcher/pull/384) ([lewish](https://github.com/lewish))
+- Allow `--build\_tag\_filters` and `--build\_tests\_only` to be specified  [\#382](https://github.com/bazelbuild/bazel-watcher/pull/382) ([devversion](https://github.com/devversion))
+- Update module golang/protobuf to v1.4.1 [\#381](https://github.com/bazelbuild/bazel-watcher/pull/381) ([renovate-bot](https://github.com/renovate-bot))
+- Corrections and cosmetic adjustments to README.md [\#380](https://github.com/bazelbuild/bazel-watcher/pull/380) ([trironkk](https://github.com/trironkk))
+- Watch local repositories [\#379](https://github.com/bazelbuild/bazel-watcher/pull/379) ([lewish](https://github.com/lewish))
+- Add an example client [\#378](https://github.com/bazelbuild/bazel-watcher/pull/378) ([achew22](https://github.com/achew22))
+- Map rules\_go in gazelle directive [\#377](https://github.com/bazelbuild/bazel-watcher/pull/377) ([achew22](https://github.com/achew22))
+- Restart subprocess on changes if it crashed [\#366](https://github.com/bazelbuild/bazel-watcher/pull/366) ([mrmeku](https://github.com/mrmeku))
+- Update module bazelbuild/rules\_go to v0.23.1 [\#365](https://github.com/bazelbuild/bazel-watcher/pull/365) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency io\_bazel\_rules\_go to v0.22.4 [\#364](https://github.com/bazelbuild/bazel-watcher/pull/364) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency com\_github\_bazelbuild\_rules\_go to v0.22.4 [\#363](https://github.com/bazelbuild/bazel-watcher/pull/363) ([renovate-bot](https://github.com/renovate-bot))
+
 ## [v0.13.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.13.0) (2020-04-24)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.12.4...v0.13.0)
 
@@ -15,6 +51,7 @@
 
 **Merged pull requests:**
 
+- Generating CHANGELOG.md for release v0.13.0 [\#376](https://github.com/bazelbuild/bazel-watcher/pull/376) ([achew22](https://github.com/achew22))
 - Fix output\_runner to read from %WORKSPACE [\#375](https://github.com/bazelbuild/bazel-watcher/pull/375) ([achew22](https://github.com/achew22))
 - Switch to cquery instead of query [\#374](https://github.com/bazelbuild/bazel-watcher/pull/374) ([achew22](https://github.com/achew22))
 - Update module golang/protobuf to v1.4.0 [\#372](https://github.com/bazelbuild/bazel-watcher/pull/372) ([renovate-bot](https://github.com/renovate-bot))
