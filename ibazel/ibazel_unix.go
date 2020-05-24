@@ -27,7 +27,12 @@ import (
 )
 
 func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
-	info, _ := i.getInfo()
+	info, err := i.getInfo()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding remote repositories directory: %v\n", err)
+		return nil, err
+	}
+
 	outputBase := (*info)["output_base"]
 	installBase := (*info)["install_base"]
 	externalPath := filepath.Join(outputBase, "external")
@@ -36,7 +41,7 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding remote repositories directory: %v\n", err)
-		return map[string]string{}, err
+		return nil, err
 	}
 
 	localRepositories := map[string]string{}

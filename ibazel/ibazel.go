@@ -454,19 +454,19 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	localRepositories, err := i.realLocalRepositoryPaths()
 
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
 
 	res, err := b.Query(i.queryArgs(query)...)
 	if err != nil {
 		log.Errorf("Bazel query failed: %v", err)
-		return []string{}, err
+		return nil, err
 	}
 
 	workspacePath, err := i.workspaceFinder.FindWorkspace()
 	if err != nil {
 		log.Errorf("Error finding workspace: %v", err)
-		return []string{}, err
+		return nil, err
 	}
 
 	toWatch := make([]string, 0, 10000)
