@@ -72,17 +72,9 @@ func start(b bazel.Bazel, target string, args []string) (*bytes.Buffer, process_
 }
 
 func subprocessRunning(cmd *exec.Cmd) bool {
-	if cmd == nil {
+	if cmd == nil || cmd.Process == nil || cmd.ProcessState == nil {
 		return false
-	}
-	if cmd.Process == nil {
-		return false
-	}
-	if cmd.ProcessState != nil {
-		if cmd.ProcessState.Exited() {
-			return false
-		}
 	}
 
-	return true
+	return !cmd.ProcessState.Exited()
 }

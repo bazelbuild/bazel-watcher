@@ -97,25 +97,28 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	_, err := c.stdin.Write([]byte("IBAZEL_BUILD_STARTED\n"))
-	if err != nil {
-		log.Errorf("Error writing build to stdin: %s", err)
+	if c.IsSubprocessRunning() {
+		if _, err := c.stdin.Write([]byte("IBAZEL_BUILD_STARTED\n")); err != nil {
+			log.Errorf("Error writing build to stdin: %s", err)
+		}
 	}
 
 	outputBuffer, res := b.Build(c.target)
 	if res != nil {
 		log.Errorf("IBAZEL BUILD FAILURE: %v", res)
-		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))
-		if err != nil {
-			log.Errorf("Error writing failure to stdin: %s", err)
+		if c.IsSubprocessRunning() {
+			if _, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n")); err != nil {
+				log.Errorf("Error writing failure to stdin: %s", err)
+			}
 		}
 	} else {
 		log.Log("IBAZEL BUILD SUCCESS")
-		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
-		if err != nil {
-			log.Errorf("Error writing success to stdin: %v", err)
-		}
-		if !c.IsSubprocessRunning() {
+
+		if c.IsSubprocessRunning() {
+			if _, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n")); err != nil {
+				log.Errorf("Error writing success to stdin: %v", err)
+			}
+		} else {
 			log.Log("Restarting process...")
 			c.Terminate()
 			c.Start()

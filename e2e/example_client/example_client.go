@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -69,7 +70,7 @@ func TestMain(m *testing.M, extraTxtar ...string) {
 }
 
 type ExampleClient struct {
-	ibazel   *e2e.IBazelTester
+	IBazel   *e2e.IBazelTester
 	basePath string
 	// dataPath points to the file that needs to be updated in order to have the
 	// example client render different data. This is tracked in the object
@@ -90,7 +91,7 @@ func StartLiveReload(t *testing.T) (client *ExampleClient) {
 	}
 
 	c := &ExampleClient{
-		ibazel:   ibazel,
+		IBazel:   ibazel,
 		dataPath: dataPath,
 	}
 	c.DetectServerParameters(t)
@@ -101,20 +102,20 @@ func StartLiveReload(t *testing.T) (client *ExampleClient) {
 func (c *ExampleClient) fatalf(t *testing.T, msg string, args ...interface{}) {
 	t.Helper()
 
-	t.Logf("Out: %v", c.ibazel.GetOutput())
-	t.Logf("Error: %v", c.ibazel.GetError())
-	t.Logf("iBazel Error: %v", c.ibazel.GetIBazelError())
+	t.Logf("Out: %v", c.IBazel.GetOutput())
+	t.Logf("Error: %v", c.IBazel.GetError())
+	t.Logf("iBazel Error: %v", c.IBazel.GetIBazelError())
 
 	t.Fatalf(msg, args...)
 }
 
 func (c *ExampleClient) Cleanup() {
-	c.ibazel.Kill()
+	c.IBazel.Kill()
 }
 
-func (c *ExampleClient) DetectServerParameters(t *testing.T) {
-	c.ibazel.ExpectOutput("Serving: http://.+:\\d+")
-	out := c.ibazel.GetOutput()
+func (c *ExampleClient) DetectServerParameters(t *testing.T, delay ...time.Duration) {
+	c.IBazel.ExpectOutput("Serving: http://.+:\\d+", delay...)
+	out := c.IBazel.GetOutput()
 
 	if out == "" {
 		t.Fatal("Output was empty. Expected at least some output")
@@ -172,6 +173,18 @@ func (c *ExampleClient) Kill(t *testing.T) {
 	if err != nil {
 		t.Errorf("c.get(\"/killkillkill\") error: %v", err)
 	}
+
+	stopAt := time.Now().Add(time.Second * 4)
+	for time.Now().Before(stopAt) {
+		_, err := http.Get(c.basePath + "/config")
+		if err != nil {
+			return
+		}
+
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	t.Fatal("Could not kill client")
 }
 
 func (c *ExampleClient) GetRaw(t *testing.T) string {
