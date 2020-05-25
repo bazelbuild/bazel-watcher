@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
-	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
+	"github.com/bazelbuild/bazel-watcher/process_group"
 )
 
 var execCommand = process_group.Command

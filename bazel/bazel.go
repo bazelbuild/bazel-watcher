@@ -16,7 +16,6 @@ package bazel
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -26,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bazelbuild/bazel-watcher/process_group"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
@@ -141,13 +141,10 @@ type Bazel interface {
 }
 
 type bazel struct {
-	cmd *exec.Cmd
+	cmd process_group.ProcessGroup
 
 	args        []string
 	startupArgs []string
-
-	ctx    context.Context
-	cancel context.CancelFunc
 
 	writeToStderr bool
 	writeToStdout bool
@@ -176,8 +173,6 @@ func (b *bazel) WriteToStdout(v bool) {
 }
 
 func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *bytes.Buffer) {
-	b.ctx, b.cancel = context.WithCancel(context.Background())
-
 	args = append([]string{command}, args...)
 	args = append(b.startupArgs, args...)
 
@@ -193,19 +188,20 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 		}
 	}
 
-	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
+	b.cmd = process_group.Command(findBazel(), args...)
+	process := b.cmd.RootProcess()
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)
 	if b.writeToStdout {
-		b.cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuffer)
+		process.Stdout = io.MultiWriter(os.Stdout, stdoutBuffer)
 	} else {
-		b.cmd.Stdout = stdoutBuffer
+		process.Stdout = stdoutBuffer
 	}
 	if b.writeToStderr {
-		b.cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuffer)
+		process.Stderr = io.MultiWriter(os.Stderr, stderrBuffer)
 	} else {
-		b.cmd.Stderr = stderrBuffer
+		process.Stderr = stderrBuffer
 	}
 
 	return stdoutBuffer, stderrBuffer
@@ -354,7 +350,9 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 	stdoutBuffer, stderrBuffer := b.newCommand("run", append(b.args, args...)...)
-	b.cmd.Stdin = os.Stdin
+
+	process := b.cmd.RootProcess()
+	process.Stdin = os.Stdin
 
 	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
 
@@ -363,13 +361,13 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 		return nil, stderrBuffer, err
 	}
 
-	return b.cmd, stderrBuffer, err
+	return process, stderrBuffer, err
 }
 
 func (b *bazel) Wait() error {
 	res := b.cmd.Wait()
 	if res.Error() == "exec: Wait was already called" {
-		if b.cmd.ProcessState.Success() {
+		if b.cmd.RootProcess().ProcessState.Success() {
 			return nil
 		}
 	}
@@ -379,9 +377,7 @@ func (b *bazel) Wait() error {
 // Cancel the currently running operation. Useful if you call Run(target) and
 // would like to stop the action running in a goroutine.
 func (b *bazel) Cancel() {
-	if b.cancel == nil {
-		return
+	if b.cmd != nil {
+		b.cmd.Kill()
 	}
-
-	b.cancel()
 }

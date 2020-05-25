@@ -132,7 +132,7 @@ func init() {
 		})
 		return mockBazel
 	}
-	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
+	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string, shortCircuit bool) command.Command {
 		// Don't do anything
 		return &mockCommand{
 			startupArgs: startupArgs,
@@ -245,10 +245,9 @@ func TestIBazelBuild(t *testing.T) {
 
 	i.build("//path/to:target")
 	expected := [][]string{
-		[]string{"Cancel"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
 	}
 
 	mockBazel.AssertActions(t, expected)
@@ -270,7 +269,7 @@ func TestIBazelTest(t *testing.T) {
 }
 
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
-	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
+	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string, shortCircuit bool) command.Command {
 		assertEqual(t, startupArgs, []string{}, "Startup args")
 		assertEqual(t, bazelArgs, []string{}, "Bazel args")
 		assertEqual(t, target, "", "Target")

@@ -20,7 +20,7 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
-	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
+	"github.com/bazelbuild/bazel-watcher/process_group"
 )
 
 func TestNotifyCommand(t *testing.T) {
@@ -65,6 +65,60 @@ func TestNotifyCommand(t *testing.T) {
 		{"WriteToStderr"},
 		{"WriteToStdout"},
 		{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
+	})
+}
+
+func TestNotifyCommand_ShortCircuit(t *testing.T) {
+	pg := process_group.Command("cat")
+
+	c := &notifyCommand{
+		args:         []string{"moo"},
+		bazelArgs:    []string{},
+		pg:           pg,
+		target:       "//path/to:target",
+		shortCircuit: true,
+	}
+
+	if c.IsSubprocessRunning() {
+		t.Errorf("New subprocess shouldn't have been started yet. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	var err error
+	c.stdin, err = pg.RootProcess().StdinPipe()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Mock out bazel to return non-error on test
+	b := &mock_bazel.MockBazel{}
+	b.BuildError(nil)
+	bazelNew = func() bazel.Bazel { return b }
+	defer func() { bazelNew = oldBazelNew }()
+
+	c.NotifyOfChanges()
+	b.BuildError(errors.New("Demo error"))
+	c.NotifyOfChanges()
+	b.BuildError(nil)
+	c.NotifyOfChanges()
+
+	b.AssertActions(t, [][]string{
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
+		{"Cancel"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Build", "//path/to:target"},
+		{"Cancel"},
 		{"WriteToStderr"},
 		{"WriteToStdout"},
 		{"Build", "//path/to:target"},

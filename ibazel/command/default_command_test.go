@@ -15,12 +15,14 @@
 package command
 
 import (
+	"errors"
 	"os"
 	"runtime"
 	"testing"
 
+	"github.com/bazelbuild/bazel-watcher/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
-	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
+	"github.com/bazelbuild/bazel-watcher/process_group"
 )
 
 func TestDefaultCommand(t *testing.T) {
@@ -89,5 +91,47 @@ func TestDefaultCommand_Start(t *testing.T) {
 
 	b.AssertActions(t, [][]string{
 		[]string{"Run", "--script_path=.*", "//path/to:target"},
+	})
+}
+
+func TestDefaultCommand_ShortCircuit(t *testing.T) {
+	pg := process_group.Command("cat")
+
+	c := &defaultCommand{
+		args:         []string{"moo"},
+		bazelArgs:    []string{},
+		pg:           pg,
+		target:       "//path/to:target",
+		shortCircuit: true,
+	}
+
+	if c.IsSubprocessRunning() {
+		t.Errorf("New subprocess shouldn't have been started yet. State: %v", pg.RootProcess().ProcessState)
+	}
+
+	// Mock out bazel to return non-error on test
+	b := &mock_bazel.MockBazel{}
+	b.BuildError(nil)
+	bazelNew = func() bazel.Bazel { return b }
+	defer func() { bazelNew = oldBazelNew }()
+
+	c.NotifyOfChanges()
+	b.BuildError(errors.New("Demo error"))
+	c.NotifyOfChanges()
+	b.BuildError(nil)
+	c.NotifyOfChanges()
+
+	b.AssertActions(t, [][]string{
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
+		{"Cancel"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
+		{"Cancel"},
+		{"WriteToStderr"},
+		{"WriteToStdout"},
+		{"Run", "--script_path=.*", "//path/to:target"},
 	})
 }

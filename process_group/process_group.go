@@ -34,6 +34,7 @@ import (
 type ProcessGroup interface {
 	RootProcess() *exec.Cmd
 	Start() error
+	Run() error
 	Kill() error
 	Wait() error
 	Close() error

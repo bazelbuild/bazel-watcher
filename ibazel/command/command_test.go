@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
-	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
+	"github.com/bazelbuild/bazel-watcher/process_group"
 )
 
 var oldExecCommand = execCommand

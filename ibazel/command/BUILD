@@ -26,7 +26,7 @@ go_library(
     deps = [
         "//bazel:go_default_library",
         "//ibazel/log:go_default_library",
-        "//ibazel/process_group:go_default_library",
+        "//process_group:go_default_library",
     ],
 )
 
@@ -43,6 +43,6 @@ go_test(
     deps = [
         "//bazel:go_default_library",
         "//bazel/testing:go_default_library",
-        "//ibazel/process_group:go_default_library",
+        "//process_group:go_default_library",
     ],
 )

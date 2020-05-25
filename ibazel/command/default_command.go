@@ -18,8 +18,9 @@ import (
 	"bytes"
 	"os"
 
+	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
-	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
+	"github.com/bazelbuild/bazel-watcher/process_group"
 )
 
 type defaultCommand struct {
@@ -28,17 +29,21 @@ type defaultCommand struct {
 	bazelArgs   []string
 	args        []string
 	pg          process_group.ProcessGroup
+
+	bazel        bazel.Bazel
+	shortCircuit bool
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
 // server in this mode and notify of changes the server will be killed and
 // restarted.
-func DefaultCommand(startupArgs []string, bazelArgs []string, target string, args []string) Command {
+func DefaultCommand(startupArgs []string, bazelArgs []string, target string, args []string, shortCircuit bool) Command {
 	return &defaultCommand{
-		target:      target,
-		startupArgs: startupArgs,
-		bazelArgs:   bazelArgs,
-		args:        args,
+		target:       target,
+		startupArgs:  startupArgs,
+		bazelArgs:    bazelArgs,
+		args:         args,
+		shortCircuit: shortCircuit,
 	}
 }
 
@@ -59,15 +64,15 @@ func (c *defaultCommand) Terminate() {
 }
 
 func (c *defaultCommand) Start() (*bytes.Buffer, error) {
-	b := bazelNew()
-	b.SetStartupArgs(c.startupArgs)
-	b.SetArguments(c.bazelArgs)
+	c.bazel = bazelNew()
+	c.bazel.SetStartupArgs(c.startupArgs)
+	c.bazel.SetArguments(c.bazelArgs)
 
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
+	c.bazel.WriteToStderr(true)
+	c.bazel.WriteToStdout(true)
 
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.pg = start(b, c.target, c.args)
+	outputBuffer, c.pg = start(c.bazel, c.target, c.args)
 
 	c.pg.RootProcess().Env = os.Environ()
 
@@ -81,6 +86,10 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 }
 
 func (c *defaultCommand) NotifyOfChanges() *bytes.Buffer {
+	if c.bazel != nil && c.shortCircuit {
+		c.bazel.Cancel()
+		c.bazel = nil
+	}
 	c.Terminate()
 	c.Start()
 	return nil

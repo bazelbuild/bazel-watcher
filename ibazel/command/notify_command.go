@@ -19,8 +19,9 @@ import (
 	"io"
 	"os"
 
+	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
-	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
+	"github.com/bazelbuild/bazel-watcher/process_group"
 )
 
 type notifyCommand struct {
@@ -29,18 +30,22 @@ type notifyCommand struct {
 	bazelArgs   []string
 	args        []string
 
+	bazel        bazel.Bazel
+	shortCircuit bool
+
 	pg    process_group.ProcessGroup
 	stdin io.WriteCloser
 }
 
 // NotifyCommand is an alternate mode for starting a command. In this mode the
 // command will be notified on stdin that the source files have changed.
-func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string) Command {
+func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string, shortCircuit bool) Command {
 	return &notifyCommand{
-		startupArgs: startupArgs,
-		target:      target,
-		bazelArgs:   bazelArgs,
-		args:        args,
+		startupArgs:  startupArgs,
+		target:       target,
+		bazelArgs:    bazelArgs,
+		args:         args,
+		shortCircuit: shortCircuit,
 	}
 }
 
@@ -62,15 +67,15 @@ func (c *notifyCommand) Terminate() {
 }
 
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
-	b := bazelNew()
-	b.SetStartupArgs(c.startupArgs)
-	b.SetArguments(c.bazelArgs)
+	c.bazel = bazelNew()
+	c.bazel.SetStartupArgs(c.startupArgs)
+	c.bazel.SetArguments(c.bazelArgs)
 
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
+	c.bazel.WriteToStderr(true)
+	c.bazel.WriteToStdout(true)
 
 	var outputBuffer *bytes.Buffer
-	outputBuffer, c.pg = start(b, c.target, c.args)
+	outputBuffer, c.pg = start(c.bazel, c.target, c.args)
 	// Keep the writer around.
 	var err error
 	c.stdin, err = c.pg.RootProcess().StdinPipe()
@@ -90,19 +95,23 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 }
 
 func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
-	b := bazelNew()
-	b.SetStartupArgs(c.startupArgs)
-	b.SetArguments(c.bazelArgs)
+	if c.bazel != nil && c.shortCircuit {
+		c.bazel.Cancel()
+		c.bazel = nil
+	}
+	c.bazel = bazelNew()
+	c.bazel.SetStartupArgs(c.startupArgs)
+	c.bazel.SetArguments(c.bazelArgs)
 
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
+	c.bazel.WriteToStderr(true)
+	c.bazel.WriteToStdout(true)
 
 	_, err := c.stdin.Write([]byte("IBAZEL_BUILD_STARTED\n"))
 	if err != nil {
 		log.Errorf("Error writing build to stdin: %s", err)
 	}
 
-	outputBuffer, res := b.Build(c.target)
+	outputBuffer, res := c.bazel.Build(c.target)
 	if res != nil {
 		log.Errorf("IBAZEL BUILD FAILURE: %v", res)
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))

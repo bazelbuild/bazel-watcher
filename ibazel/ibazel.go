@@ -65,6 +65,8 @@ type IBazel struct {
 	bazelArgs   []string
 	startupArgs []string
 
+	bazel bazel.Bazel
+
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
@@ -79,6 +81,8 @@ type IBazel struct {
 	lifecycleListeners []Lifecycle
 
 	state State
+
+	shortCircuit bool
 }
 
 func New() (*IBazel, error) {
@@ -322,9 +326,19 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		}
 	case RUN:
 		log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
+		if i.bazel != nil && i.shortCircuit {
+			i.bazel.Cancel()
+		}
 		i.beforeCommand(targets, command)
-		outputBuffer, err := commandToRun(targets...)
-		i.afterCommand(targets, command, err == nil, outputBuffer)
+		runCommand := func() {
+			outputBuffer, err := commandToRun(targets...)
+			i.afterCommand(targets, command, err == nil, outputBuffer)
+		}
+		if i.shortCircuit {
+			go runCommand()
+		} else {
+			runCommand()
+		}
 		i.state = WAIT
 	}
 }
@@ -339,13 +353,15 @@ func verb(s string) string {
 }
 
 func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
-	b := i.newBazel()
+	if i.bazel != nil {
+		i.bazel.Cancel()
+	}
+	i.bazel = i.newBazel()
 
-	b.Cancel()
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-	outputBuffer, err := b.Build(targets...)
-	if err != nil {
+	i.bazel.WriteToStderr(true)
+	i.bazel.WriteToStdout(true)
+	outputBuffer, err := i.bazel.Build(targets...)
+	if err != nil && err.Error() != "signal: killed" {
 		log.Errorf("Build error: %v", err)
 		return outputBuffer, err
 	}
@@ -353,12 +369,15 @@ func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 }
 
 func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
-	b := i.newBazel()
+	if i.bazel != nil {
+		i.bazel.Cancel()
+	}
+	i.bazel = i.newBazel()
 
-	b.Cancel()
-	b.WriteToStderr(true)
-	b.WriteToStdout(true)
-	outputBuffer, err := b.Test(targets...)
+	i.bazel.Cancel()
+	i.bazel.WriteToStderr(true)
+	i.bazel.WriteToStdout(true)
+	outputBuffer, err := i.bazel.Test(targets...)
 	if err != nil {
 		log.Errorf("Build error: %v", err)
 		return outputBuffer, err
@@ -384,19 +403,23 @@ func (i *IBazel) setupRun(target string) command.Command {
 	i.targetDecider(target, rule)
 
 	commandNotify := false
+	i.shortCircuit = false
 	for _, attr := range rule.Attribute {
 		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
 			if contains(attr.StringListValue, "ibazel_notify_changes") {
 				commandNotify = true
+			}
+			if contains(attr.StringListValue, "ibazel_short_circuit_restart") {
+				i.shortCircuit = true
 			}
 		}
 	}
 
 	if commandNotify {
 		log.Logf("Launching with notifications")
-		return commandNotifyCommand(i.startupArgs, i.bazelArgs, target, i.args)
+		return commandNotifyCommand(i.startupArgs, i.bazelArgs, target, i.args, i.shortCircuit)
 	} else {
-		return commandDefaultCommand(i.startupArgs, i.bazelArgs, target, i.args)
+		return commandDefaultCommand(i.startupArgs, i.bazelArgs, target, i.args, i.shortCircuit)
 	}
 }
 

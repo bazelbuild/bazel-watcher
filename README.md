@@ -74,6 +74,13 @@ your target contains `ibazel_notify_changes` in its `tags` attribute, then the
 command will stay alive and will receive a notification of the source changes on
 stdin.
 
+By default, ibazel will finish its current invocation of bazel before beginning
+a new one even if a change occurs. Targes tagged with `ibazel_short_circuit_restart`
+will cancel their current bazel invocation and start a new bazel process immediately.
+
+Targets tagged with `ibazel_live_reload` starts a live_reload server inside iBazel
+and instructs it to send reload events to webbrowsers.
+
 ## Output Runner
 
 iBazel is capable of producing and running commands from the output of Bazel

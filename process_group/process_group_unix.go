@@ -41,6 +41,10 @@ func (pg *unixProcessGroup) Start() error {
 	return pg.root.Start()
 }
 
+func (pg *unixProcessGroup) Run() error {
+	return pg.root.Run()
+}
+
 func (pg *unixProcessGroup) Kill() error {
 	return syscall.Kill(-pg.root.Process.Pid, syscall.SIGKILL)
 }
