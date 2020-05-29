@@ -30,6 +30,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 )
 
 var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to use for actions")
@@ -229,7 +230,7 @@ func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 	stdoutBuffer, _ := b.newCommand("info")
-
+	log.Logf("Running 'bazel info'...")
 	err := b.cmd.Run()
 	if err != nil {
 		return nil, err

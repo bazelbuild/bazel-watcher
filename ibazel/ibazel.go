@@ -82,6 +82,7 @@ type IBazel struct {
 }
 
 func New() (*IBazel, error) {
+	log.Logf("Initializing iBazel struct i...")
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
