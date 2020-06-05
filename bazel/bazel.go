@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
@@ -230,8 +231,18 @@ func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 	stdoutBuffer, _ := b.newCommand("info")
-	log.Logf("Running 'bazel info'...")
+
+	// This go function only prints if 'bazel info' takes longer than 5 seconds
+	runFinished := false
+	go func() {
+		time.Sleep(5*time.Second)
+		if !runFinished{
+			log.Logf("Running 'bazel info'...")
+		}
+	}()
+	
 	err := b.cmd.Run()
+	runFinished = true
 	if err != nil {
 		return nil, err
 	}
