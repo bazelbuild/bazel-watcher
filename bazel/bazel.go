@@ -232,17 +232,21 @@ func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStdout(false)
 	stdoutBuffer, _ := b.newCommand("info")
 
-	// This go function only prints if 'bazel info' takes longer than 5 seconds
-	runFinished := false
+	// This gofunction only prints if 'bazel info' takes longer than 8 seconds
+	doneCh := make(chan struct{}, 1)
+	defer func() {
+		doneCh <- struct{}{}
+	}()
 	go func() {
-		time.Sleep(5*time.Second)
-		if !runFinished{
-			log.Logf("Running 'bazel info'...")
+		select {
+			case <- doneCh:
+				// Do nothing since we're done.
+			case <- time.After(8*time.Second):
+				log.Logf("Running `bazel info`... it's being a little slow")
 		}
 	}()
-	
+
 	err := b.cmd.Run()
-	runFinished = true
 	if err != nil {
 		return nil, err
 	}
