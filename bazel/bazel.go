@@ -25,11 +25,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 )
 
 var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to use for actions")
@@ -229,6 +231,20 @@ func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 	stdoutBuffer, _ := b.newCommand("info")
+
+	// This gofunction only prints if 'bazel info' takes longer than 8 seconds
+	doneCh := make(chan struct{}, 1)
+	defer func() {
+		doneCh <- struct{}{}
+	}()
+	go func() {
+		select {
+			case <- doneCh:
+				// Do nothing since we're done.
+			case <- time.After(8*time.Second):
+				log.Logf("Running `bazel info`... it's being a little slow")
+		}
+	}()
 
 	err := b.cmd.Run()
 	if err != nil {
