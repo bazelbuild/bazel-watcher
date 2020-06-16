@@ -41,6 +41,7 @@ var overrideableBazelFlags []string = []string{
 	"--curses=no",
 	"-c",
 	"--define=",
+	"--dynamic_mode=",
 	"--features=",
 	"--keep_going",
 	"-k",
