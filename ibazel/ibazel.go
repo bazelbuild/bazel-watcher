@@ -41,6 +41,11 @@ var osExit = os.Exit
 var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
+var killMessages = map[os.Signal]string{
+	syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
+	syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
+	syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
+}
 
 type State string
 type runnableCommand func(...string) (*bytes.Buffer, error)
@@ -65,8 +70,9 @@ type IBazel struct {
 	bazelArgs   []string
 	startupArgs []string
 
-	sigs           chan os.Signal // Signals channel for the current process
-	interruptCount int
+	sigs            chan os.Signal // Signals channel for the current process
+	interruptCount  int
+	gracefulTimeout time.Duration
 
 	workspaceFinder workspace_finder.WorkspaceFinder
 
@@ -89,6 +95,7 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
+	i.gracefulTimeout = 10 * time.Second
 	i.filesWatched = map[fSNotifyWatcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
 
@@ -125,41 +132,43 @@ func (i *IBazel) handleSignals() {
 	// Got an OS signal (SIGINT, SIGTERM, SIGHUP).
 	sig := <-i.sigs
 
-	switch sig {
-	case syscall.SIGINT:
-		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			log.NewLine()
-			log.Log("Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)")
-			i.cmd.Terminate()
-		} else {
-			osExit(3)
-		}
-		break
-	case syscall.SIGTERM:
-		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			log.NewLine()
-			log.Log("Subprocess killed from getting SIGTERM")
-			i.cmd.Terminate()
-		}
+	if i.cmd == nil || !i.cmd.IsSubprocessRunning() {
 		osExit(3)
 		return
-	case syscall.SIGHUP:
-		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			log.NewLine()
-			log.Log("Subprocess killed from getting SIGHUP")
-			i.cmd.Terminate()
-		}
-		osExit(3)
-		return
-	default:
-		log.Fatal("Got a signal that wasn't handled. Please file a bug against bazel-watcher that describes how you did this. This is a big problem.")
 	}
 
-	i.interruptCount += 1
-	if i.interruptCount > 2 {
-		log.NewLine()
-		log.Fatal("Exiting from getting SIGINT 3 times")
-		osExit(3)
+	switch sig {
+	case syscall.SIGINT:
+		i.interruptCount++
+		switch {
+		case i.interruptCount > 2:
+			log.NewLine()
+			log.Fatal("Exiting from getting SIGINT 3 times")
+			osExit(3)
+		case i.interruptCount > 1:
+			i.cmd.SendKillSignal()
+		default:
+			go func() {
+				i.cmd.Terminate()
+				log.NewLine()
+				log.Log(killMessages[sig])
+			}()
+		}
+	case syscall.SIGTERM:
+		fallthrough
+	case syscall.SIGHUP:
+		go func() {
+			i.cmd.Terminate()
+			log.NewLine()
+			log.Log(killMessages[sig])
+			osExit(3)
+		}()
+		go func() {
+			<-time.NewTimer(i.gracefulTimeout).C
+			i.cmd.SendKillSignal()
+		}()
+	default:
+		log.Fatal("Got a signal that wasn't handled. Please file a bug against bazel-watcher that describes how you did this. This is a big problem.")
 	}
 }
 

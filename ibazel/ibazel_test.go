@@ -23,6 +23,7 @@ import (
 	"runtime/debug"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/protobuf/proto"
@@ -72,6 +73,10 @@ type mockCommand struct {
 	notifiedOfChanges bool
 	started           bool
 	terminated        bool
+
+	signalChan chan syscall.Signal
+	closeChan  chan struct{}
+	termChan   chan struct{}
 }
 
 func (m *mockCommand) Start() (*bytes.Buffer, error) {
@@ -89,17 +94,33 @@ func (m *mockCommand) Terminate() {
 	if !m.started {
 		panic("Terminated before starting")
 	}
+	m.signalChan <- syscall.SIGTERM
+	<-m.closeChan
+	m.termChan <- struct{}{}
 	m.terminated = true
 }
+func (m *mockCommand) SendKillSignal() {
+	m.signalChan <- syscall.SIGKILL
+}
 func (m *mockCommand) assertTerminated(t *testing.T) {
-	if !m.terminated {
-		t.Errorf("Mock command wasn't terminated")
+	select {
+	case <-m.termChan:
+		// do nothing
+	case <-time.After(1 * time.Second):
+		t.Errorf("A process wasn't terminated within assert timeout")
+		debug.PrintStack()
+	}
+}
+
+func (m *mockCommand) assertSignal(t *testing.T, signum syscall.Signal) {
+	if <-m.signalChan != signum {
+		t.Errorf("Incorrect signal was used to terminate a process")
 		debug.PrintStack()
 	}
 }
 
 func (m *mockCommand) IsSubprocessRunning() bool {
-	return m.started
+	return m.started && !m.terminated
 }
 
 var mockBazel *mock_bazel.MockBazel
@@ -306,7 +327,6 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	// But we want to simulate the subprocess not dying
 	attemptedExit := 0
 	osExit = func(i int) {
 		attemptedExit = i
@@ -321,7 +341,7 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
 }
 
-func TestHandleSignals_SIGINT(t *testing.T) {
+func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -330,38 +350,34 @@ func TestHandleSignals_SIGINT(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	// But we want to simulate the subprocess not dying
 	attemptedExit := 0
 	osExit = func(i int) {
 		attemptedExit = i
 	}
 
-	var cmd *mockCommand
-	// Attempt to kill a task 2 times (but secretly resurrect the job from the
-	// dead to test the job not responding)
-	for j := 0; j < 2; j++ {
-		cmd = &mockCommand{}
-		cmd.Start()
-		i.cmd = cmd
-
-		// This should kill the subprocess and simulate hitting ctrl-c
-		// First save the cmd so we can make assertions on it. It will be removed
-		// by the SIGINT
-		i.sigs <- syscall.SIGINT
-		i.handleSignals()
-
-		cmd.assertTerminated(t)
-		assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+	cmd := &mockCommand{
+		signalChan: make(chan syscall.Signal, 10),
+		closeChan:  make(chan struct{}, 1),
+		termChan:   make(chan struct{}, 1),
 	}
+	i.cmd = cmd
+	cmd.Start()
 
-	// This should kill the job and go over the interrupt limit where exiting happens
+	// First ctrl-c sends custom signal (SIGTERM)
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGTERM)
+	cmd.closeChan <- struct{}{}
+	cmd.assertTerminated(t)
+	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
 
+	// Second ctrl-c terminates ibazel
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
 	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
 }
 
-func TestHandleSignals_SIGTERM(t *testing.T) {
+func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -370,22 +386,149 @@ func TestHandleSignals_SIGTERM(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	// Now test sending SIGTERM
-	attemptedExit := false
+	attemptedExit := 0
 	osExit = func(i int) {
-		attemptedExit = true
+		attemptedExit = i
 	}
-	attemptedExit = false
 
-	cmd := &mockCommand{}
-	cmd.Start()
+	cmd := &mockCommand{
+		signalChan: make(chan syscall.Signal, 10),
+		closeChan:  make(chan struct{}, 1),
+		termChan:   make(chan struct{}, 1),
+	}
 	i.cmd = cmd
+	cmd.Start()
+
+	// First ctrl-c sends custom signal (SIGTERM)
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGTERM)
+	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+
+	// Second ctrl-c sends SIGKILL
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGKILL)
+	// which in this emulation terminates the subprocess
+	cmd.closeChan <- struct{}{}
+	cmd.assertTerminated(t)
+	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+
+	// Yet another ctrl-c terminates ibazel
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
+	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
+}
+
+func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
+	i := &IBazel{}
+	err := i.setup()
+	if err != nil {
+		t.Errorf("Error creating IBazel: %s", err)
+	}
+	i.sigs = make(chan os.Signal, 1)
+	defer i.Cleanup()
+
+	attemptedExit := 0
+	osExit = func(i int) {
+		attemptedExit = i
+	}
+
+	cmd := &mockCommand{
+		signalChan: make(chan syscall.Signal, 10),
+		closeChan:  make(chan struct{}, 1),
+		termChan:   make(chan struct{}, 1),
+	}
+	i.cmd = cmd
+	cmd.Start()
+
+	// First ctrl-c sends custom signal (SIGTERM)
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGTERM)
+	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+
+	// Second ctrl-c sends SIGKILL
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGKILL)
+	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+
+	// Third ctrl-c terminates ibazel even if the subprocess is not closing
+	i.sigs <- syscall.SIGINT
+	i.handleSignals()
+	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
+}
+
+func TestHandleSignals_SIGTERMNormalTermination(t *testing.T) {
+	i := &IBazel{
+		gracefulTimeout: 10 * time.Second,
+	}
+	err := i.setup()
+	if err != nil {
+		t.Errorf("Error creating IBazel: %s", err)
+	}
+	i.sigs = make(chan os.Signal, 1)
+	defer i.Cleanup()
+
+	exitChan := make(chan int, 1)
+	osExit = func(i int) {
+		exitChan <- i
+	}
+
+	cmd := &mockCommand{
+		signalChan: make(chan syscall.Signal, 10),
+		closeChan:  make(chan struct{}, 1),
+		termChan:   make(chan struct{}, 1),
+	}
+	i.cmd = cmd
+	cmd.Start()
 
 	i.sigs <- syscall.SIGTERM
 	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGTERM)
+	cmd.closeChan <- struct{}{}
 	cmd.assertTerminated(t)
+	assertEqual(t, <-exitChan, 3, "Should have exited ibazel")
+}
 
-	assertEqual(t, attemptedExit, true, "Should have exited ibazel")
+func TestHandleSignals_SIGTERMTimeoutTermination(t *testing.T) {
+	i := &IBazel{
+		gracefulTimeout: 3 * time.Second,
+	}
+	err := i.setup()
+	if err != nil {
+		t.Errorf("Error creating IBazel: %s", err)
+	}
+	i.sigs = make(chan os.Signal, 1)
+	defer i.Cleanup()
+
+	exitChan := make(chan int, 1)
+	osExit = func(i int) {
+		exitChan <- i
+	}
+
+	cmd := &mockCommand{
+		signalChan: make(chan syscall.Signal, 10),
+		closeChan:  make(chan struct{}, 1),
+		termChan:   make(chan struct{}, 1),
+	}
+	i.cmd = cmd
+	cmd.Start()
+
+	i.sigs <- syscall.SIGTERM
+	i.handleSignals()
+	cmd.assertSignal(t, syscall.SIGTERM)
+	waitBegin := time.Now()
+	// assert SIGKILL to be invoked after some period of time
+	cmd.assertSignal(t, syscall.SIGKILL)
+	diff := time.Now().Sub(waitBegin)
+	if diff <= 2 {
+		panic("Should wait for graceful timeout before sending SIGKILL")
+	}
+	cmd.closeChan <- struct{}{}
+	cmd.assertTerminated(t)
+	assertEqual(t, <-exitChan, 3, "Should have exited ibazel")
 }
 
 func TestParseTarget(t *testing.T) {

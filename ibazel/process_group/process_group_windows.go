@@ -91,7 +91,8 @@ func (pg *winProcessGroup) Start() error {
 	return nil
 }
 
-func (pg *winProcessGroup) Kill() error {
+func (pg *winProcessGroup) Kill(signum syscall.Signal) error {
+	// signum is ignored on Windows as there's no support for signals
 	log.Println("Kill()")
 	if pg.job == 0 {
 		return errors.New("job not started")

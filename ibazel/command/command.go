@@ -16,25 +16,35 @@ package command
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
-var execCommand = process_group.Command
-var bazelNew = bazel.New
+var (
+	execCommand = process_group.Command
+	bazelNew    = bazel.New
+	sigstring   = flag.String(
+		"signal",
+		"SIGKILL",
+		"Specify the signal to be used on Unix to terminate the subprocess")
+)
 
 // Command is an object that wraps the logic of running a task in Bazel and
 // manipulating it.
 type Command interface {
 	Start() (*bytes.Buffer, error)
 	Terminate()
+	SendKillSignal()
 	NotifyOfChanges() *bytes.Buffer
 	IsSubprocessRunning() bool
 }
@@ -85,4 +95,26 @@ func subprocessRunning(cmd *exec.Cmd) bool {
 	}
 
 	return true
+}
+
+func getSignum(sigstring *string) syscall.Signal {
+	switch *sigstring {
+	case "SIGABRT":
+		return syscall.SIGABRT
+	case "SIGHUP":
+		return syscall.SIGHUP
+	case "SIGINT":
+		return syscall.SIGINT
+	case "SIGKILL":
+		return syscall.SIGKILL
+	case "SIGQUIT":
+		return syscall.SIGQUIT
+	case "SIGTERM":
+		return syscall.SIGTERM
+	case "SIGTRAP":
+		return syscall.SIGTRAP
+	default:
+		log.Errorf("Unsupported signal %s. Defaulting to SIGKILL.", *sigstring)
+		return syscall.SIGKILL
+	}
 }

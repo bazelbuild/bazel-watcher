@@ -84,6 +84,13 @@ func (i *IBazelTester) RunWithBazelFixCommands(target string) {
 	})
 }
 
+func (i *IBazelTester) RunWithSignal(target string, sigstring string) {
+	i.t.Helper()
+	i.run(target, []string{}, []string{
+		"--signal=" + sigstring,
+	})
+}
+
 func (i *IBazelTester) GetOutput() string {
 	i.t.Helper()
 	return i.stdoutBuffer.String()
@@ -202,6 +209,11 @@ func (i *IBazelTester) Kill() {
 	if err := i.cmd.Process.Kill(); err != nil {
 		panic(err)
 	}
+}
+
+func (i *IBazelTester) Signal(signum os.Signal) {
+	i.t.Helper()
+	i.cmd.Process.Signal(signum)
 }
 
 func (i *IBazelTester) build(target string, additionalArgs []string) {
