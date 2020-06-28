@@ -63,6 +63,24 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 		debug.PrintStack()
 	}
 }
+func assertOsExited(t *testing.T, osExitChan chan int) {
+	select {
+	case exitCode := <-osExitChan:
+		assertEqual(t, 3, exitCode, "Should have exited ibazel")
+	case <-time.After(time.Second):
+		t.Errorf("It should have os.Exit'd")
+		debug.PrintStack()
+	}
+}
+func assertNotOsExited(t *testing.T, osExitChan chan int) {
+	select {
+	case <-osExitChan:
+		t.Errorf("It shouldn't have os.Exit'd")
+		debug.PrintStack()
+	case <-time.After(time.Second):
+		// works as expected
+	}
+}
 
 type mockCommand struct {
 	startupArgs []string
@@ -72,11 +90,10 @@ type mockCommand struct {
 
 	notifiedOfChanges bool
 	started           bool
-	terminated        bool
 
-	signalChan chan syscall.Signal
-	closeChan  chan struct{}
-	termChan   chan struct{}
+	signalChan  chan syscall.Signal
+	doTermChan  chan struct{}
+	didTermChan chan struct{}
 }
 
 func (m *mockCommand) Start() (*bytes.Buffer, error) {
@@ -95,32 +112,29 @@ func (m *mockCommand) Terminate() {
 		panic("Terminated before starting")
 	}
 	m.signalChan <- syscall.SIGTERM
-	<-m.closeChan
-	m.termChan <- struct{}{}
-	m.terminated = true
+	<-m.doTermChan
+	m.didTermChan <- struct{}{}
 }
 func (m *mockCommand) SendKillSignal() {
 	m.signalChan <- syscall.SIGKILL
 }
 func (m *mockCommand) assertTerminated(t *testing.T) {
 	select {
-	case <-m.termChan:
-		// do nothing
-	case <-time.After(1 * time.Second):
+	case <-m.didTermChan:
+		// works as expected
+	case <-time.After(time.Second):
 		t.Errorf("A process wasn't terminated within assert timeout")
 		debug.PrintStack()
 	}
 }
-
 func (m *mockCommand) assertSignal(t *testing.T, signum syscall.Signal) {
 	if <-m.signalChan != signum {
-		t.Errorf("Incorrect signal was used to terminate a process")
+		t.Errorf("An incorrect signal was used to terminate a process")
 		debug.PrintStack()
 	}
 }
-
 func (m *mockCommand) IsSubprocessRunning() bool {
-	return m.started && !m.terminated
+	return m.started && len(m.didTermChan) == 0
 }
 
 var mockBazel *mock_bazel.MockBazel
@@ -327,9 +341,9 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	attemptedExit := 0
+	osExitChan := make(chan int, 1)
 	osExit = func(i int) {
-		attemptedExit = i
+		osExitChan <- i
 	}
 	assertEqual(t, i.cmd, nil, "There shouldn't be a subprocess running")
 
@@ -338,7 +352,7 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 	i.handleSignals()
 
 	// Goroutine tests are kind of racey
-	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
+	assertOsExited(t, osExitChan)
 }
 
 func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
@@ -350,15 +364,15 @@ func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	attemptedExit := 0
+	osExitChan := make(chan int, 1)
 	osExit = func(i int) {
-		attemptedExit = i
+		osExitChan <- i
 	}
 
 	cmd := &mockCommand{
-		signalChan: make(chan syscall.Signal, 10),
-		closeChan:  make(chan struct{}, 1),
-		termChan:   make(chan struct{}, 1),
+		signalChan:  make(chan syscall.Signal, 10),
+		doTermChan:  make(chan struct{}, 1),
+		didTermChan: make(chan struct{}, 1),
 	}
 	i.cmd = cmd
 	cmd.Start()
@@ -367,14 +381,9 @@ func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
 	cmd.assertSignal(t, syscall.SIGTERM)
-	cmd.closeChan <- struct{}{}
+	cmd.doTermChan <- struct{}{}
 	cmd.assertTerminated(t)
-	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
-
-	// Second ctrl-c terminates ibazel
-	i.sigs <- syscall.SIGINT
-	i.handleSignals()
-	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
+	assertOsExited(t, osExitChan)
 }
 
 func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
@@ -386,15 +395,15 @@ func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	attemptedExit := 0
+	osExitChan := make(chan int, 1)
 	osExit = func(i int) {
-		attemptedExit = i
+		osExitChan <- i
 	}
 
 	cmd := &mockCommand{
-		signalChan: make(chan syscall.Signal, 10),
-		closeChan:  make(chan struct{}, 1),
-		termChan:   make(chan struct{}, 1),
+		signalChan:  make(chan syscall.Signal, 10),
+		doTermChan:  make(chan struct{}, 1),
+		didTermChan: make(chan struct{}, 1),
 	}
 	i.cmd = cmd
 	cmd.Start()
@@ -403,21 +412,15 @@ func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
 	cmd.assertSignal(t, syscall.SIGTERM)
-	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+	assertNotOsExited(t, osExitChan)
 
 	// Second ctrl-c sends SIGKILL
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
 	cmd.assertSignal(t, syscall.SIGKILL)
-	// which in this emulation terminates the subprocess
-	cmd.closeChan <- struct{}{}
+	cmd.doTermChan <- struct{}{}
 	cmd.assertTerminated(t)
-	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
-
-	// Yet another ctrl-c terminates ibazel
-	i.sigs <- syscall.SIGINT
-	i.handleSignals()
-	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
+	assertOsExited(t, osExitChan)
 }
 
 func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
@@ -429,15 +432,15 @@ func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	attemptedExit := 0
+	osExitChan := make(chan int, 1)
 	osExit = func(i int) {
-		attemptedExit = i
+		osExitChan <- i
 	}
 
 	cmd := &mockCommand{
-		signalChan: make(chan syscall.Signal, 10),
-		closeChan:  make(chan struct{}, 1),
-		termChan:   make(chan struct{}, 1),
+		signalChan:  make(chan syscall.Signal, 10),
+		doTermChan:  make(chan struct{}, 1),
+		didTermChan: make(chan struct{}, 1),
 	}
 	i.cmd = cmd
 	cmd.Start()
@@ -446,18 +449,18 @@ func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
 	cmd.assertSignal(t, syscall.SIGTERM)
-	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+	assertNotOsExited(t, osExitChan)
 
 	// Second ctrl-c sends SIGKILL
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
 	cmd.assertSignal(t, syscall.SIGKILL)
-	assertEqual(t, attemptedExit, 0, "It shouldn't have os.Exit'd")
+	assertNotOsExited(t, osExitChan)
 
-	// Third ctrl-c terminates ibazel even if the subprocess is not closing
+	// Third ctrl-c terminates ibazel even if the subprocess is not closed
 	i.sigs <- syscall.SIGINT
 	i.handleSignals()
-	assertEqual(t, attemptedExit, 3, "Should have exited ibazel")
+	assertOsExited(t, osExitChan)
 }
 
 func TestHandleSignals_SIGTERMNormalTermination(t *testing.T) {
@@ -471,15 +474,15 @@ func TestHandleSignals_SIGTERMNormalTermination(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	exitChan := make(chan int, 1)
+	osExitChan := make(chan int, 1)
 	osExit = func(i int) {
-		exitChan <- i
+		osExitChan <- i
 	}
 
 	cmd := &mockCommand{
-		signalChan: make(chan syscall.Signal, 10),
-		closeChan:  make(chan struct{}, 1),
-		termChan:   make(chan struct{}, 1),
+		signalChan:  make(chan syscall.Signal, 10),
+		doTermChan:  make(chan struct{}, 1),
+		didTermChan: make(chan struct{}, 1),
 	}
 	i.cmd = cmd
 	cmd.Start()
@@ -487,9 +490,9 @@ func TestHandleSignals_SIGTERMNormalTermination(t *testing.T) {
 	i.sigs <- syscall.SIGTERM
 	i.handleSignals()
 	cmd.assertSignal(t, syscall.SIGTERM)
-	cmd.closeChan <- struct{}{}
+	cmd.doTermChan <- struct{}{}
 	cmd.assertTerminated(t)
-	assertEqual(t, <-exitChan, 3, "Should have exited ibazel")
+	assertOsExited(t, osExitChan)
 }
 
 func TestHandleSignals_SIGTERMTimeoutTermination(t *testing.T) {
@@ -503,15 +506,15 @@ func TestHandleSignals_SIGTERMTimeoutTermination(t *testing.T) {
 	i.sigs = make(chan os.Signal, 1)
 	defer i.Cleanup()
 
-	exitChan := make(chan int, 1)
+	osExitChan := make(chan int, 1)
 	osExit = func(i int) {
-		exitChan <- i
+		osExitChan <- i
 	}
 
 	cmd := &mockCommand{
-		signalChan: make(chan syscall.Signal, 10),
-		closeChan:  make(chan struct{}, 1),
-		termChan:   make(chan struct{}, 1),
+		signalChan:  make(chan syscall.Signal, 10),
+		doTermChan:  make(chan struct{}, 1),
+		didTermChan: make(chan struct{}, 1),
 	}
 	i.cmd = cmd
 	cmd.Start()
@@ -524,11 +527,11 @@ func TestHandleSignals_SIGTERMTimeoutTermination(t *testing.T) {
 	cmd.assertSignal(t, syscall.SIGKILL)
 	diff := time.Now().Sub(waitBegin)
 	if diff <= 2 {
-		panic("Should wait for graceful timeout before sending SIGKILL")
+		panic("Should wait for a graceful timeout before sending SIGKILL")
 	}
-	cmd.closeChan <- struct{}{}
+	cmd.doTermChan <- struct{}{}
 	cmd.assertTerminated(t)
-	assertEqual(t, <-exitChan, 3, "Should have exited ibazel")
+	assertOsExited(t, osExitChan)
 }
 
 func TestParseTarget(t *testing.T) {
