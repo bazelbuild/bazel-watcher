@@ -4,6 +4,13 @@ load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 def go_repositories():
     go_repository(
+        name = "com_github_fsnotify_fsevents",
+        importpath = "github.com/fsnotify/fsevents",
+        sum = "h1:/125uxJvvoSDDBPen6yUZbil8J9ydKZnnl3TWWmvnkw=",
+        version = "v0.1.1",
+        patches = ["//:patches/fsnotify_fsevents_pr_38.diff"],
+    )
+    go_repository(
         name = "com_github_fsnotify_fsnotify",
         importpath = "github.com/fsnotify/fsnotify",
         sum = "h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=",

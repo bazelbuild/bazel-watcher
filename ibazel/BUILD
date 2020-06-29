@@ -18,9 +18,11 @@ go_binary(
     name = "ibazel",
     embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    # Since we don't have any cgo dependencies, force build to be pure
-    # golang. This will make multi-os compatibility *MUCH* easier.
-    pure = "on",
+    # We set this to `auto` to allow for autodetection of pure based on 
+    # the toolchain selection. For darwin, we need this to be `off`, all
+    # other platforms are `on`. We would use a select() here but this 
+    # attribute is not configurable
+    pure = "auto",
     visibility = ["//visibility:public"],
     x_defs = {
         "main.Version": "{STABLE_GIT_VERSION}",
@@ -30,7 +32,6 @@ go_binary(
 go_library(
     name = "go_default_library",
     srcs = [
-        "fsnotify.go",
         "ibazel.go",
         "ibazel_unix.go",
         "ibazel_windows.go",
@@ -38,7 +39,6 @@ go_library(
         "main.go",
         "main_unix.go",
         "main_windows.go",
-        "source_event_handler.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
     visibility = ["//visibility:private"],
@@ -46,13 +46,13 @@ go_library(
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
         "//ibazel/lifecycle_hooks:go_default_library",
+        "//ibazel/fswatcher:go_default_library",
         "//ibazel/live_reload:go_default_library",
         "//ibazel/log:go_default_library",
         "//ibazel/output_runner:go_default_library",
         "//ibazel/profiler:go_default_library",
         "//ibazel/workspace:go_default_library",
         "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
-        "@com_github_fsnotify_fsnotify//:go_default_library",
     ],
 )
 
@@ -71,7 +71,6 @@ go_test(
         "//ibazel/log:go_default_library",
         "//ibazel/workspace:go_default_library",
         "//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library",
-        "@com_github_fsnotify_fsnotify//:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )

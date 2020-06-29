@@ -12,36 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// +build !darwin
+
+package fswatcher
 
 import (
-	"github.com/fsnotify/fsnotify"
+	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/fsnotify"
 )
 
-type SourceEventHandler struct {
-	SourceFileEvents  chan fsnotify.Event
-	SourceFileWatcher *fsnotify.Watcher
-}
-
-func (s *SourceEventHandler) Listen() {
-	for {
-		select {
-		case event := <-s.SourceFileWatcher.Events:
-			s.SourceFileEvents <- event
-
-			switch event.Op {
-			case fsnotify.Remove, fsnotify.Rename:
-				s.SourceFileWatcher.Add(event.Name)
-			}
-		}
-	}
-}
-
-func NewSourceEventHandler(sourceFileWatcher *fsnotify.Watcher) *SourceEventHandler {
-	handler := &SourceEventHandler{
-		make(chan fsnotify.Event),
-		sourceFileWatcher,
-	}
-	go handler.Listen()
-	return handler
+func NewWatcher() (Watcher, error) {
+	return fsnotify.NewWatcher()
 }
