@@ -35,7 +35,7 @@ import (
 type ProcessGroup interface {
 	RootProcess() *exec.Cmd
 	Start() error
-	Kill(signum syscall.Signal) error
+	Signal(signum syscall.Signal) error
 	Wait() error
 	Close() error
 	CombinedOutput() ([]byte, error)

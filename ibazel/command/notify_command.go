@@ -52,7 +52,7 @@ func (c *notifyCommand) Terminate() {
 		return
 	}
 
-	c.pg.Kill(c.signum)
+	c.pg.Signal(c.signum)
 	c.pg.Wait()
 	c.pg.Close()
 	c.pg = nil
@@ -60,7 +60,7 @@ func (c *notifyCommand) Terminate() {
 
 func (c *notifyCommand) SendKillSignal() {
 	if c.pg != nil && subprocessRunning(c.pg.RootProcess()) {
-		c.pg.Kill(syscall.SIGKILL)
+		c.pg.Signal(syscall.SIGKILL)
 	}
 }
 

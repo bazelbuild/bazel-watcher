@@ -41,7 +41,7 @@ func (pg *unixProcessGroup) Start() error {
 	return pg.root.Start()
 }
 
-func (pg *unixProcessGroup) Kill(signum syscall.Signal) error {
+func (pg *unixProcessGroup) Signal(signum syscall.Signal) error {
 	// Send the signal to the process PID which should propagate down to any
 	// subprocesses in the PGID (Process Group ID). To send to the PGID, send the
 	// signal to the negative of the process PID.

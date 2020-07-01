@@ -51,7 +51,7 @@ func (c *defaultCommand) Terminate() {
 		return
 	}
 
-	c.pg.Kill(c.signum)
+	c.pg.Signal(c.signum)
 	c.pg.Wait()
 	c.pg.Close()
 	c.pg = nil
@@ -59,7 +59,7 @@ func (c *defaultCommand) Terminate() {
 
 func (c *defaultCommand) SendKillSignal() {
 	if c.pg != nil && subprocessRunning(c.pg.RootProcess()) {
-		c.pg.Kill(syscall.SIGKILL)
+		c.pg.Signal(syscall.SIGKILL)
 	}
 }
 
