@@ -84,13 +84,6 @@ func (i *IBazelTester) RunWithBazelFixCommands(target string) {
 	})
 }
 
-func (i *IBazelTester) RunWithSignal(target string, sigstring string) {
-	i.t.Helper()
-	i.run(target, []string{}, []string{
-		"--signal=" + sigstring,
-	})
-}
-
 func (i *IBazelTester) GetOutput() string {
 	i.t.Helper()
 	return i.stdoutBuffer.String()

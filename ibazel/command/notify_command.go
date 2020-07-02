@@ -19,6 +19,7 @@ import (
 	"io"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
@@ -30,7 +31,6 @@ type notifyCommand struct {
 	bazelArgs   []string
 	args        []string
 	pg          process_group.ProcessGroup
-	signum      syscall.Signal
 	stdin       io.WriteCloser
 }
 
@@ -42,7 +42,6 @@ func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args
 		target:      target,
 		bazelArgs:   bazelArgs,
 		args:        args,
-		signum:      getSignum(sigstring),
 	}
 }
 
@@ -52,14 +51,26 @@ func (c *notifyCommand) Terminate() {
 		return
 	}
 
-	c.pg.Signal(c.signum)
-	c.pg.Wait()
+	c.pg.Signal(syscall.SIGTERM)
+	done := make(chan bool)
+	go func() {
+		c.pg.Wait()
+		done <- true
+	}()
+	select {
+	case <-time.After(*gracefulDuration):
+		log.Logf("The subprocess wasn't terminated within %s", *gracefulDuration)
+		c.SendKillSignal()
+	case <-done:
+		// No action necessary since the job is gone on its own.
+	}
 	c.pg.Close()
 	c.pg = nil
 }
 
 func (c *notifyCommand) SendKillSignal() {
 	if c.pg != nil && subprocessRunning(c.pg.RootProcess()) {
+		log.Logf("Sending SIGKILL to the subprocess")
 		c.pg.Signal(syscall.SIGKILL)
 	}
 }

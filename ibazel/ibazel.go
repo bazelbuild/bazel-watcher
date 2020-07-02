@@ -42,9 +42,9 @@ var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 var exitMessages = map[os.Signal]string{
-	syscall.SIGINT:  "Terminated from getting SIGINT",
-	syscall.SIGTERM: "Terminated from getting SIGTERM",
-	syscall.SIGHUP:  "Terminated from getting SIGHUP",
+	syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
+	syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
+	syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
 }
 
 type State string
@@ -70,10 +70,8 @@ type IBazel struct {
 	bazelArgs   []string
 	startupArgs []string
 
-	sigs            chan os.Signal // Signals channel for the current process
-	interruptCount  int
-	gracefulTimeout time.Duration
-	isClosing       bool
+	sigs           chan os.Signal // Signals channel for the current process
+	interruptCount int
 
 	workspaceFinder workspace_finder.WorkspaceFinder
 
@@ -96,7 +94,6 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
-	i.gracefulTimeout = 10 * time.Second
 	i.filesWatched = map[fSNotifyWatcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
 
@@ -132,7 +129,6 @@ func New() (*IBazel, error) {
 func (i *IBazel) handleSignals() {
 	// Got an OS signal (SIGINT, SIGTERM, SIGHUP).
 	sig := <-i.sigs
-	i.isClosing = true
 
 	if i.cmd == nil || !i.cmd.IsSubprocessRunning() {
 		osExit(3)
@@ -154,21 +150,14 @@ func (i *IBazel) handleSignals() {
 				i.cmd.Terminate()
 				log.NewLine()
 				log.Log(exitMessages[sig])
-				osExit(3)
 			}()
 		}
-	case syscall.SIGTERM:
-		fallthrough
-	case syscall.SIGHUP:
+	case syscall.SIGTERM, syscall.SIGHUP:
 		go func() {
 			i.cmd.Terminate()
 			log.NewLine()
 			log.Log(exitMessages[sig])
 			osExit(3)
-		}()
-		go func() {
-			<-time.NewTimer(i.gracefulTimeout).C
-			i.cmd.SendKillSignal()
 		}()
 	default:
 		log.Fatal("Got a signal that wasn't handled. Please file a bug against bazel-watcher that describes how you did this. This is a big problem.")
@@ -279,9 +268,7 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 
 	i.state = QUERY
 	for {
-		if !i.isClosing {
-			i.iteration(command, commandToRun, targets, joinedTargets)
-		}
+		i.iteration(command, commandToRun, targets, joinedTargets)
 	}
 
 	return nil

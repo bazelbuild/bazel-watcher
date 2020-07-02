@@ -295,16 +295,11 @@ When the profiler script is loaded, a `window.IBazelProfileEvent(eventType, data
 
 ### Termination
 
-SIGKILL is used by default to kill the subprocess during restart or exit of
-ibazel. This signal may be changed to any of your choosing. Adding a flag
-`--signal=SIGTERM` would make ibazel to use SIGTERM instead of SIGKILL. Some run
-types, like running a Docker image, might require using signal like SIGTERM to
-shutdown properly. The signal flag is not supported on Windows.
-
-Ibazel will exit on its own when a bazel query fails, but it will stay alive
-when a build, test, or run fails. We use an exit code of 3 for a signal
-termination, and 4 for a query failure. These codes are not an API and may
-change at any point.
+SIGINT has to be sent twice to kill ibazel: once to terminate the subprocess,
+and the second time for ibazel itself. Also, ibazel will exit on its own when a
+bazel query fails, but it will stay alive when a build, test, or run fails.
+We use an exit code of 3 for a signal termination, and 4 for a query failure.
+These codes are not an API and may change at any point.
 
 ### What about the `--watchfs` flag?
 

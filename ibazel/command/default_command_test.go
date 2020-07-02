@@ -17,7 +17,6 @@ package command
 import (
 	"os"
 	"runtime"
-	"syscall"
 	"testing"
 
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
@@ -48,7 +47,6 @@ func TestDefaultCommand(t *testing.T) {
 		bazelArgs: []string{},
 		pg:        toKill,
 		target:    "//path/to:target",
-		signum:    syscall.SIGKILL,
 	}
 
 	if c.IsSubprocessRunning() {
