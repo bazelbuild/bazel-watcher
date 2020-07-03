@@ -23,9 +23,11 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
@@ -94,4 +96,28 @@ func subprocessRunning(cmd *exec.Cmd) bool {
 	}
 
 	return true
+}
+
+func terminate(pg process_group.ProcessGroup) {
+	pg.Signal(syscall.SIGTERM)
+	done := make(chan bool, 1)
+	go func() {
+		select {
+		case <-time.After(*gracefulDuration):
+			log.Logf("The subprocess wasn't terminated within %s", *gracefulDuration)
+			sendKillSignal(pg)
+		case <-done:
+			// The subprocess got terminated with SIGTERM
+		}
+	}()
+	pg.Wait()
+	done <- true
+	pg.Close()
+}
+
+func sendKillSignal(pg process_group.ProcessGroup) {
+	if subprocessRunning(pg.RootProcess()) {
+		log.Logf("Sending SIGKILL to the subprocess")
+		pg.Signal(syscall.SIGKILL)
+	}
 }

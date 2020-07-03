@@ -325,6 +325,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
 		i.beforeCommand(targets, command)
 		outputBuffer, err := commandToRun(targets...)
+		i.interruptCount = 0
 		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.state = WAIT
 	}

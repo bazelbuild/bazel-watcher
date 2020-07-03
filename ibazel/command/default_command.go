@@ -17,19 +17,20 @@ package command
 import (
 	"bytes"
 	"os"
-	"syscall"
-	"time"
+	"sync"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
 type defaultCommand struct {
-	target      string
-	startupArgs []string
-	bazelArgs   []string
-	args        []string
-	pg          process_group.ProcessGroup
+	target        string
+	startupArgs   []string
+	bazelArgs     []string
+	args          []string
+	pg            process_group.ProcessGroup
+	terminating   bool
+	termWaitGroup sync.WaitGroup
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
@@ -45,32 +46,25 @@ func DefaultCommand(startupArgs []string, bazelArgs []string, target string, arg
 }
 
 func (c *defaultCommand) Terminate() {
-	if c.pg == nil || !subprocessRunning(c.pg.RootProcess()) {
+	if !c.IsSubprocessRunning() {
 		c.pg = nil
 		return
 	}
-
-	c.pg.Signal(syscall.SIGTERM)
-	done := make(chan bool)
-	go func() {
-		c.pg.Wait()
-		done <- true
-	}()
-	select {
-	case <-time.After(*gracefulDuration):
-		log.Logf("The subprocess wasn't terminated within %s", *gracefulDuration)
-		c.SendKillSignal()
-	case <-done:
-		// No action necessary since the job is gone on its own.
+	if c.terminating {
+		c.termWaitGroup.Wait()
+		return
 	}
-	c.pg.Close()
+	c.termWaitGroup.Add(1)
+	c.terminating = true
+	terminate(c.pg)
 	c.pg = nil
+	c.terminating = false
+	c.termWaitGroup.Done()
 }
 
 func (c *defaultCommand) SendKillSignal() {
-	if c.pg != nil && subprocessRunning(c.pg.RootProcess()) {
-		log.Logf("Sending SIGKILL to the subprocess")
-		c.pg.Signal(syscall.SIGKILL)
+	if c.pg != nil {
+		sendKillSignal(c.pg)
 	}
 }
 
