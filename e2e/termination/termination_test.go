@@ -16,10 +16,13 @@ import (
 const signalHandler = `
 tail -f /dev/null & PID=$!
 _handler() { printf "$1."; kill $PID; }
-trap '_handler SIGTERM' SIGTERM
-trap '_handler SIGHUP'  SIGHUP
-trap '_handler SIGINT'  SIGINT
+trap '_handler SIGTERM' TERM
 wait
+`
+
+const signalHandlerBroken = `
+trap -- '' SIGTERM
+tail -f /dev/null
 `
 
 const mainFiles = `
@@ -60,22 +63,31 @@ func TestMain(m *testing.M) {
 	})
 }
 
-func TestTermination(t *testing.T) {
+func TestTerminationBasic(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 1!\";"+signalHandler)
 	ibazel.Run([]string{}, "//:termination")
 	ibazel.ExpectOutput("Started 1!")
+	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandler)
 	if runtime.GOOS == "windows" {
-		e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandler)
 		ibazel.ExpectOutput("Started 1!Started 2!")
 		ibazel.Signal(syscall.SIGINT)
 		ibazel.ExpectOutput("Started 1!Started 2!")
-		defer ibazel.Kill()
 	} else {
-		e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandler)
 		ibazel.ExpectOutput("Started 1!SIGTERM.Started 2!")
 		ibazel.Signal(syscall.SIGINT)
 		ibazel.ExpectOutput("Started 1!SIGTERM.Started 2!SIGTERM.")
-		defer ibazel.Kill()
 	}
+	defer ibazel.Kill()
+}
+
+func TestTerminationTimeout(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 1!\";"+signalHandlerBroken)
+	ibazel.Run([]string{}, "//:termination")
+	ibazel.ExpectOutput("Started 1!")
+	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandlerBroken)
+	ibazel.Signal(syscall.SIGINT)
+	ibazel.ExpectOutput("Started 1!Started 2!")
+	defer ibazel.Kill()
 }
