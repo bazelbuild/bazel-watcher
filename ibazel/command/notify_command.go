@@ -25,14 +25,13 @@ import (
 )
 
 type notifyCommand struct {
-	target        string
-	startupArgs   []string
-	bazelArgs     []string
-	args          []string
-	pg            process_group.ProcessGroup
-	stdin         io.WriteCloser
-	terminating   bool
-	termWaitGroup sync.WaitGroup
+	target      string
+	startupArgs []string
+	bazelArgs   []string
+	args        []string
+	pg          process_group.ProcessGroup
+	stdin       io.WriteCloser
+	termSync    sync.Once
 }
 
 // NotifyCommand is an alternate mode for starting a command. In this mode the
@@ -51,16 +50,10 @@ func (c *notifyCommand) Terminate() {
 		c.pg = nil
 		return
 	}
-	if c.terminating {
-		c.termWaitGroup.Wait()
-		return
-	}
-	c.termWaitGroup.Add(1)
-	c.terminating = true
-	terminate(c.pg)
+	c.termSync.Do(func() {
+		terminate(c.pg)
+	})
 	c.pg = nil
-	c.terminating = false
-	c.termWaitGroup.Done()
 }
 
 func (c *notifyCommand) SendKillSignal() {
@@ -94,6 +87,7 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 		return outputBuffer, err
 	}
 	log.Log("Starting...")
+	c.termSync = sync.Once{}
 	return outputBuffer, nil
 }
 

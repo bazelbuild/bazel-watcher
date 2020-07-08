@@ -104,10 +104,10 @@ func terminate(pg process_group.ProcessGroup) {
 	go func() {
 		select {
 		case <-time.After(*gracefulDuration):
-			log.Logf("The subprocess wasn't terminated within %s", *gracefulDuration)
+			log.Logf("The subprocess wasn't terminated within %s. Forcing to close.", *gracefulDuration)
 			sendKillSignal(pg)
 		case <-done:
-			// The subprocess got terminated with SIGTERM
+			// The subprocess was terminated with SIGTERM
 		}
 	}()
 	pg.Wait()

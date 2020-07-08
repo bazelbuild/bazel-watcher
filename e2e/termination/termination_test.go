@@ -69,6 +69,8 @@ func TestTerminationBasic(t *testing.T) {
 	ibazel.Run([]string{}, "//:termination")
 	ibazel.ExpectOutput("Started 1!")
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandler)
+
+	// Windows doesn't support signals unfortunately
 	if runtime.GOOS == "windows" {
 		ibazel.ExpectOutput("Started 1!Started 2!")
 		ibazel.Signal(syscall.SIGINT)

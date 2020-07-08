@@ -24,13 +24,12 @@ import (
 )
 
 type defaultCommand struct {
-	target        string
-	startupArgs   []string
-	bazelArgs     []string
-	args          []string
-	pg            process_group.ProcessGroup
-	terminating   bool
-	termWaitGroup sync.WaitGroup
+	target      string
+	startupArgs []string
+	bazelArgs   []string
+	args        []string
+	pg          process_group.ProcessGroup
+	termSync    sync.Once
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
@@ -50,16 +49,10 @@ func (c *defaultCommand) Terminate() {
 		c.pg = nil
 		return
 	}
-	if c.terminating {
-		c.termWaitGroup.Wait()
-		return
-	}
-	c.termWaitGroup.Add(1)
-	c.terminating = true
-	terminate(c.pg)
+	c.termSync.Do(func() {
+		terminate(c.pg)
+	})
 	c.pg = nil
-	c.terminating = false
-	c.termWaitGroup.Done()
 }
 
 func (c *defaultCommand) SendKillSignal() {
@@ -87,6 +80,7 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 		return outputBuffer, err
 	}
 	log.Log("Starting...")
+	c.termSync = sync.Once{}
 	return outputBuffer, nil
 }
 
