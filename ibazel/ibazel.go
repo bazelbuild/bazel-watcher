@@ -144,7 +144,7 @@ func (i *IBazel) handleSignals() {
 			log.Fatal("Exiting from getting SIGINT 3 times")
 			osExit(3)
 		case i.interruptCount > 1:
-			i.cmd.SendKillSignal()
+			i.cmd.Kill()
 		default:
 			go func() {
 				i.cmd.Terminate()

@@ -32,10 +32,10 @@ import (
 )
 
 var (
-	execCommand      = process_group.Command
-	bazelNew         = bazel.New
-	gracefulDuration = flag.Duration(
-		"graceful_duration",
+	execCommand  = process_group.Command
+	bazelNew     = bazel.New
+	waitDuration = flag.Duration(
+		"graceful_termination_wait_duration",
 		10*time.Second,
 		"Specify the duration to wait for a graceful termination before sending SIGKILL to the subprocess")
 )
@@ -45,7 +45,7 @@ var (
 type Command interface {
 	Start() (*bytes.Buffer, error)
 	Terminate()
-	SendKillSignal()
+	Kill()
 	NotifyOfChanges() *bytes.Buffer
 	IsSubprocessRunning() bool
 }
@@ -103,9 +103,9 @@ func terminate(pg process_group.ProcessGroup) {
 	done := make(chan bool, 1)
 	go func() {
 		select {
-		case <-time.After(*gracefulDuration):
-			log.Logf("The subprocess wasn't terminated within %s. Forcing to close.", *gracefulDuration)
-			sendKillSignal(pg)
+		case <-time.After(*waitDuration):
+			log.Logf("The subprocess wasn't terminated within %s. Forcing to close.", *waitDuration)
+			kill(pg)
 		case <-done:
 			// The subprocess was terminated with SIGTERM
 		}
@@ -115,7 +115,7 @@ func terminate(pg process_group.ProcessGroup) {
 	pg.Close()
 }
 
-func sendKillSignal(pg process_group.ProcessGroup) {
+func kill(pg process_group.ProcessGroup) {
 	if subprocessRunning(pg.RootProcess()) {
 		log.Logf("Sending SIGKILL to the subprocess")
 		pg.Signal(syscall.SIGKILL)

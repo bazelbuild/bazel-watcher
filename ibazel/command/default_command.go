@@ -55,9 +55,9 @@ func (c *defaultCommand) Terminate() {
 	c.pg = nil
 }
 
-func (c *defaultCommand) SendKillSignal() {
+func (c *defaultCommand) Kill() {
 	if c.pg != nil {
-		sendKillSignal(c.pg)
+		kill(c.pg)
 	}
 }
 

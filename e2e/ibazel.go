@@ -64,7 +64,7 @@ func (i *IBazelTester) Run(bazelArgs []string, target string) {
 	i.t.Helper()
 	i.run(target, bazelArgs, []string{
 		"--log_to_file=" + i.ibazelLogFile,
-		"--graceful_duration=1s",
+		"--graceful_termination_wait_duration=1s",
 	})
 }
 
@@ -72,7 +72,7 @@ func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
 	i.t.Helper()
 	i.run(target, []string{}, []string{
 		"--log_to_file=" + i.ibazelLogFile,
-		"--graceful_duration=1s",
+		"--graceful_termination_wait_duration=1s",
 		"--profile_dev=" + profiler,
 	})
 }
@@ -81,7 +81,7 @@ func (i *IBazelTester) RunWithBazelFixCommands(target string) {
 	i.t.Helper()
 	i.run(target, []string{}, []string{
 		"--log_to_file=" + i.ibazelLogFile,
-		"--graceful_duration=1s",
+		"--graceful_termination_wait_duration=1s",
 		"--run_output=true",
 		"--run_output_interactive=false",
 	})

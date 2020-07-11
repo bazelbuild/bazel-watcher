@@ -117,7 +117,7 @@ func (m *mockCommand) Terminate() {
 	m.terminated = true
 	m.didTermChan <- struct{}{}
 }
-func (m *mockCommand) SendKillSignal() {
+func (m *mockCommand) Kill() {
 	if !m.started {
 		panic("Sending kill signal before terminating")
 	}
