@@ -41,6 +41,11 @@ var osExit = os.Exit
 var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
+var exitMessages = map[os.Signal]string{
+	syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
+	syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
+	syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
+}
 
 type State string
 type runnableCommand func(...string) (*bytes.Buffer, error)
@@ -125,41 +130,37 @@ func (i *IBazel) handleSignals() {
 	// Got an OS signal (SIGINT, SIGTERM, SIGHUP).
 	sig := <-i.sigs
 
-	switch sig {
-	case syscall.SIGINT:
-		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			log.NewLine()
-			log.Log("Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)")
-			i.cmd.Terminate()
-		} else {
-			osExit(3)
-		}
-		break
-	case syscall.SIGTERM:
-		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			log.NewLine()
-			log.Log("Subprocess killed from getting SIGTERM")
-			i.cmd.Terminate()
-		}
+	if i.cmd == nil || !i.cmd.IsSubprocessRunning() {
 		osExit(3)
 		return
-	case syscall.SIGHUP:
-		if i.cmd != nil && i.cmd.IsSubprocessRunning() {
-			log.NewLine()
-			log.Log("Subprocess killed from getting SIGHUP")
-			i.cmd.Terminate()
-		}
-		osExit(3)
-		return
-	default:
-		log.Fatal("Got a signal that wasn't handled. Please file a bug against bazel-watcher that describes how you did this. This is a big problem.")
 	}
 
-	i.interruptCount += 1
-	if i.interruptCount > 2 {
-		log.NewLine()
-		log.Fatal("Exiting from getting SIGINT 3 times")
-		osExit(3)
+	switch sig {
+	case syscall.SIGINT:
+		i.interruptCount++
+		switch {
+		case i.interruptCount > 2:
+			log.NewLine()
+			log.Fatal("Exiting from getting SIGINT 3 times")
+			osExit(3)
+		case i.interruptCount > 1:
+			i.cmd.Kill()
+		default:
+			go func() {
+				i.cmd.Terminate()
+				log.NewLine()
+				log.Log(exitMessages[sig])
+			}()
+		}
+	case syscall.SIGTERM, syscall.SIGHUP:
+		go func() {
+			i.cmd.Terminate()
+			log.NewLine()
+			log.Log(exitMessages[sig])
+			osExit(3)
+		}()
+	default:
+		log.Fatal("Got a signal that wasn't handled. Please file a bug against bazel-watcher that describes how you did this. This is a big problem.")
 	}
 }
 
@@ -324,6 +325,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
 		i.beforeCommand(targets, command)
 		outputBuffer, err := commandToRun(targets...)
+		i.interruptCount = 0
 		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.state = WAIT
 	}

@@ -17,7 +17,6 @@ package process_group
 import (
 	"bytes"
 	"errors"
-	"log"
 	"os/exec"
 	"syscall"
 	"unsafe"
@@ -91,8 +90,8 @@ func (pg *winProcessGroup) Start() error {
 	return nil
 }
 
-func (pg *winProcessGroup) Kill() error {
-	log.Println("Kill()")
+func (pg *winProcessGroup) Signal(signum syscall.Signal) error {
+	// signum is ignored on Windows as there's no support for signals
 	if pg.job == 0 {
 		return errors.New("job not started")
 	}

@@ -17,6 +17,7 @@ package command
 import (
 	"bytes"
 	"os"
+	"sync"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
@@ -28,6 +29,7 @@ type defaultCommand struct {
 	bazelArgs   []string
 	args        []string
 	pg          process_group.ProcessGroup
+	termSync    sync.Once
 }
 
 // DefaultCommand is the normal mode of interacting with iBazel. If you start a
@@ -43,19 +45,20 @@ func DefaultCommand(startupArgs []string, bazelArgs []string, target string, arg
 }
 
 func (c *defaultCommand) Terminate() {
-	if c.pg != nil && !subprocessRunning(c.pg.RootProcess()) {
+	if !c.IsSubprocessRunning() {
+		c.pg = nil
 		return
 	}
-
-	// Kill it with fire by sending SIGKILL to the process PID which should
-	// propagate down to any subprocesses in the PGID (Process Group ID). To
-	// send to the PGID, send the signal to the negative of the process PID.
-	// Normally I would do this by calling c.cmd.Process.Signal, but that
-	// only goes to the PID not the PGID.
-	c.pg.Kill()
-	c.pg.Wait()
-	c.pg.Close()
+	c.termSync.Do(func() {
+		terminate(c.pg)
+	})
 	c.pg = nil
+}
+
+func (c *defaultCommand) Kill() {
+	if c.pg != nil {
+		kill(c.pg)
+	}
 }
 
 func (c *defaultCommand) Start() (*bytes.Buffer, error) {
@@ -77,6 +80,7 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 		return outputBuffer, err
 	}
 	log.Log("Starting...")
+	c.termSync = sync.Once{}
 	return outputBuffer, nil
 }
 

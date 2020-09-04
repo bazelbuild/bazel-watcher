@@ -27,6 +27,7 @@ package process_group
 
 import (
 	"os/exec"
+	"syscall"
 )
 
 // ProcessGroup represents a tree of processes that can be terminated
@@ -34,7 +35,7 @@ import (
 type ProcessGroup interface {
 	RootProcess() *exec.Cmd
 	Start() error
-	Kill() error
+	Signal(signum syscall.Signal) error
 	Wait() error
 	Close() error
 	CombinedOutput() ([]byte, error)

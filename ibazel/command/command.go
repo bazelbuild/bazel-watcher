@@ -16,25 +16,36 @@ package command
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
 )
 
-var execCommand = process_group.Command
-var bazelNew = bazel.New
+var (
+	execCommand  = process_group.Command
+	bazelNew     = bazel.New
+	waitDuration = flag.Duration(
+		"graceful_termination_wait_duration",
+		10*time.Second,
+		"Specify the duration to wait for a graceful termination before sending SIGKILL to the subprocess")
+)
 
 // Command is an object that wraps the logic of running a task in Bazel and
 // manipulating it.
 type Command interface {
 	Start() (*bytes.Buffer, error)
 	Terminate()
+	Kill()
 	NotifyOfChanges() *bytes.Buffer
 	IsSubprocessRunning() bool
 }
@@ -85,4 +96,28 @@ func subprocessRunning(cmd *exec.Cmd) bool {
 	}
 
 	return true
+}
+
+func terminate(pg process_group.ProcessGroup) {
+	pg.Signal(syscall.SIGTERM)
+	done := make(chan bool, 1)
+	go func() {
+		select {
+		case <-time.After(*waitDuration):
+			log.Logf("The subprocess wasn't terminated within %s. Forcing to close.", *waitDuration)
+			kill(pg)
+		case <-done:
+			// The subprocess was terminated with SIGTERM
+		}
+	}()
+	pg.Wait()
+	done <- true
+	pg.Close()
+}
+
+func kill(pg process_group.ProcessGroup) {
+	if subprocessRunning(pg.RootProcess()) {
+		log.Logf("Sending SIGKILL to the subprocess")
+		pg.Signal(syscall.SIGKILL)
+	}
 }

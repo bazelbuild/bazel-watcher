@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/process_group"
@@ -28,9 +29,9 @@ type notifyCommand struct {
 	startupArgs []string
 	bazelArgs   []string
 	args        []string
-
-	pg    process_group.ProcessGroup
-	stdin io.WriteCloser
+	pg          process_group.ProcessGroup
+	stdin       io.WriteCloser
+	termSync    sync.Once
 }
 
 // NotifyCommand is an alternate mode for starting a command. In this mode the
@@ -45,20 +46,20 @@ func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args
 }
 
 func (c *notifyCommand) Terminate() {
-	if c.pg == nil || !subprocessRunning(c.pg.RootProcess()) {
+	if !c.IsSubprocessRunning() {
 		c.pg = nil
 		return
 	}
-
-	// Kill it with fire by sending SIGKILL to the process PID which should
-	// propagate down to any subprocesses in the PGID (Process Group ID). To
-	// send to the PGID, send the signal to the negative of the process PID.
-	// Normally I would do this by calling c.cmd.Process.Signal, but that
-	// only goes to the PID not the PGID.
-	c.pg.Kill()
-	c.pg.Wait()
-	c.pg.Close()
+	c.termSync.Do(func() {
+		terminate(c.pg)
+	})
 	c.pg = nil
+}
+
+func (c *notifyCommand) Kill() {
+	if c.pg != nil {
+		kill(c.pg)
+	}
 }
 
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
@@ -86,6 +87,7 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 		return outputBuffer, err
 	}
 	log.Log("Starting...")
+	c.termSync = sync.Once{}
 	return outputBuffer, nil
 }
 
