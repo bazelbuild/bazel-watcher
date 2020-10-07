@@ -140,6 +140,7 @@ func (o *OutputRunner) readConfigs(configPath string) []Optcmd {
 func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]string) {
 	var commandLines, commands []string
 	var args [][]string
+	distinctCommands := map[string]bool{}
 	scanner := bufio.NewScanner(output)
 	for scanner.Scan() {
 		line := escapeCodeCleanerRegex.ReplaceAllLiteralString(scanner.Text(), "")
@@ -147,9 +148,15 @@ func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]
 			re := regexp.MustCompile(oc.Regex)
 			matches := re.FindStringSubmatch(line)
 			if matches != nil && len(matches) >= 0 {
-				commandLines = append(commandLines, matches[0])
-				commands = append(commands, convertArg(matches, oc.Command))
-				args = append(args, convertArgs(matches, oc.Args))
+				command := convertArg(matches, oc.Command)
+				cmdArgs := convertArgs(matches, oc.Args)
+				fullCmd := strings.Join(append([]string{command}, cmdArgs...), " ")
+				if _, found := distinctCommands[fullCmd]; !found {
+					commandLines = append(commandLines, matches[0])
+					commands = append(commands, command)
+					args = append(args, cmdArgs)
+					distinctCommands[fullCmd] = true
+				}
 			}
 		}
 	}

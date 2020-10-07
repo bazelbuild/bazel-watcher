@@ -93,6 +93,8 @@ func TestMatchRegex(t *testing.T) {
 	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
 	buf.WriteString("buildifier 'cmd_nvm' //target_nvm:target_nvm\n")
 	buf.WriteString("not_a_match 'nvm' //target_nvm:target_nvm\n")
+	// Duplicate match, to be deduplicated.
+	buf.WriteString("buildifier 'cmd_ignore' //target_ignore:target_ignore\n")
 
 	optcmd := []Optcmd{
 		{Regex: "^(buildozer) '(.*)'\\s+(.*)$", Command: "$1", Args: []string{"$2", "$3"}},
@@ -101,7 +103,7 @@ func TestMatchRegex(t *testing.T) {
 
 	_, commands, args := matchRegex(optcmd, &buf)
 
-	for idx, c := range []struct {
+	expected := []struct {
 		cls string
 		cs  string
 		as  []string
@@ -109,7 +111,11 @@ func TestMatchRegex(t *testing.T) {
 		{"buildozer 'add deps test_dep1' //target1:target1", "buildozer", []string{"add deps test_dep1", "//target1:target1"}},
 		{"buildozer 'add deps test_dep2' //target2:target2", "buildozer", []string{"add deps test_dep2", "//target2:target2"}},
 		{"buildifier 'cmd_nvm' //target_nvm:target_nvm", "test_cmd", []string{"test_arg1", "test_arg2"}},
-	} {
+	}
+	if len(expected) != len(commands) {
+		t.Errorf("Did not receive expected number of commands:\nGot: %d\nWant: %d", len(commands), len(expected))
+	}
+	for idx, c := range expected {
 		if !reflect.DeepEqual(c.cs, commands[idx]) {
 			t.Errorf("Commands not equal: %v\nGot:  %v\nWant: %v",
 				c.cls, commands[idx], c.cs)
