@@ -159,22 +159,16 @@ func (i *IBazelTester) ExpectFixCommands(want []string, delay ...time.Duration) 
 
 	logRegexp := regexp.MustCompile("Executing command: `([^`]+)`")
 
-	stream := i.GetIBazelError
-	history := &i.ibazelErrOld
-
 	stopAt := time.Now().Add(d)
 	for time.Now().Before(stopAt) {
 		time.Sleep(5 * time.Millisecond)
 
-		// Only find after the history mark.
-		out := stream()[len(*history):]
-		if len(logRegexp.FindAllStringSubmatch(out, -1)) >= len(want) {
+		if len(logRegexp.FindAllStringSubmatch(i.GetIBazelError(), -1)) >= len(want) {
 			break
 		}
 	}
 
-	out := stream()[len(*history):]
-	matches := logRegexp.FindAllStringSubmatch(out, -1)
+	matches := logRegexp.FindAllStringSubmatch(i.GetIBazelError(), -1)
 	if len(matches) != len(want) {
 		i.t.Errorf("Expected %v commands to be executed, but found %v.", len(want), len(matches))
 		i.t.Errorf("Stderr: [%v]\niBazelStderr: [%v]", i.GetError(), i.GetIBazelError())
@@ -191,7 +185,6 @@ func (i *IBazelTester) ExpectFixCommands(want []string, delay ...time.Duration) 
 			}
 		}
 	}
-	*history = stream()
 }
 
 func (i *IBazelTester) Expect(want string, stream func() string, history *string, delay time.Duration) {

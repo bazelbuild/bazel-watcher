@@ -14,11 +14,7 @@ import (
 const mainFiles = `
 -- defs.bzl --
 def fix_deps():
-  print("runanycommand")
-  print("runcommand foo")
-  print("runcommand bar")
-  print("runcommand foo")
-  print("runcommand baz")
+  print("runacommand")
 -- BUILD --
 load("//:defs.bzl", "fix_deps")
 
@@ -67,6 +63,11 @@ func checkSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 func TestOutputRunner(t *testing.T) {
 	e2e.SetExecuteBit(t)
 
+	// Ensure defs.bzl is as we expect.
+	e2e.MustWriteFile(t, "defs.bzl", `def fix_deps():
+  print("runacommand")
+`)
+
 	sentinelFile, err := ioutil.TempFile("", "fixCommandSentinel")
 	if err != nil {
 		t.Errorf("ioutil.TempFile(\"\", \"fixCommandSentinel\": %v", err)
@@ -86,7 +87,7 @@ func TestOutputRunner(t *testing.T) {
 
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
 	[{
-		"regex": "^(.*)runanycommand(.*)$",
+		"regex": "^(.*)runacommand(.*)$",
 		"command": "touch",
 		"args": ["%s"]
 	}]`, sentinalFileName))
@@ -129,7 +130,13 @@ def fix_deps():
 func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
 	e2e.SetExecuteBit(t)
 
-	// Fix command will write the given name to the sentinelFile
+	e2e.MustWriteFile(t, "defs.bzl", `
+def fix_deps():
+  print("runcommand foo")
+  print("runcommand bar")
+  print("runcommand foo")
+  print("runcommand baz")
+`)
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
 	[{
 		"regex": "^.*runcommand (.*)$",
