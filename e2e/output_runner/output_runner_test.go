@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -14,7 +15,11 @@ import (
 const mainFiles = `
 -- defs.bzl --
 def fix_deps():
-  print("runacommand")
+  print("runanycommand")
+  print("runcommand foo")
+  print("runcommand bar")
+  print("runcommand foo")
+  print("runcommand baz")
 -- BUILD --
 load("//:defs.bzl", "fix_deps")
 
@@ -82,7 +87,7 @@ func TestOutputRunner(t *testing.T) {
 
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
 	[{
-		"regex": "^(.*)runacommand(.*)$",
+		"regex": "^(.*)runanycommand(.*)$",
 		"command": "touch",
 		"args": ["%s"]
 	}]`, sentinalFileName))
@@ -120,6 +125,50 @@ def fix_deps():
 
 	ibazel.ExpectOutput("overwrite1")
 	checkNoSentinel(t, sentinelFile, "The third run should not create a sentinel.")
+}
+
+func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
+	e2e.SetExecuteBit(t)
+
+	sentinelFile, err := ioutil.TempFile("", "fixCommandSentinel")
+	if err != nil {
+		t.Errorf("ioutil.TempFile(\"\", \"fixCommandSentinel\": %v", err)
+	}
+	sentinelFileName := strings.Replace(sentinelFile.Name(), "\\", "/", -1)
+
+	e2e.Must(t, sentinelFile.Close())
+	checkSentinel(t, sentinelFile, "ioutil.TempFile creates the file by default. Delete it.")
+	checkNoSentinel(t, sentinelFile, "The sentinel should now be deleted.")
+
+	// Create a task which can write a given word to a file
+	e2e.MustWriteFile(t, "overwrite.sh", `
+printf "$1\n" >> $2
+`)
+
+	// Fix command will write the given name to the sentinelFile
+	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
+	[{
+		"regex": "^.*runcommand (.*)$",
+		"command": "bazel",
+		"args": ["run", "//:overwrite", "--", "$1", "%s"]
+	}]`, sentinelFileName))
+
+	ibazel := e2e.NewIBazelTester(t)
+	ibazel.RunWithBazelFixCommands("//:test")
+	ibazel.ExpectOutput("action")
+	defer ibazel.Kill()
+
+	// Let the extra builds settle.
+	time.Sleep(15 * time.Second)
+
+	// Expect each name to be written only once.
+	expected := "foo\nbar\nbaz\n"
+	if content, err := ioutil.ReadFile(sentinelFile.Name()); os.IsNotExist(err) {
+		t.Errorf("Couldn't find sentinel. ioutil.ReadFile(%q): %s\n", sentinelFile.Name(), err)
+	} else if string(content) != expected {
+       t.Errorf("Set of commands run are not as expected:\nGot:  %v\nWant: %v", string(content), expected)
+	}
+	os.Remove(sentinelFileName)
 }
 
 func TestNotifyWhenInvalidConfig(t *testing.T) {
