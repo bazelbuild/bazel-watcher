@@ -147,6 +147,53 @@ func (i *IBazelTester) GetIBazelError() string {
 	return string(b)
 }
 
+func (i *IBazelTester) ExpectFixCommands(want []string, delay ...time.Duration) {
+	i.t.Helper()
+
+	i.checkExit()
+
+	d := defaultDelay
+	if len(delay) == 1 {
+		d = delay[0]
+	}
+
+	logRegexp := regexp.MustCompile("Executing command: `([^`]+)`")
+
+	stream := i.GetIBazelError
+	history := &i.ibazelErrOld
+
+	stopAt := time.Now().Add(d)
+	for time.Now().Before(stopAt) {
+		time.Sleep(5 * time.Millisecond)
+
+		// Only find after the history mark.
+		out := stream()[len(*history):]
+		if len(logRegexp.FindAllStringSubmatch(out, -1)) >= len(want) {
+			break
+		}
+	}
+
+	out := stream()[len(*history):]
+	matches := logRegexp.FindAllStringSubmatch(out, -1)
+	if len(matches) != len(want) {
+		i.t.Errorf("Expected %v commands to be executed, but found %v.", len(want), len(matches))
+		i.t.Errorf("Stderr: [%v]\niBazelStderr: [%v]", i.GetError(), i.GetIBazelError())
+	} else {
+		var actual []string
+		for ind := range matches {
+			actual = append(actual, matches[ind][1])
+		}
+		for ind, expected := range want {
+			if actual[ind] != expected {
+				i.t.Errorf("Expected the commands to have been executed in order:\nWanted [\n%s\n], got [\n%s\n]",
+					strings.Join(want, "\n"), strings.Join(actual, "\n"))
+				i.t.Errorf("Stderr: [%v]\niBazelStderr: [%v]", i.GetError(), i.GetIBazelError())
+			}
+		}
+	}
+	*history = stream()
+}
+
 func (i *IBazelTester) Expect(want string, stream func() string, history *string, delay time.Duration) {
 	i.t.Helper()
 

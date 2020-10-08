@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/bazelbuild/bazel-watcher/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -130,52 +129,23 @@ def fix_deps():
 func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
 	e2e.SetExecuteBit(t)
 
-	sentinelFile, err := ioutil.TempFile("", "fixCommandSentinel")
-	if err != nil {
-		t.Errorf("ioutil.TempFile(\"\", \"fixCommandSentinel\": %v", err)
-	}
-	sentinelFileName := strings.Replace(sentinelFile.Name(), "\\", "/", -1)
-
-	e2e.Must(t, sentinelFile.Close())
-	checkSentinel(t, sentinelFile, "ioutil.TempFile creates the file by default. Delete it.")
-	checkNoSentinel(t, sentinelFile, "The sentinel should now be deleted.")
-
-	// Create a task which can write a given word to a file
-	e2e.MustWriteFile(t, "overwrite.sh", `
-printf "$1\n" >> $2
-`)
-
 	// Fix command will write the given name to the sentinelFile
-	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
+	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
 	[{
 		"regex": "^.*runcommand (.*)$",
-		"command": "bazel",
-		"args": ["run", "//:overwrite", "--", "$1", "%s"]
-	}]`, sentinelFileName))
+		"command": "echo",
+		"args": ["$1"]
+	}]`)
 
 	ibazel := e2e.NewIBazelTester(t)
 	ibazel.RunWithBazelFixCommands("//:test")
-	ibazel.ExpectOutput("action")
 	defer ibazel.Kill()
 
-	// Expect each name to be written only once.
-	expected := "foo\nbar\nbaz\n"
-	var content []byte
-	// Might take some time for the file to settle, so give it up to 30 secs.
-	stopAt := time.Now().Add(30 * time.Second)
-	for time.Now().Before(stopAt) {
-		time.Sleep(5 * time.Millisecond)
-		content, err = ioutil.ReadFile(sentinelFile.Name())
-		if err == nil && string(content) == expected {
-			break
-		}
-	}
-	if os.IsNotExist(err) {
-	    t.Errorf("Couldn't find sentinel. ioutil.ReadFile(%q): %s\n", sentinelFile.Name(), err)
-	} else if string(content) != expected {
-		t.Errorf("Set of commands run are not as expected:\nGot:  %v\nWant: %v", string(content), expected)
-	}
-	os.Remove(sentinelFileName)
+	ibazel.ExpectFixCommands([]string{
+		"echo foo",
+		"echo bar",
+		"echo baz",
+	})
 }
 
 func TestNotifyWhenInvalidConfig(t *testing.T) {
