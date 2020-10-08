@@ -158,15 +158,22 @@ printf "$1\n" >> $2
 	ibazel.ExpectOutput("action")
 	defer ibazel.Kill()
 
-	// Let the extra builds settle.
-	time.Sleep(15 * time.Second)
-
 	// Expect each name to be written only once.
 	expected := "foo\nbar\nbaz\n"
-	if content, err := ioutil.ReadFile(sentinelFile.Name()); os.IsNotExist(err) {
-		t.Errorf("Couldn't find sentinel. ioutil.ReadFile(%q): %s\n", sentinelFile.Name(), err)
+	var content []byte
+	// Might take some time for the file to settle, so give it up to 30 secs.
+	stopAt := time.Now().Add(30 * time.Second)
+	for time.Now().Before(stopAt) {
+		time.Sleep(5 * time.Millisecond)
+		content, err = ioutil.ReadFile(sentinelFile.Name())
+		if err == nil && string(content) == expected {
+			break
+		}
+	}
+	if os.IsNotExist(err) {
+	    t.Errorf("Couldn't find sentinel. ioutil.ReadFile(%q): %s\n", sentinelFile.Name(), err)
 	} else if string(content) != expected {
-       t.Errorf("Set of commands run are not as expected:\nGot:  %v\nWant: %v", string(content), expected)
+		t.Errorf("Set of commands run are not as expected:\nGot:  %v\nWant: %v", string(content), expected)
 	}
 	os.Remove(sentinelFileName)
 }
