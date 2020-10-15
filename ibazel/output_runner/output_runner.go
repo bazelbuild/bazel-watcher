@@ -43,7 +43,8 @@ var (
 		"run_output_interactive",
 		true,
 		"Use an interactive prompt when executing commands in Bazel output")
-	notifiedUser = false
+	notifiedUser     = false
+	runCommandBefore = flag.String("run_command_before", "", "A command to run before each execution")
 )
 
 // This RegExp will match ANSI escape codes.
@@ -72,7 +73,12 @@ func (i *OutputRunner) TargetDecider(rule *blaze_query.Rule) {}
 
 func (i *OutputRunner) ChangeDetected(targets []string, changeType string, change string) {}
 
-func (i *OutputRunner) BeforeCommand(targets []string, command string) {}
+func (i *OutputRunner) BeforeCommand(targets []string, command string) {
+	if *runCommandBefore != "" {
+		commandAndArgs := strings.Split(*runCommandBefore, " ")
+		i.executeCommand(commandAndArgs[0], commandAndArgs[1:])
+	}
+}
 
 func (i *OutputRunner) AfterCommand(targets []string, command string, success bool, output *bytes.Buffer) {
 	if *runOutput == false || output == nil {
