@@ -1,5 +1,3 @@
-// +build !windows
-
 package lifecycle_hooks
 
 import (
@@ -21,10 +19,6 @@ sh_binary(
 )
 -- test.sh --
 printf "action"
-
--- command_before.sh --
-#!/bin/sh
-printf "Hello from script"
 `
 
 func TestMain(m *testing.M) {
@@ -60,15 +54,8 @@ func TestLifecycleHooks(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 
 	ibazel.RunWithAdditionalArgs("//:test", []string{
-		`-run_command_before=/bin/sh -c 'printf Hi'`,
+		"-run_command_before=echo Hi",
 	})
 	ibazel.ExpectOutput("Hi")
-	ibazel.Kill()
-
-	ibazel = e2e.NewIBazelTester(t)
-	ibazel.RunWithAdditionalArgs("//:test", []string{
-		`-run_command_before=./command_before.sh`,
-	})
-	ibazel.ExpectOutput("Hello from script")
 	ibazel.Kill()
 }
