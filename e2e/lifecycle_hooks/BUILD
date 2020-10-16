@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
 go_bazel_test(
     name = "go_default_test",
-    srcs = ["lifecycle_hooks_test.go"],
+    srcs = [
+        "lifecycle_hooks_unix_test.go",
+        "lifecycle_hooks_windows_test.go"
+    ],
     data = [
         "//ibazel",
     ],
