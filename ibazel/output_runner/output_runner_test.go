@@ -35,7 +35,7 @@ func TestConvertArgs(t *testing.T) {
 	} {
 		new_cmd := convertArg(matches, c.cmd)
 		if !reflect.DeepEqual(c.truth, new_cmd) {
-			t.Errorf("Command not equal: %v\nGot:  %v\nWan	t: %v",
+			t.Errorf("Command not equal: %v\nGot:  %v\nWant: %v",
 				c.cmd, new_cmd, c.truth)
 		}
 	}
