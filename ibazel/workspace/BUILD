@@ -16,7 +16,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["workspace_finder.go"],
-    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder",
+    srcs = ["workspace.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/ibazel/workspace",
     visibility = ["//ibazel:__subpackages__"],
+    deps = ["//ibazel/log:go_default_library"],
 )

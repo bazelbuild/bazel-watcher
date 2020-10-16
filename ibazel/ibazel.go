@@ -33,7 +33,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/output_runner"
 	"github.com/bazelbuild/bazel-watcher/ibazel/profiler"
-	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
@@ -73,7 +73,7 @@ type IBazel struct {
 	sigs           chan os.Signal // Signals channel for the current process
 	interruptCount int
 
-	workspaceFinder workspace_finder.WorkspaceFinder
+	workspaceFinder workspace.Workspace
 
 	buildFileWatcher  fSNotifyWatcher
 	sourceFileWatcher fSNotifyWatcher
@@ -95,7 +95,7 @@ func New() (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[fSNotifyWatcher]map[string]struct{}{}
-	i.workspaceFinder = &workspace_finder.MainWorkspaceFinder{}
+	i.workspaceFinder = &workspace.MainWorkspace{}
 
 	i.sigs = make(chan os.Signal, 1)
 	signal.Notify(i.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)

@@ -31,7 +31,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
-	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
 	mock_bazel "github.com/bazelbuild/bazel-watcher/bazel/testing"
@@ -189,7 +189,7 @@ func newIBazel(t *testing.T) *IBazel {
 		t.Errorf("Error creating IBazel: %s", err)
 	}
 
-	i.workspaceFinder = &workspace_finder.FakeWorkspaceFinder{}
+	i.workspaceFinder = &workspace.FakeWorkspace{}
 
 	return i
 }

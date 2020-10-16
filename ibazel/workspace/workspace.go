@@ -12,21 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package workspace_finder
+package workspace
 
 import (
+	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+
+	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 )
 
-type WorkspaceFinder interface {
+type Workspace interface {
 	FindWorkspace() (string, error)
+	ExecuteCommand(command string, args []string)
 }
 
-type MainWorkspaceFinder struct{}
+type MainWorkspace struct{}
 
-func (m *MainWorkspaceFinder) FindWorkspace() (string, error) {
+func (m *MainWorkspace) FindWorkspace() (string, error) {
 	path, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -59,8 +65,35 @@ func (m *MainWorkspaceFinder) FindWorkspace() (string, error) {
 	}
 }
 
-type FakeWorkspaceFinder struct{}
+func (m *MainWorkspace) ExecuteCommand(command string, args []string) {
+	for i, arg := range args {
+		args[i] = strings.TrimSpace(arg)
+	}
+	log.Logf("Executing command: %s", command)
+	workspacePath, err := m.FindWorkspace()
+	if err != nil {
+		log.Fatalf("Error finding workspace: %v", err)
+		os.Exit(5)
+	}
+	log.Logf("Workspace path: %s", workspacePath)
 
-func (f *FakeWorkspaceFinder) FindWorkspace() (string, error) {
+	ctx, _ := context.WithCancel(context.Background())
+	cmd := exec.CommandContext(ctx, command, args...)
+	log.Logf("Executing command: `%s`", strings.Join(cmd.Args, " "))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Dir = workspacePath
+
+	err = cmd.Run()
+	if err != nil {
+		log.Errorf("Command failed: %s %s. Error: %s", command, args, err)
+	}
+}
+
+type FakeWorkspace struct{}
+
+func (f *FakeWorkspace) FindWorkspace() (string, error) {
 	return "", nil
 }
+
+func (f *FakeWorkspace) ExecuteCommand(command string, args []string) {}
