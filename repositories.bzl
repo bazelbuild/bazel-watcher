@@ -51,3 +51,9 @@ def go_repositories():
         sum = "h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=",
         version = "v0.0.0-20191204190536-9bdfabe68543",
     )
+    go_repository(
+        name = "com_github_mattn_go_shellwords",
+        importpath = "github.com/mattn/go-shellwords",
+        sum = "h1:Y7Xqm8piKOO3v10Thp7Z36h4FYFjt5xB//6XvOrs2Gw=",
+        version = "v1.0.10",
+    )

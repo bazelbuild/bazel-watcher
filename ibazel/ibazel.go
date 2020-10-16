@@ -29,6 +29,7 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/lifecycle_hooks"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/output_runner"
@@ -103,6 +104,7 @@ func New() (*IBazel, error) {
 	liveReload := live_reload.New()
 	profiler := profiler.New(Version)
 	outputRunner := output_runner.New()
+	lifecycleHooks := lifecycle_hooks.New()
 
 	liveReload.AddEventsListener(profiler)
 
@@ -110,6 +112,7 @@ func New() (*IBazel, error) {
 		liveReload,
 		profiler,
 		outputRunner,
+		lifecycleHooks,
 	}
 
 	info, _ := i.getInfo()

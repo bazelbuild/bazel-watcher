@@ -45,6 +45,7 @@ go_library(
     deps = [
         "//bazel:go_default_library",
         "//ibazel/command:go_default_library",
+        "//ibazel/lifecycle_hooks:go_default_library",
         "//ibazel/live_reload:go_default_library",
         "//ibazel/log:go_default_library",
         "//ibazel/output_runner:go_default_library",
