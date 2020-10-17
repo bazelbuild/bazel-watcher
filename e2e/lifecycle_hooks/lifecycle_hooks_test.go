@@ -54,8 +54,10 @@ func TestLifecycleHooks(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 
 	ibazel.RunWithAdditionalArgs("//:test", []string{
-		"-run_command_before=echo Hi",
+		"-run_command_before=echo hi-before",
+		"-run_command_after=echo hi-after",
 	})
-	ibazel.ExpectOutput("Hi")
+	ibazel.ExpectOutput("hi-before")
+	ibazel.ExpectOutput("hi-after")
 	ibazel.Kill()
 }
