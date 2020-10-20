@@ -93,8 +93,12 @@ func TestMatchRegex(t *testing.T) {
 	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
 	buf.WriteString("buildifier 'cmd_nvm' //target_nvm:target_nvm\n")
 	buf.WriteString("not_a_match 'nvm' //target_nvm:target_nvm\n")
-	// Duplicate match, to be deduplicated.
+
+	// Duplicate matches, to be deduplicated.
+	// This one does not use parameters from the match.
 	buf.WriteString("buildifier 'cmd_ignore' //target_ignore:target_ignore\n")
+	// This one uses parameters from the match.
+	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
 
 	optcmd := []Optcmd{
 		{Regex: "^(buildozer) '(.*)'\\s+(.*)$", Command: "$1", Args: []string{"$2", "$3"}},
