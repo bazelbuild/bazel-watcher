@@ -17,20 +17,18 @@ package output_runner
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
-	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
@@ -50,7 +48,7 @@ var (
 var escapeCodeCleanerRegex = regexp.MustCompile("\\x1B\\[[\\x30-\\x3F]*[\\x20-\\x2F]*[\\x40-\\x7E]")
 
 type OutputRunner struct {
-	wf workspace_finder.WorkspaceFinder
+	w workspace.Workspace
 }
 
 type Optcmd struct {
@@ -61,7 +59,7 @@ type Optcmd struct {
 
 func New() *OutputRunner {
 	i := &OutputRunner{
-		wf: &workspace_finder.MainWorkspaceFinder{},
+		w: &workspace.MainWorkspace{},
 	}
 	return i
 }
@@ -103,7 +101,7 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 }
 
 func (o *OutputRunner) readConfigs(configPath string) []Optcmd {
-	workspacePath, err := o.wf.FindWorkspace()
+	workspacePath, err := o.w.FindWorkspace()
 	if err != nil {
 		log.Fatalf("Error finding workspace: %v", err)
 		os.Exit(5)
@@ -192,28 +190,7 @@ func (_ *OutputRunner) promptCommand(command string) bool {
 }
 
 func (o *OutputRunner) executeCommand(command string, args []string) {
-	for i, arg := range args {
-		args[i] = strings.TrimSpace(arg)
-	}
-	log.Logf("Executing command: %s", command)
-	workspacePath, err := o.wf.FindWorkspace()
-	if err != nil {
-		log.Fatalf("Error finding workspace: %v", err)
-		os.Exit(5)
-	}
-	log.Logf("Workspace path: %s", workspacePath)
-
-	ctx, _ := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, command, args...)
-	log.Logf("Executing command: `%s`", strings.Join(cmd.Args, " "))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = workspacePath
-
-	err = cmd.Run()
-	if err != nil {
-		log.Errorf("Command failed: %s %s. Error: %s", command, args, err)
-	}
+	o.w.ExecuteCommand(command, args)
 }
 
 func (i *OutputRunner) Cleanup() {}
