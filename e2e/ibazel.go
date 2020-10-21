@@ -87,6 +87,11 @@ func (i *IBazelTester) RunWithBazelFixCommands(target string) {
 	})
 }
 
+func (i *IBazelTester) RunWithAdditionalArgs(target string, additionalArgs []string) {
+	i.t.Helper()
+	i.run(target, []string{}, additionalArgs)
+}
+
 func (i *IBazelTester) GetOutput() string {
 	i.t.Helper()
 	return i.stdoutBuffer.String()

@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bazelbuild/bazel-watcher/ibazel/workspace_finder"
+	"github.com/bazelbuild/bazel-watcher/ibazel/workspace"
 )
 
 func TestConvertArgs(t *testing.T) {
@@ -59,7 +59,7 @@ func TestConvertArgs(t *testing.T) {
 
 func TestReadConfigs(t *testing.T) {
 	i := &OutputRunner{
-		wf: &workspace_finder.FakeWorkspaceFinder{},
+		w: &workspace.FakeWorkspace{},
 	}
 	optcmd := i.readConfigs("output_runner_test.json")
 
