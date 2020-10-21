@@ -39,7 +39,7 @@ var overrideableBazelFlags []string = []string{
 	"--config=",
 	"--copt=",
 	"--curses=no",
-        "--cxxopt",
+	"--cxxopt",
 	"-c",
 	"--define=",
 	"--dynamic_mode=",
