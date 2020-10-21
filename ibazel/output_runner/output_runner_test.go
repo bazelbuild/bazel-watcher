@@ -91,18 +91,15 @@ func TestMatchRegex(t *testing.T) {
 	buf := bytes.Buffer{}
 	buf.WriteString("buildozer 'add deps test_dep1' //target1:target1\n")
 	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
-	buf.WriteString("buildifier 'cmd_nvm' //target_nvm:target_nvm\n")
-	buf.WriteString("not_a_match 'nvm' //target_nvm:target_nvm\n")
-
+	buf.WriteString("Check that imports in Go sources match importpath attributes in deps.\n")
+	buf.WriteString("Other build output which does not match things.\n")
 	// Duplicate matches, to be deduplicated.
-	// This one does not use parameters from the match.
-	buf.WriteString("buildifier 'cmd_ignore' //target_ignore:target_ignore\n")
-	// This one uses parameters from the match.
+	buf.WriteString("Check that imports in Go sources match importpath attributes in deps.\n")
 	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
 
 	optcmd := []Optcmd{
+		{Regex: "^Check that imports in Go sources match importpath attributes in deps.$", Command: "bazel", Args: []string{"run", "//:gazelle"}},
 		{Regex: "^(buildozer) '(.*)'\\s+(.*)$", Command: "$1", Args: []string{"$2", "$3"}},
-		{Regex: "^(buildifier) '(.*)'\\s+(.*)$", Command: "test_cmd", Args: []string{"test_arg1", "test_arg2"}},
 	}
 
 	_, commands, args := matchRegex(optcmd, &buf)
@@ -114,7 +111,7 @@ func TestMatchRegex(t *testing.T) {
 	}{
 		{"buildozer 'add deps test_dep1' //target1:target1", "buildozer", []string{"add deps test_dep1", "//target1:target1"}},
 		{"buildozer 'add deps test_dep2' //target2:target2", "buildozer", []string{"add deps test_dep2", "//target2:target2"}},
-		{"buildifier 'cmd_nvm' //target_nvm:target_nvm", "test_cmd", []string{"test_arg1", "test_arg2"}},
+		{"Check that imports in Go sources match importpath attributes in deps.", "bazel", []string{"run", "//:gazelle"}},
 	}
 	if len(expected) != len(commands) {
 		t.Errorf("Did not receive expected number of commands:\nGot: %d\nWant: %d", len(commands), len(expected))
