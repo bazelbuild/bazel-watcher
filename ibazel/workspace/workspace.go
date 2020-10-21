@@ -77,7 +77,8 @@ func (m *MainWorkspace) ExecuteCommand(command string, args []string) {
 	}
 	log.Logf("Workspace path: %s", workspacePath)
 
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	cmd := exec.CommandContext(ctx, command, args...)
 	log.Logf("Executing command: `%s`", strings.Join(cmd.Args, " "))
 	cmd.Stdout = os.Stdout
