@@ -12,11 +12,11 @@ import (
 )
 
 const mainFiles = `
--- defs.bzl --
+-- single/defs.bzl --
 def fix_deps():
   print("runacommand")
--- BUILD --
-load("//:defs.bzl", "fix_deps")
+-- single/BUILD --
+load("//single:defs.bzl", "fix_deps")
 
 fix_deps()
 
@@ -29,10 +29,27 @@ sh_binary(
   name = "overwrite",
   srcs = ["overwrite.sh"],
 )
--- test.sh --
+-- single/test.sh --
 printf "action"
--- overwrite.sh --
+-- single/overwrite.sh --
 printf "overwrite"
+-- multiple/defs.bzl --
+def fix_deps():
+  print("runcommand foo")
+  print("runcommand bar")
+  print("runcommand foo")
+  print("runcommand baz")
+-- multiple/BUILD --
+load("//multiple:defs.bzl", "fix_deps")
+
+fix_deps()
+
+sh_binary(
+  name = "test",
+  srcs = ["test.sh"],
+)
+-- multiple/test.sh --
+printf "action"
 `
 
 func TestMain(m *testing.M) {
@@ -75,7 +92,7 @@ func TestOutputRunner(t *testing.T) {
 
 	// First check that it doesn't run if there isn't a `.bazel_fix_commands.json` file.
 	ibazel := e2e.NewIBazelTester(t)
-	ibazel.RunWithBazelFixCommands("//:overwrite")
+	ibazel.RunWithBazelFixCommands("//single:overwrite")
 
 	// Ensure it prints out the banner.
 	ibazel.ExpectIBazelError("Did you know")
@@ -87,11 +104,11 @@ func TestOutputRunner(t *testing.T) {
 		"args": ["%s"]
 	}]`, sentinalFileName))
 
-	e2e.MustWriteFile(t, "overwrite.sh", `
+	e2e.MustWriteFile(t, "single/overwrite.sh", `
 printf "overwrite1"
 `)
 
-	ibazel.RunWithBazelFixCommands("//:overwrite")
+	ibazel.RunWithBazelFixCommands("//single:overwrite")
 
 	ibazel.ExpectOutput("overwrite1")
 	checkSentinel(t, sentinelFile, "The first run should create a sentinel.")
@@ -101,7 +118,7 @@ printf "overwrite1"
 	// Invoke the test a 2nd time to ensure it works over multiple separate
 	// invocations of ibazel.
 	ibazel = e2e.NewIBazelTester(t)
-	ibazel.RunWithBazelFixCommands("//:overwrite")
+	ibazel.RunWithBazelFixCommands("//single:overwrite")
 	ibazel.ExpectOutput("overwrite1")
 	checkSentinel(t, sentinelFile, "The second run should create a sentinel.")
 
@@ -122,13 +139,35 @@ def fix_deps():
 	checkNoSentinel(t, sentinelFile, "The third run should not create a sentinel.")
 }
 
+func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
+	e2e.SetExecuteBit(t)
+
+	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
+       [{
+               "regex": "^.*runcommand (.*)$",
+               "command": "echo",
+               "args": ["$1"]
+       }]`)
+
+
+	ibazel := e2e.NewIBazelTester(t)
+	ibazel.RunWithBazelFixCommands("//multiple:test")
+	defer ibazel.Kill()
+
+	ibazel.ExpectFixCommands([]string{
+		"echo foo",
+		"echo bar",
+		"echo baz",
+	})
+}
+
 func TestNotifyWhenInvalidConfig(t *testing.T) {
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
 invalid json file
 `)
 
 	ibazel := e2e.SetUp(t)
-	ibazel.RunWithBazelFixCommands("//:test")
+	ibazel.RunWithBazelFixCommands("//single:test")
 	defer ibazel.Kill()
 
 	// It should run the program and print out an error that says your JSON is
