@@ -1,6 +1,33 @@
 # Change Log
 
-## [v0.13.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.13.2) (2020-09-10)
+## [v0.14.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.14.0) (2020-10-29)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.13.2...v0.14.0)
+
+**Implemented enhancements:**
+
+- Call hotswap when ibazel run'ing Java binaries [\#28](https://github.com/bazelbuild/bazel-watcher/issues/28)
+
+**Closed issues:**
+
+- Clear the terminal output before every run [\#423](https://github.com/bazelbuild/bazel-watcher/issues/423)
+- \[Request\] APT package for iBazel [\#418](https://github.com/bazelbuild/bazel-watcher/issues/418)
+- segfault in iBazel in NotifyOfChanges [\#411](https://github.com/bazelbuild/bazel-watcher/issues/411)
+- Send Refresh Signal [\#408](https://github.com/bazelbuild/bazel-watcher/issues/408)
+- allow livereload to use a configurable hostname for the url [\#403](https://github.com/bazelbuild/bazel-watcher/issues/403)
+- MacOS: Error watching file "..." error: too many open files in system [\#402](https://github.com/bazelbuild/bazel-watcher/issues/402)
+
+**Merged pull requests:**
+
+- Update actions/stale action to v3 [\#429](https://github.com/bazelbuild/bazel-watcher/pull/429) ([renovate-bot](https://github.com/renovate-bot))
+- Make ibazel accept --cxxopt as a pass-through flag for bazel. [\#428](https://github.com/bazelbuild/bazel-watcher/pull/428) ([pascalfleury](https://github.com/pascalfleury))
+- Add run\_command\_before flag [\#425](https://github.com/bazelbuild/bazel-watcher/pull/425) ([franciscocpg](https://github.com/franciscocpg))
+- Update module golang/protobuf to v1.4.3 [\#424](https://github.com/bazelbuild/bazel-watcher/pull/424) ([renovate-bot](https://github.com/renovate-bot))
+- Output Runner will only run each unique command+args once [\#422](https://github.com/bazelbuild/bazel-watcher/pull/422) ([vpanta](https://github.com/vpanta))
+- Update dependency bazel\_gazelle to v0.22.2 [\#420](https://github.com/bazelbuild/bazel-watcher/pull/420) ([renovate-bot](https://github.com/renovate-bot))
+- Update dependency bazel\_gazelle to v0.22.1 [\#419](https://github.com/bazelbuild/bazel-watcher/pull/419) ([renovate-bot](https://github.com/renovate-bot))
+- Generating CHANGELOG.md for release v0.13.2 [\#417](https://github.com/bazelbuild/bazel-watcher/pull/417) ([achew22](https://github.com/achew22))
+
+## [v0.13.2](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.13.2) (2020-09-04)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.13.1...v0.13.2)
 
 **Implemented enhancements:**
@@ -17,8 +44,6 @@
 
 - Unable to create issue template [\#409](https://github.com/bazelbuild/bazel-watcher/issues/409)
 - JS serving: cannot locate environment variable [\#407](https://github.com/bazelbuild/bazel-watcher/issues/407)
-- allow livereload to use a configurable hostname for the url [\#403](https://github.com/bazelbuild/bazel-watcher/issues/403)
-- MacOS: Error watching file "..." error: too many open files in system [\#402](https://github.com/bazelbuild/bazel-watcher/issues/402)
 - Error starting process: fork/exec /tmp/bazel\_script\_path645988457: permission denied [\#401](https://github.com/bazelbuild/bazel-watcher/issues/401)
 - potentially misleading error message [\#393](https://github.com/bazelbuild/bazel-watcher/issues/393)
 - quiet mode [\#392](https://github.com/bazelbuild/bazel-watcher/issues/392)
