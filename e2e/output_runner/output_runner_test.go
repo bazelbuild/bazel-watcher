@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -60,7 +61,8 @@ func TestMain(m *testing.M) {
 
 func checkNoSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 	t.Helper()
-
+	
+	time.Sleep(500 * time.Millisecond)
 	if _, err := os.Stat(sentinelFile.Name()); !os.IsNotExist(err) {
 		t.Errorf("Found a sentinel when expecting none: %s\n", msg)
 	}
@@ -69,9 +71,10 @@ func checkNoSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 func checkSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 	t.Helper()
 
+	time.Sleep(500 * time.Millisecond)
 	sentinalFileName := sentinelFile.Name()
 	if _, err := os.Stat(sentinalFileName); os.IsNotExist(err) {
-		t.Errorf("Couldn't find sentinal. os.Stat(%q): %s\n%s\n", sentinalFileName, err, msg)
+			t.Errorf("Couldn't find sentinal. os.Stat(%q): %s\n%s\n", sentinalFileName, err, msg)
 	}
 
 	os.Remove(sentinelFile.Name())
