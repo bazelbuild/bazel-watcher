@@ -37,7 +37,7 @@ platforms:
     - "..."
     test_flags:
     - "--test_tag_filters=-nowindows"
-    - "--experimental_enable_runfiles"
+    - "--enable_runfiles"
     # On Windows CI, bazel (bazelisk) needs %LocalAppData% to find the cache directory.
     # We invoke bazel in tests, so the tests need this, too.
     - "--test_env=LOCALAPPDATA"
