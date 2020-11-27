@@ -62,6 +62,10 @@ var overrideableBazelFlags []string = []string{
 	"--test_output=",
 	"--test_tag_filters=",
 	"--test_timeout=",
+	// Custom Starlark build settings
+	// https://docs.bazel.build/versions/master/skylark/config.html#using-build-settings-on-the-command-line
+	"--//",
+	"--no//",
 }
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
