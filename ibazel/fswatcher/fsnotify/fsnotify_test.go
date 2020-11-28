@@ -14,7 +14,6 @@
 
 package fsnotify
 
-
 import (
 	"errors"
 	"runtime/debug"
@@ -28,20 +27,21 @@ type mockFSNotifyWatcher struct {
 	recentlyRemovedFiles map[string]struct{}
 	closed               bool
 }
-func (w *mockFSNotifyWatcher) Add(name string) error { 
+
+func (w *mockFSNotifyWatcher) Add(name string) error {
 	if _, ok := w.recentlyAddedFiles[name]; ok {
 		return errors.New("Already added file " + name)
 	}
 	w.recentlyAddedFiles[name] = struct{}{}
 	return nil
 }
-func (w *mockFSNotifyWatcher) Remove(name string) error { 
+func (w *mockFSNotifyWatcher) Remove(name string) error {
 	if _, ok := w.recentlyRemovedFiles[name]; ok {
 		return errors.New("Already removed file " + name)
 	}
 	w.recentlyRemovedFiles[name] = struct{}{}
 	return nil
- }
+}
 func (w *mockFSNotifyWatcher) Close() error {
 	if w.closed {
 		return errors.New("Already closed")
@@ -116,7 +116,7 @@ func TestWatchedFilesState(t *testing.T) {
 		"/path/c",
 	})
 	mock.assertRecentlyRemoved(t, []string{})
-	
+
 	mock.Reset()
 	watcher.UpdateAll([]string{
 		"/path/a",
@@ -160,7 +160,6 @@ func TestWatchedFilesState(t *testing.T) {
 	})
 	mock.assertRecentlyRemoved(t, []string{})
 
-
 	mock.assertClosed(t, false)
 	watcher.Close()
 	mock.assertClosed(t, true)
@@ -168,16 +167,16 @@ func TestWatchedFilesState(t *testing.T) {
 
 // Equal tells whether a and b contain the same elements, regardless of order
 func containsAll(a, b []string) (string, bool) {
-	OUTER:
-    for _, v1 := range a {
-        for _, v2 := range b {
+OUTER:
+	for _, v1 := range a {
+		for _, v2 := range b {
 			if v1 == v2 {
 				continue OUTER
 			}
 		}
 		return v1, false
 	}
-    return "", true
+	return "", true
 }
 
 func keys(m map[string]struct{}) []string {

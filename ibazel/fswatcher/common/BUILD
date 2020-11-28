@@ -20,7 +20,7 @@ go_library(
         "common.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/common",
-    visibility = ["//ibazel/fswatcher:__subpackages__"],
+    visibility = ["//ibazel:__subpackages__"],
     deps = [
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ],

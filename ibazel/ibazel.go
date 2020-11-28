@@ -27,8 +27,9 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
-	"github.com/bazelbuild/bazel-watcher/ibazel/lifecycle_hooks"
 	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher"
+	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/common"
+	"github.com/bazelbuild/bazel-watcher/ibazel/lifecycle_hooks"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/ibazel/output_runner"
@@ -75,10 +76,10 @@ type IBazel struct {
 
 	workspaceFinder workspace.Workspace
 
-	buildFileWatcher  fswatcher.Watcher
-	sourceFileWatcher fswatcher.Watcher
+	buildFileWatcher  common.Watcher
+	sourceFileWatcher common.Watcher
 
-	filesWatched map[fswatcher.Watcher]map[string]struct{} // Inner map is a surrogate for a set
+	filesWatched map[common.Watcher]map[string]struct{} // Inner map is a surrogate for a set
 
 	lifecycleListeners []Lifecycle
 
@@ -93,7 +94,7 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
-	i.filesWatched = map[fswatcher.Watcher]map[string]struct{}{}
+	i.filesWatched = map[common.Watcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace.MainWorkspace{}
 
 	i.sigs = make(chan os.Signal, 1)
@@ -275,7 +276,7 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 
 // fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
 // to avoid triggering builds on file accesses (e.g. due to your IDE checking modified status).
-const modifyingEvents = fswatcher.Write | fswatcher.Create | fswatcher.Rename | fswatcher.Remove
+const modifyingEvents = common.Write | common.Create | common.Rename | common.Remove
 
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
 	switch i.state {
@@ -499,7 +500,7 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	return toWatch, nil
 }
 
-func (i *IBazel) watchFiles(query string, watcher fswatcher.Watcher) {
+func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
 	toWatch, err := i.queryForSourceFiles(query)
 	if err != nil {
 		// If the query fails, just keep watching the same files as before

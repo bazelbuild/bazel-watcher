@@ -35,6 +35,7 @@ type fsNotifyWatcher interface {
 type fsNotifyWatcherWrapper struct {
 	watcher *fsnotify.Watcher
 }
+
 func (w *fsNotifyWatcherWrapper) Add(name string) error       { return w.watcher.Add(name) }
 func (w *fsNotifyWatcherWrapper) Remove(name string) error    { return w.watcher.Remove(name) }
 func (w *fsNotifyWatcherWrapper) Close() error                { return w.watcher.Close() }

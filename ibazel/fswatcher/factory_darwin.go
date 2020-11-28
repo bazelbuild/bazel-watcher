@@ -20,6 +20,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/common"
 	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/fsevents"
 	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/fsnotify"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
@@ -27,7 +28,7 @@ import (
 
 var experimentalWatcherLog sync.Once
 
-func NewWatcher() (Watcher, error) {
+func NewWatcher() (common.Watcher, error) {
 	flag, ok := os.LookupEnv("IBAZEL_USE_LEGACY_WATCHER")
 	if ok && flag != "0" {
 		return fsnotify.NewWatcher()

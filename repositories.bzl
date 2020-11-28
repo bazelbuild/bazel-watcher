@@ -8,7 +8,7 @@ def go_repositories():
         importpath = "github.com/fsnotify/fsevents",
         sum = "h1:/125uxJvvoSDDBPen6yUZbil8J9ydKZnnl3TWWmvnkw=",
         version = "v0.1.1",
-        patches = ["//:patches/fsnotify_fsevents_pr_38.diff"],
+        patches = ["//:third_party/fsnotify/fsevents/pr_38.diff"],
     )
     go_repository(
         name = "com_github_fsnotify_fsnotify",

@@ -19,7 +19,6 @@ go_library(
     srcs = [
         "factory_darwin.go",
         "factory_fsnotify.go",
-        "fswatcher.go",
     ],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel/fswatcher",
     visibility = ["//ibazel:__subpackages__"],

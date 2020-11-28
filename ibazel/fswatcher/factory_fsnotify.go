@@ -17,9 +17,10 @@
 package fswatcher
 
 import (
+	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/common"
 	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/fsnotify"
 )
 
-func NewWatcher() (Watcher, error) {
+func NewWatcher() (common.Watcher, error) {
 	return fsnotify.NewWatcher()
 }
