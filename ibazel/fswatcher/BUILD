@@ -25,7 +25,7 @@ go_library(
     deps = [
         "//ibazel/fswatcher/common:go_default_library",
         "//ibazel/fswatcher/fsnotify:go_default_library",
-    	"//ibazel/log:go_default_library",        
+        "//ibazel/log:go_default_library",
         "@com_github_fsnotify_fsnotify//:go_default_library",
     ] + select({
         # FSEvents is a macOS *only* implementation
