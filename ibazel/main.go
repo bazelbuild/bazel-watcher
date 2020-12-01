@@ -33,6 +33,7 @@ var overrideableStartupFlags []string = []string{
 var overrideableBazelFlags []string = []string{
 	"--action_env",
 	"--announce_rc",
+	"--aspects",
 	"--build_tag_filters=",
 	"--build_tests_only",
 	"--compilation_mode",
