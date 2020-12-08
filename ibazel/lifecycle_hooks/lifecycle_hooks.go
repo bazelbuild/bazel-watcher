@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	runCommandBefore = flag.String("run_command_before", "", "A command to run before each execution")
-	runCommandAfter  = flag.String("run_command_after", "", "A command to run after each execution")
+	runCommandBefore       = flag.String("run_command_before", "", "A command to run before each execution")
+	runCommandAfter        = flag.String("run_command_after", "", "A command to run after each execution")
+	runCommandAfterSuccess = flag.String("run_command_after_success", "", "A command to run after each successful execution")
 )
 
 type LifecycleHooks struct {
@@ -55,6 +56,9 @@ func (l *LifecycleHooks) BeforeCommand(targets []string, command string) {
 
 func (l *LifecycleHooks) AfterCommand(targets []string, command string, success bool, output *bytes.Buffer) {
 	l.parseAndExecuteCommand(*runCommandAfter)
+	if success {
+		l.parseAndExecuteCommand(*runCommandAfterSuccess)
+	}
 }
 
 func (l *LifecycleHooks) parseAndExecuteCommand(commandToRun string) {
