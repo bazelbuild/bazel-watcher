@@ -23,9 +23,6 @@ sh_binary(
 )
 -- test.sh --
 printf "action"
--- failure.sh --
-printf "Failing"
-exit 1
 `
 
 func TestMain(m *testing.M) {
@@ -76,7 +73,7 @@ func TestLifecycleHooksFailure(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	defer ibazel.Kill()
 
-	ibazel.RunWithAdditionalArgs("//:failure", []string{
+	ibazel.RunUnverifiedWithAdditionalArgs("//:failure", []string{
 		"-run_command_before=echo hi-before",
 		"-run_command_after=echo hi-after",
 		"-run_command_after_success=echo hi-after-success",
