@@ -78,8 +78,6 @@ func checkSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 }
 
 func TestOutputRunner(t *testing.T) {
-	e2e.SetExecuteBit(t)
-
 	sentinelFile, err := ioutil.TempFile("", "fixCommandSentinel")
 	if err != nil {
 		t.Errorf("ioutil.TempFile(\"\", \"fixCommandSentinel\": %v", err)
@@ -91,7 +89,7 @@ func TestOutputRunner(t *testing.T) {
 	checkNoSentinel(t, sentinelFile, "The sentinal should now be deleted.")
 
 	// First check that it doesn't run if there isn't a `.bazel_fix_commands.json` file.
-	ibazel := e2e.NewIBazelTester(t)
+	ibazel := e2e.SetUp(t)
 	ibazel.RunWithBazelFixCommands("//single:overwrite")
 
 	// Ensure it prints out the banner.
@@ -117,7 +115,7 @@ printf "overwrite1"
 
 	// Invoke the test a 2nd time to ensure it works over multiple separate
 	// invocations of ibazel.
-	ibazel = e2e.NewIBazelTester(t)
+	ibazel = e2e.SetUp(t)
 	ibazel.RunWithBazelFixCommands("//single:overwrite")
 	ibazel.ExpectOutput("overwrite1")
 	checkSentinel(t, sentinelFile, "The second run should create a sentinel.")
@@ -140,8 +138,6 @@ def fix_deps():
 }
 
 func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
-	e2e.SetExecuteBit(t)
-
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
        [{
                "regex": "^.*runcommand (.*)$",
@@ -149,8 +145,7 @@ func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
                "args": ["$1"]
        }]`)
 
-
-	ibazel := e2e.NewIBazelTester(t)
+	ibazel := e2e.SetUp(t)
 	ibazel.RunWithBazelFixCommands("//multiple:test")
 	defer ibazel.Kill()
 
