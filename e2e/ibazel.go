@@ -92,6 +92,12 @@ func (i *IBazelTester) RunWithAdditionalArgs(target string, additionalArgs []str
 	i.run(target, []string{}, additionalArgs)
 }
 
+func (i *IBazelTester) RunUnverifiedWithAdditionalArgs(target string, additionalArgs []string) {
+	i.t.Helper()
+	prebuild := false
+	i.runUnverified(target, []string{}, additionalArgs, prebuild)
+}
+
 func (i *IBazelTester) GetOutput() string {
 	i.t.Helper()
 	return i.stdoutBuffer.String()
@@ -283,6 +289,11 @@ func (i *IBazelTester) checkExit() {
 }
 
 func (i *IBazelTester) run(target string, bazelArgs []string, additionalArgs []string) {
+	prebuild := true
+	i.runUnverified(target, bazelArgs, additionalArgs, prebuild)
+}
+
+func (i *IBazelTester) runUnverified(target string, bazelArgs []string, additionalArgs []string, prebuild bool) {
 	i.t.Helper()
 
 	args := []string{"--bazel_path=" + i.bazelPath()}
@@ -303,11 +314,12 @@ func (i *IBazelTester) run(target string, bazelArgs []string, additionalArgs []s
 	cmd.Stderr = &buildStderr
 
 	// Before doing anything crazy, let's build the target to make sure it works.
-
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			status := exitErr.Sys().(syscall.WaitStatus)
-			i.t.Fatalf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", status.ExitStatus(), buildStdout.String(), buildStderr.String())
+	if prebuild {
+		if err := cmd.Run(); err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				status := exitErr.Sys().(syscall.WaitStatus)
+				i.t.Fatalf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", status.ExitStatus(), buildStdout.String(), buildStderr.String())
+			}
 		}
 	}
 
