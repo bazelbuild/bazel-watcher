@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
@@ -77,8 +78,10 @@ func SetExecuteBit(t *testing.T) {
 			return err
 		}
 
-		if err := os.Chmod(path, 0777); err != nil {
-			t.Fatalf("Error os.Chmod(%q, 0777): %v", path, err)
+		if strings.HasSuffix(path, ".sh") {
+			if err := os.Chmod(path, 0777); err != nil {
+				t.Fatalf("Error os.Chmod(%q, 0777): %v", path, err)
+			}
 		}
 
 		return nil

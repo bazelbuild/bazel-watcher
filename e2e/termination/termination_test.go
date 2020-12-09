@@ -1,11 +1,7 @@
 package termination
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 	"testing"
 
@@ -37,29 +33,6 @@ sh_binary(
 func TestMain(m *testing.M) {
 	bazel_testing.TestMain(m, bazel_testing.Args{
 		Main: mainFiles,
-		SetUp: func() error {
-			wd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-
-			if err := filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-
-				if strings.HasSuffix(path, ".sh") {
-					if err := os.Chmod(path, 0777); err != nil {
-						return fmt.Errorf("Error os.Chmod(%q, 0777): %v", path, err)
-					}
-				}
-				return nil
-			}); err != nil {
-				fmt.Printf("Error walking dir: %v\n", err)
-				return err
-			}
-			return nil
-		},
 	})
 }
 
