@@ -25,10 +25,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-
 	"github.com/bazelbuild/bazel-watcher/bazel"
 	"github.com/bazelbuild/bazel-watcher/ibazel/command"
+	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher"
+	"github.com/bazelbuild/bazel-watcher/ibazel/fswatcher/common"
 	"github.com/bazelbuild/bazel-watcher/ibazel/lifecycle_hooks"
 	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
@@ -76,12 +76,11 @@ type IBazel struct {
 
 	workspaceFinder workspace.Workspace
 
-	buildFileWatcher  fSNotifyWatcher
-	sourceFileWatcher fSNotifyWatcher
+	buildFileWatcher  common.Watcher
+	sourceFileWatcher common.Watcher
 
-	filesWatched map[fSNotifyWatcher]map[string]struct{} // Inner map is a surrogate for a set
+	filesWatched map[common.Watcher]map[string]struct{} // Inner map is a surrogate for a set
 
-	sourceEventHandler *SourceEventHandler
 	lifecycleListeners []Lifecycle
 
 	state State
@@ -95,7 +94,7 @@ func New() (*IBazel, error) {
 	}
 
 	i.debounceDuration = 100 * time.Millisecond
-	i.filesWatched = map[fSNotifyWatcher]map[string]struct{}{}
+	i.filesWatched = map[common.Watcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace.MainWorkspace{}
 
 	i.sigs = make(chan os.Signal, 1)
@@ -235,17 +234,15 @@ func (i *IBazel) setup() error {
 
 	// Even though we are going to recreate this when the query happens, create
 	// the pointer we will use to refer to the watchers right now.
-	i.buildFileWatcher, err = wrapWatcher(fsnotify.NewWatcher())
+	i.buildFileWatcher, err = fswatcher.NewWatcher()
 	if err != nil {
 		return err
 	}
 
-	i.sourceFileWatcher, err = wrapWatcher(fsnotify.NewWatcher())
+	i.sourceFileWatcher, err = fswatcher.NewWatcher()
 	if err != nil {
 		return err
 	}
-
-	i.sourceEventHandler = NewSourceEventHandler(i.sourceFileWatcher.Watcher())
 
 	return nil
 }
@@ -279,13 +276,13 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 
 // fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
 // to avoid triggering builds on file accesses (e.g. due to your IDE checking modified status).
-const modifyingEvents = fsnotify.Write | fsnotify.Create | fsnotify.Rename | fsnotify.Remove
+const modifyingEvents = common.Write | common.Create | common.Rename | common.Remove
 
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
 	switch i.state {
 	case WAIT:
 		select {
-		case e := <-i.sourceEventHandler.SourceFileEvents:
+		case e := <-i.sourceFileWatcher.Events():
 			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				log.Logf("Changed: %q. Rebuilding...", e.Name)
 				i.changeDetected(targets, "source", e.Name)
@@ -316,7 +313,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
-		case e := <-i.sourceEventHandler.SourceFileEvents:
+		case e := <-i.sourceFileWatcher.Events():
 			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "source", e.Name)
 			}
@@ -503,55 +500,33 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	return toWatch, nil
 }
 
-func (i *IBazel) watchFiles(query string, watcher fSNotifyWatcher) {
+func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
 	toWatch, err := i.queryForSourceFiles(query)
 	if err != nil {
 		// If the query fails, just keep watching the same files as before
 		return
 	}
 
-	filesFound := map[string]struct{}{}
 	filesWatched := map[string]struct{}{}
 	uniqueDirectories := map[string]struct{}{}
 
 	for _, file := range toWatch {
 		if _, err := os.Stat(file); !os.IsNotExist(err) {
-			filesFound[file] = struct{}{}
-		}
-
-		parentDirectory, _ := filepath.Split(file)
-
-		// Add a watch to the file's parent directory, unless it's one we've already watched
-		if _, ok := uniqueDirectories[parentDirectory]; ok {
 			filesWatched[file] = struct{}{}
-		} else {
-			err := watcher.Add(parentDirectory)
-			if err != nil {
-				// Special case for the "defaults package", see https://github.com/bazelbuild/bazel/issues/5533
-				if !strings.HasSuffix(filepath.ToSlash(file), "/tools/defaults/BUILD") {
-					log.Errorf("Error watching file %q error: %v", file, err)
-				}
-				continue
-			} else {
-				filesWatched[file] = struct{}{}
-				uniqueDirectories[parentDirectory] = struct{}{}
-			}
 		}
-	}
 
-	for file, _ := range i.filesWatched[watcher] {
 		parentDirectory, _ := filepath.Split(file)
-
-		// Remove the watch from the parent directory if it no longer contains any files returned by the latest query
-		if _, ok := uniqueDirectories[parentDirectory]; !ok {
-			err := watcher.Remove(parentDirectory)
-			if err != nil {
-				log.Errorf("Error unwatching file %q error: %v\n", file, err)
-			}
-		}
+		// Add a watch to the file's parent directory, we might already have this dir in our set but thats OK
+		uniqueDirectories[parentDirectory] = struct{}{}
 	}
 
-	if len(filesFound) == 0 {
+	watchList := keys(uniqueDirectories)
+	err = watcher.UpdateAll(watchList)
+	if err != nil {
+		log.Errorf("Error(s) updating watch list:\n %v", err)
+	}
+
+	if len(filesWatched) == 0 {
 		log.Errorf("Didn't find any files to watch from query %s", query)
 	}
 
@@ -574,4 +549,14 @@ func (i *IBazel) queryArgs(args ...string) []string {
 func parseTarget(label string) (repo string, target string) {
 	parts := strings.Split(strings.TrimPrefix(label, "@"), "//")
 	return parts[0], parts[1]
+}
+
+func keys(m map[string]struct{}) []string {
+	keys := make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	return keys
 }

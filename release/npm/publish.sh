@@ -32,18 +32,25 @@ bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "${STAGING
 compile() {
   export GOOS=$1; shift
   export GOARCH=$1; shift
+  export CGO=$1; shift
 
   mkdir -p "${STAGING}/bin/${GOOS}_${GOARCH}/"
   EXTENSION=""
   if [[ "${GOOS}" == "windows" ]]; then
     EXTENSION=".exe"
   fi
+  PURE="pure_"
+  TOOLCHAIN="${GOOS}_${GOARCH}"
+  if [[ "${CGO}" == "cgo" ]]; then
+    PURE=""
+    TOOLCHAIN="${TOOLCHAIN}_cgo"
+  fi
   DESTINATION="${STAGING}/bin/${GOOS}_${GOARCH}/ibazel${EXTENSION}"
   bazel build \
     --config=release \
-    "--experimental_platforms=@io_bazel_rules_go//go/toolchain:${GOOS}_${GOARCH}" \
+    "--experimental_platforms=@io_bazel_rules_go//go/toolchain:${TOOLCHAIN}" \
     "//ibazel:ibazel"
-  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_pure_stripped/ibazel${EXTENSION}"
+  SOURCE="$(bazel info bazel-bin)/ibazel/${GOOS}_${GOARCH}_${PURE}stripped/ibazel${EXTENSION}"
   cp "${SOURCE}" "${DESTINATION}"
 
   # Sometimes bazel likes to change the ouput directory for binaries
@@ -56,9 +63,9 @@ compile() {
 }
 
 # Now compiler ibazel for every platform/arch that is supported.
-compile "linux"   "amd64"
-compile "darwin"  "amd64"
-compile "windows" "amd64"
+compile "linux"   "amd64" ""
+compile "darwin"  "amd64" "cgo"
+compile "windows" "amd64" ""
 
 echo "Build successful."
 

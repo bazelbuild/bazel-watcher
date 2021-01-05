@@ -1,40 +1,23 @@
 package e2e
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 )
 
-func GetPath(p string) string {
-	path, err := bazel.Runfile(p)
-	if err != nil {
-		panic(err)
-	}
-
-	path, err = filepath.Abs(path)
-	if err != nil {
-		panic(err)
-	}
-
-	return path
-}
-
 var ibazelPath = getiBazelPath()
 
 func getiBazelPath() string {
-	suffix := ""
-	// Windows expects executables to end in .exe
-	if runtime.GOOS == "windows" {
-		suffix = ".exe"
+	path, ok := bazel.FindBinary("ibazel", "ibazel")
+	if !ok {
+		panic("Failed to locate binary //ibazel:ibazel, please add it as a data dependency")
 	}
-	return GetPath(fmt.Sprintf("ibazel/%s_%s_pure_stripped/ibazel%s", runtime.GOOS, runtime.GOARCH, suffix))
+	return path
 }
 
 func Must(t *testing.T, e error) {

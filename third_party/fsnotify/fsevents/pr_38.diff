@@ -1,0 +1,13 @@
+--- fsevents.go	2020-07-02 09:51:11.000000000 -0500
++++ fsevents.go	2020-07-02 09:59:35.000000000 -0500
+@@ -158,7 +158,9 @@
+ 	// in C callback
+ 	cbInfo := registry.Add(es)
+ 	es.registryID = cbInfo
+-	es.uuid = GetDeviceUUID(es.Device)
++	if es.Device != 0 {
++		es.uuid = GetDeviceUUID(es.Device)
++	}
+ 	es.start(es.Paths, cbInfo)
+ }
+ 

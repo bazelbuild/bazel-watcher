@@ -12,36 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package common
 
 import (
 	"github.com/fsnotify/fsnotify"
 )
 
-type SourceEventHandler struct {
-	SourceFileEvents  chan fsnotify.Event
-	SourceFileWatcher *fsnotify.Watcher
-}
+type Event = fsnotify.Event
+type Op = fsnotify.Op
 
-func (s *SourceEventHandler) Listen() {
-	for {
-		select {
-		case event := <-s.SourceFileWatcher.Events:
-			s.SourceFileEvents <- event
+const Create = fsnotify.Create
+const Write = fsnotify.Write
+const Remove = fsnotify.Remove
+const Rename = fsnotify.Rename
+const Chmod = fsnotify.Chmod
 
-			switch event.Op {
-			case fsnotify.Remove, fsnotify.Rename:
-				s.SourceFileWatcher.Add(event.Name)
-			}
-		}
-	}
-}
-
-func NewSourceEventHandler(sourceFileWatcher *fsnotify.Watcher) *SourceEventHandler {
-	handler := &SourceEventHandler{
-		make(chan fsnotify.Event),
-		sourceFileWatcher,
-	}
-	go handler.Listen()
-	return handler
+type Watcher interface {
+	Close() error
+	UpdateAll(name []string) error
+	Events() chan Event
 }

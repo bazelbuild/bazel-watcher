@@ -1,5 +1,5 @@
 ---
-platforms:
+tasks:
   ubuntu1804:
     build_flags:
     - "--build_tag_filters=-nolinux"
@@ -30,6 +30,18 @@ platforms:
     - "--test_tag_filters=-nomacos"
     test_targets:
     - "..."
+  macos_legacy_watcher:
+    platform: macos
+    build_flags:
+    - "--build_tag_filters=-nomacos"
+    build_targets:
+    - "..."
+    test_flags:
+    - "--features=race"
+    - "--test_tag_filters=-nomacos"
+    - "--test_env=IBAZEL_USE_LEGACY_WATCHER=1"
+    test_targets:
+    - "..."    
   windows:
     build_flags:
     - "--build_tag_filters=-nowindows"

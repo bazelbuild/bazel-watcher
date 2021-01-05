@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -68,13 +69,20 @@ func checkNoSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 
 func checkSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 	t.Helper()
-
 	sentinalFileName := sentinelFile.Name()
-	if _, err := os.Stat(sentinalFileName); os.IsNotExist(err) {
-		t.Errorf("Couldn't find sentinal. os.Stat(%q): %s\n%s\n", sentinalFileName, err, msg)
-	}
 
-	os.Remove(sentinelFile.Name())
+	deadline := time.Now().Add(5 * time.Second)
+	var err error
+	for {
+		if time.Now().After(deadline) {
+			t.Errorf("Couldn't find sentinal. os.Stat(%q): %s\n%s\n", sentinalFileName, err, msg)
+			return
+		} else if _, err := os.Stat(sentinalFileName); err == nil {
+			// No error stat'ing the file means it exists.
+			os.Remove(sentinelFile.Name())
+			return
+		}
+	}
 }
 
 func TestOutputRunner(t *testing.T) {
@@ -145,7 +153,7 @@ func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
                "args": ["$1"]
        }]`)
 
-	ibazel := e2e.SetUp(t)
+	ibazel := e2e.NewIBazelTester(t)
 	ibazel.RunWithBazelFixCommands("//multiple:test")
 	defer ibazel.Kill()
 
