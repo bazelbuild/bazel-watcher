@@ -1,5 +1,28 @@
 # Change Log
 
+## [v0.15.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.15.0) (2021-01-05)
+[Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.14.0...v0.15.0)
+
+**Closed issues:**
+
+- Build errors with Bazel 3.3.1 on NixOS [\#439](https://github.com/bazelbuild/bazel-watcher/issues/439)
+- Modify project permissions [\#436](https://github.com/bazelbuild/bazel-watcher/issues/436)
+- output runner should never execute the exact same command more than once [\#421](https://github.com/bazelbuild/bazel-watcher/issues/421)
+- runtime error: invalid memory address or nil pointer dereference [\#416](https://github.com/bazelbuild/bazel-watcher/issues/416)
+- The test command should not build unrelated non-test targets [\#415](https://github.com/bazelbuild/bazel-watcher/issues/415)
+
+**Merged pull requests:**
+
+- Simplify setting of execute bit [\#446](https://github.com/bazelbuild/bazel-watcher/pull/446) ([smklein](https://github.com/smklein))
+- Add support for command execution after successful execution [\#445](https://github.com/bazelbuild/bazel-watcher/pull/445) ([smklein](https://github.com/smklein))
+- Update rules\_proto commit hash to 84ba6ec [\#444](https://github.com/bazelbuild/bazel-watcher/pull/444) ([renovate-bot](https://github.com/renovate-bot))
+- Pass through the aspects flag [\#443](https://github.com/bazelbuild/bazel-watcher/pull/443) ([djmarcin](https://github.com/djmarcin))
+- Pass custom build settings on to Bazel [\#442](https://github.com/bazelbuild/bazel-watcher/pull/442) ([fmeum](https://github.com/fmeum))
+- Rename --experimental\_enable\_runfiles to --enable\_runfiles [\#441](https://github.com/bazelbuild/bazel-watcher/pull/441) ([meteorcloudy](https://github.com/meteorcloudy))
+- Use the skylib release binary [\#440](https://github.com/bazelbuild/bazel-watcher/pull/440) ([achew22](https://github.com/achew22))
+- Update module gorilla/websocket to v1.4.2 [\#430](https://github.com/bazelbuild/bazel-watcher/pull/430) ([renovate-bot](https://github.com/renovate-bot))
+- integrate fsevents for macos [\#406](https://github.com/bazelbuild/bazel-watcher/pull/406) ([joeljeske](https://github.com/joeljeske))
+
 ## [v0.14.0](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/tree/v0.14.0) (2020-10-29)
 [Full Changelog](https://github.com/bazelbuild/bazel-watcher/bazelbuild/bazel-watcher/compare/v0.13.2...v0.14.0)
 
@@ -18,6 +41,7 @@
 
 **Merged pull requests:**
 
+- Generating CHANGELOG.md for release v0.14.0 [\#431](https://github.com/bazelbuild/bazel-watcher/pull/431) ([achew22](https://github.com/achew22))
 - Update actions/stale action to v3 [\#429](https://github.com/bazelbuild/bazel-watcher/pull/429) ([renovate-bot](https://github.com/renovate-bot))
 - Make ibazel accept --cxxopt as a pass-through flag for bazel. [\#428](https://github.com/bazelbuild/bazel-watcher/pull/428) ([pascalfleury](https://github.com/pascalfleury))
 - Add run\_command\_before flag [\#425](https://github.com/bazelbuild/bazel-watcher/pull/425) ([franciscocpg](https://github.com/franciscocpg))
