@@ -37,6 +37,7 @@ var overrideableBazelFlags []string = []string{
 	"--build_tag_filters=",
 	"--build_tests_only",
 	"--compilation_mode",
+	"--compile_one_dependency",
 	"--config=",
 	"--copt=",
 	"--curses=no",
