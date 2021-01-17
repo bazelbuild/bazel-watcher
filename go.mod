@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.4.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/jaschaephraim/lrserver v0.0.0-20171129202958-50d19f603f71
-	github.com/mattn/go-shellwords v1.0.10
+	github.com/mattn/go-shellwords v1.0.11
 	golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c // indirect
 )
 
