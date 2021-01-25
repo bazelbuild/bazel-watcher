@@ -100,6 +100,8 @@ jobs:
           bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       - name: Publish NPM Package
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo -n "Publishing to NPM as "
           grep "version" < "npm-staging/package.json"
