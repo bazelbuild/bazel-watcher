@@ -1,0 +1,108 @@
+name: Build Release Binaries
+
+on:
+  release:
+    types: [created]
+    
+jobs:
+  build: 
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:    
+          - name: ibazel_linux_amd64
+            os: ubuntu-18.04
+            bin: linux_amd64_pure_stripped
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+            ext: ""
+          
+          - name: ibazel_windows_amd64.exe
+            os: ubuntu-18.04
+            bin: windows_amd64_pure_stripped
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
+            ext: ".exe"
+
+          - name: ibazel_darwin_amd64
+            os: macos-latest
+            bin: darwin_amd64_stripped
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
+            ext: ""
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install Bazelisk
+        run: npm --global install @bazel/bazelisk@latest
+
+      - name: Build ibazel 
+        run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }}
+      
+      - name: Copy binary
+        run: cp $(bazel info bazel-bin)/ibazel/${{ matrix.bin }}/ibazel${{ matrix.ext }} ${{ matrix.name }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # this hook param can means we can only use this flow when triggered by a release, not manually
+          upload_url: ${{ github.event.release.upload_url }} 
+          asset_path: ${{ matrix.name }}
+          asset_name: ${{ matrix.name }}
+          asset_content_type: application/octet-stream
+
+  release_npm:
+    runs-on: ubuntu-18.04
+    needs: [build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ibazel_linux_amd64
+          path: ./npm-staging/bin/linux_amd64/ibazel
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ibazel_darwin_amd64
+          path: ./npm-staging/bin/darwin_amd64/ibazel
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: ibazel_windows_amd64.exe
+          path: ./npm-staging/bin/windows_amd64/ibazel.exe
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install Bazelisk
+        run: npm --global install @bazel/bazelisk@latest
+
+      - name: Create NPM Package
+        run: |
+          chmod 755 ./npm-staging/bin/*/ibazel*
+          cp "README.md" "npm-staging/README.md"
+          cp "release/npm/index.js" "npm-staging/index.js"
+          bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
+
+      - name: Publish NPM Package
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo -n "Publishing to NPM as "
+          grep "version" < "npm-staging/package.json"
+          cd "npm-staging" && find . && npm publish

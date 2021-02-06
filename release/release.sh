@@ -63,16 +63,10 @@ read
 # Tag the release.
 git tag "${GIT_TAG}"
 
-if ./release/npm/publish.sh; then
-  # Success! Publish the tag to GitHub
-  git push git@github.com:bazelbuild/bazel-watcher "${GIT_TAG}"
+# Success! Publish the tag to GitHub
+git push git@github.com:bazelbuild/bazel-watcher "${GIT_TAG}"
 
-  # Advance master branch to the tag.
-  git push git@github.com:bazelbuild/bazel-watcher "${GIT_TAG}:master"
+# Advance master branch to the tag.
+git push git@github.com:bazelbuild/bazel-watcher "${GIT_TAG}:master"
 
-  # Now the tag exists on Github, we can publish assets to it.
-  ./release/github/publish.sh "${GIT_TAG}"
-else
-  # Clean up in the event of failure.
-  git tag -d "${GIT_TAG}"
-fi
+echo ""
