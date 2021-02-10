@@ -3,6 +3,7 @@ name: Build Release Binaries
 on:
   release:
     types: [created]
+  workflow_dispatch: {}
     
 jobs:
   build: 
@@ -10,19 +11,22 @@ jobs:
     strategy:
       matrix:
         include:    
-          - name: ibazel_linux_amd64
+          - name: linux_amd64
+            artifact: ibazel_linux_amd64
             os: ubuntu-18.04
             bin: linux_amd64_pure_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
             ext: ""
           
-          - name: ibazel_windows_amd64.exe
+          - name: windows_amd64
+            artifact: ibazel_windows_amd64.exe
             os: ubuntu-18.04
             bin: windows_amd64_pure_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
             ext: ".exe"
 
-          - name: ibazel_darwin_amd64
+          - name: darwin_amd64
+            artifact: ibazel_darwin_amd64
             os: macos-latest
             bin: darwin_amd64_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
@@ -43,24 +47,25 @@ jobs:
         run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }}
       
       - name: Copy binary
-        run: cp $(bazel info bazel-bin)/ibazel/${{ matrix.bin }}/ibazel${{ matrix.ext }} ${{ matrix.name }}
+        run: cp $(bazel info bazel-bin)/ibazel/${{ matrix.bin }}/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.name }}
-          path: ${{ matrix.name }}
+          path: ${{ matrix.artifact }}
 
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
+        if: ${{ github.event.release.upload_url }} 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # this hook param can means we can only use this flow when triggered by a release, not manually
           upload_url: ${{ github.event.release.upload_url }} 
-          asset_path: ${{ matrix.name }}
-          asset_name: ${{ matrix.name }}
+          asset_path: ${{ matrix.artifact }}
+          asset_name: ${{ matrix.artifact }}
           asset_content_type: application/octet-stream
 
   release_npm:
@@ -72,19 +77,7 @@ jobs:
 
       - uses: actions/download-artifact@v2
         with:
-          name: ibazel_linux_amd64
-          path: ./npm-staging/bin/linux_amd64/ibazel
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: ibazel_darwin_amd64
-          path: ./npm-staging/bin/darwin_amd64/ibazel
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: ibazel_windows_amd64.exe
-          path: ./npm-staging/bin/windows_amd64/ibazel.exe
-
+          path: ./npm-staging/bin
       - uses: actions/setup-node@v2
         with:
           node-version: '14'
@@ -92,17 +85,33 @@ jobs:
       - name: Install Bazelisk
         run: npm --global install @bazel/bazelisk@latest
 
+      - name: Prepare ibazel binaries
+        working-directory: ./npm-staging/bin
+        run: |
+          mv darwin_amd64/ibazel_darwin_amd64 darwin_amd64/ibazel
+          mv linux_amd64/ibazel_linux_amd64 linux_amd64/ibazel
+          mv windows_amd64/ibazel_windows_amd64.exe windows_amd64/ibazel.exe
+          chmod 755 */ibazel*
+
       - name: Create NPM Package
         run: |
-          chmod 755 ./npm-staging/bin/*/ibazel*
           cp "README.md" "npm-staging/README.md"
           cp "release/npm/index.js" "npm-staging/index.js"
+          cp ".npmrc" "npm-staging/.npmrc"
           bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
+      - name: Upload npm package
+        uses: actions/upload-artifact@v2
+        with:
+          name: npm-package
+          path: npm-staging/
+
       - name: Publish NPM Package
+        if: ${{ github.event.release.upload_url }}
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: ./npm-staging
         run: |
           echo -n "Publishing to NPM as "
-          grep "version" < "npm-staging/package.json"
-          cd "npm-staging" && find . && cat package.json && echo "Publishing to npm..." && npm publish
+          grep "version" < "package.json"
+          find . && cat package.json && echo "Publishing to npm..." && npm publish
