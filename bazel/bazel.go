@@ -233,10 +233,8 @@ func (b *bazel) Info() (map[string]string, error) {
 	stdoutBuffer, _ := b.newCommand("info")
 
 	// This gofunction only prints if 'bazel info' takes longer than 8 seconds
-	doneCh := make(chan struct{}, 1)
-	defer func() {
-		doneCh <- struct{}{}
-	}()
+	doneCh := make(chan struct{})
+	defer close(doneCh)
 	go func() {
 		select {
 			case <- doneCh:
