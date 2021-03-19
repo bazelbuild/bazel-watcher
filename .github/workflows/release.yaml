@@ -95,6 +95,8 @@ jobs:
 
       - name: Create NPM Package
         run: |
+          pwd
+          find .
           cp "README.md" "npm-staging/README.md"
           cp "release/npm/index.js" "npm-staging/index.js"
           cp ".npmrc" "npm-staging/.npmrc"
