@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/bazelbuild/bazel-watcher/ibazel/live_reload"
 )
 
 var Version = "Development"
@@ -151,7 +152,16 @@ func parseArgs(in []string) (targets, startupArgs, bazelArgs, args []string) {
 // main entrypoint for IBazel.
 func main() {
 	flag.Usage = usage
+	hostPtr := flag.String("host", "localhost", "host value for ibazel server to contact back to")
+	portPtr := flag.Int("port", 35729, "port value for ibazel server to contact back to, if all values are left as default it will search for a port until one is found")
+	protocolPtr := flag.String("protocol", "http", "protocol ibazel with use to make the call")
 	flag.Parse()
+
+	var liveReloadOpts live_reload.LiveReload
+	liveReloadOpts.Host = *hostPtr
+	liveReloadOpts.Port = uint16(*portPtr)
+	liveReloadOpts.Protocol = *protocolPtr
+	live_reload.SetLiveReload(liveReloadOpts)
 
 	if *logToFile != "-" {
 		var err error

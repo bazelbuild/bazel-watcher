@@ -81,29 +81,66 @@ func (l *LiveReloadServer) AfterCommand(targets []string, command string, succes
 
 func (l *LiveReloadServer) ReloadTriggered(targets []string) {}
 
+type LiveReload struct {
+   Host string
+   Port uint16
+   Protocol string
+}
+
+var (
+	liveReloadOpts LiveReload
+)
+
+func SetLiveReload (values LiveReload) {
+	liveReloadOpts = values
+}
+
 func (l *LiveReloadServer) startLiveReloadServer() {
 	if l.lrserver != nil {
 		return
 	}
 
-	port := lrserver.DefaultPort
-	for ; port < lrserver.DefaultPort+100; port++ {
-		if testPort(port) {
-			l.lrserver = lrserver.New("live reload", port)
-			// Live reload server shouldn't log.
-			l.lrserver.SetStatusLog(golog.New(os.Stderr, "", 0))
-			go func() {
-				err := l.lrserver.ListenAndServe()
-				if err != nil {
-					log.Errorf("Live reload server failed to start: %v", err)
-				}
-			}()
-			url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
-			os.Setenv("IBAZEL_LIVERELOAD_URL", url)
-			return
+	port := liveReloadOpts.Port
+	host := liveReloadOpts.Host
+	protocol := liveReloadOpts.Protocol
+
+	// Keeps default behaviour if default options are selected
+	if( port == uint16(35729) && host == "localhost" && protocol == "http") {
+		for ; port < lrserver.DefaultPort+100; port++ {
+			if testPort(port) {
+				l.lrserver = lrserver.New("live reload", port)
+				// Live reload server shouldn't log.
+				l.lrserver.SetStatusLog(golog.New(os.Stderr, "", 0))
+				go func() {
+					err := l.lrserver.ListenAndServe()
+					if err != nil {
+						log.Errorf("Live reload server failed to start: %v", err)
+					}
+				}()
+				url := fmt.Sprintf("http://localhost:%d/livereload.js?snipver=1", port)
+				os.Setenv("IBAZEL_LIVERELOAD_URL", url)
+				return
+			}
 		}
+		log.Errorf("Could not find open port for live reload server")
+	}else{
+			if testPort(port) {
+				l.lrserver = lrserver.New("live reload", port)
+				// Live reload server shouldn't log.
+				l.lrserver.SetStatusLog(golog.New(os.Stderr, "", 0))
+				go func() {
+					err := l.lrserver.ListenAndServe()
+					if err != nil {
+						log.Errorf("Live reload server failed to start: %v", err)
+					}
+				}()
+				url := fmt.Sprintf("%s://%s:%d/livereload.js?snipver=1",protocol,host, port)
+				os.Setenv("IBAZEL_LIVERELOAD_URL", url)
+				return
+			}
+		log.Errorf("Could not set these options for live reload server")
+
 	}
-	log.Errorf("Could not find open port for live reload server")
 }
 
 func (l *LiveReloadServer) triggerReload(targets []string) {
