@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE
 
 dirty = Popen(["git", "diff-index", "--quiet", "HEAD"], stdout=PIPE).wait() != 0
 
-commit_process = Popen(["git", "describe", "--tags", "--abbrev=0"], stdout=PIPE)
+commit_process = Popen(["git", "describe", "--always", "--tags", "--abbrev=0"], stdout=PIPE)
 (version, err) = commit_process.communicate()
 
 print("STABLE_GIT_VERSION %s%s" % (
