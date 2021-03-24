@@ -120,4 +120,4 @@ jobs:
         run: |
           echo -n "Publishing to NPM as "
           grep "version" < "package.json"
-          find . && cat package.json && echo "Publishing to npm..." && npm publish
+          find . && cat package.json && npm install && echo "Publishing to npm..." && npm publish
