@@ -46,6 +46,7 @@ var overrideableBazelFlags []string = []string{
 	"--define=",
 	"--dynamic_mode=",
 	"--features=",
+	"--flaky_test_attempts=",
 	"--keep_going",
 	"-k",
 	"--nocache_test_results",
