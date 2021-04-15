@@ -33,8 +33,13 @@ func NewWatcher() (common.Watcher, error) {
 	if ok && flag != "0" {
 		return fsnotify.NewWatcher()
 	}
-	experimentalWatcherLog.Do(func() {
+
+	// Avoid logging if IBAZEL_USE_LEGACY_WATCHER=0
+	if !ok {
+		experimentalWatcherLog.Do(func() {
 		log.Log("You are using an experimental filesystem watcher. If you would like to disable that, please set the environment variable\n\tIBAZEL_USE_LEGACY_WATCHER=1")
 	})
+	}
+
 	return fsevents.NewWatcher()
 }
