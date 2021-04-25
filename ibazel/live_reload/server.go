@@ -32,6 +32,8 @@ import (
 
 var noLiveReload = flag.Bool("nolive_reload", false, "Disable JavaScript live reload support")
 
+var forceLiveReload = flag.Bool("force_live_reload", false, "Force-enable JavaScript live reload support")
+
 type LiveReloadServer struct {
 	lrserver       *lrserver.Server
 	eventListeners []Events
@@ -47,7 +49,12 @@ func (l *LiveReloadServer) AddEventsListener(listener Events) {
 	l.eventListeners = append(l.eventListeners, listener)
 }
 
-func (l *LiveReloadServer) Initialize(info *map[string]string) {}
+func (l *LiveReloadServer) Initialize(info *map[string]string) {
+	if *forceLiveReload {
+		log.Log("Force-activating live reload.")
+		l.startLiveReloadServer()
+	}
+}
 
 func (l *LiveReloadServer) Cleanup() {
 	if l.lrserver != nil {
@@ -56,15 +63,17 @@ func (l *LiveReloadServer) Cleanup() {
 }
 
 func (l *LiveReloadServer) TargetDecider(rule *blaze_query.Rule) {
-	for _, attr := range rule.Attribute {
-		if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
-			if contains(attr.StringListValue, "ibazel_live_reload") {
-				if *noLiveReload {
-					log.Log("Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.")
+	if !*forceLiveReload {
+		for _, attr := range rule.Attribute {
+			if *attr.Name == "tags" && *attr.Type == blaze_query.Attribute_STRING_LIST {
+				if contains(attr.StringListValue, "ibazel_live_reload") {
+					if *noLiveReload {
+						log.Log("Target requests live_reload but liveReload has been disabled with the -nolive_reload flag.")
+						return
+					}
+					l.startLiveReloadServer()
 					return
 				}
-				l.startLiveReloadServer()
-				return
 			}
 		}
 	}
