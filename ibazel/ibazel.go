@@ -66,6 +66,7 @@ const buildQuery = "buildfiles(deps(set(%s)))"
 type IBazel struct {
 	debounceDuration time.Duration
 
+	b           bazel.Bazel
 	cmd         command.Command
 	args        []string
 	bazelArgs   []string
@@ -83,7 +84,8 @@ type IBazel struct {
 
 	lifecycleListeners []Lifecycle
 
-	state State
+	state          State
+	abortLoopEarly bool
 }
 
 func New() (*IBazel, error) {
@@ -92,6 +94,11 @@ func New() (*IBazel, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// The current architecture layout doesn't allow to define a single state machine per target.
+	// As a result the live compilation behaviour has to be a general setting
+	flag, ok := os.LookupEnv("IBAZEL_ABORT_COMPILATION_EARLY")
+	i.abortLoopEarly = ok && flag != "0"
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[common.Watcher]map[string]struct{}{}
@@ -322,13 +329,73 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			i.state = RUN
 		}
 	case RUN:
-		log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
-		i.beforeCommand(targets, command)
-		outputBuffer, err := commandToRun(targets...)
-		i.interruptCount = 0
-		i.afterCommand(targets, command, err == nil, outputBuffer)
-		i.state = WAIT
+		runDone := make(chan bool)
+		runFn := func(i *IBazel, runDone chan bool) {
+			log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
+			i.beforeCommand(targets, command)
+			outputBuffer, err := commandToRun(targets...)
+			i.interruptCount = 0
+			i.afterCommand(targets, command, err == nil, outputBuffer)
+			i.state = WAIT
+			runDone <- true
+		}
+
+		go runFn(i, runDone)
+
+		// use abort compilation early behaviour
+		if i.abortLoopEarly {
+			select {
+			case e := <-i.sourceFileWatcher.Events():
+				if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+					log.Logf("Changed: %q. Rebuilding...", e.Name)
+					i.logRunAbort(e.Name, "source")
+					i.cancel()
+					i.changeDetected(targets, "source", e.Name)
+					i.state = DEBOUNCE_RUN
+				}
+			case e := <-i.buildFileWatcher.Events():
+				if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+					i.logRunAbort(e.Name, "build")
+					i.cancel()
+					i.changeDetected(targets, "graph", e.Name)
+					i.state = DEBOUNCE_QUERY
+				}
+			case <-runDone:
+			}
+
+			return
+		}
+
+		// use default compilation behaviour
+		<-runDone
+
 	}
+}
+
+func (i *IBazel) logRunAbort(errorName string, abortType string) {
+	var baseStr string
+	var condStr string
+
+	switch abortType {
+	case "build":
+		baseStr = fmt.Sprintf("Build graph changed: %q. ", errorName)
+
+		if i.state == RUN {
+			condStr = "Canceling previously and requerying..."
+		} else {
+			condStr = "Requerying..."
+		}
+	default:
+		baseStr = fmt.Sprintf("Changed: %q. ", errorName)
+
+		if i.state == RUN {
+			condStr = "Canceling previously and rebuilding...."
+		} else {
+			condStr = "Rebuilding...."
+		}
+	}
+
+	log.Logf("%s%s", baseStr, condStr)
 }
 
 func verb(s string) string {
@@ -340,8 +407,19 @@ func verb(s string) string {
 	}
 }
 
+func (i *IBazel) cancel() {
+	if i.b != nil {
+		i.b.Cancel()
+	}
+
+	if i.cmd != nil {
+		i.cmd.Kill()
+	}
+}
+
 func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
+	i.b = b
 
 	b.Cancel()
 	b.WriteToStderr(true)
@@ -356,6 +434,7 @@ func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 
 func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
+	i.b = b
 
 	b.Cancel()
 	b.WriteToStderr(true)
