@@ -380,7 +380,7 @@ func (i *IBazel) logRunAbort(errorName string, abortType string) {
 		baseStr = fmt.Sprintf("Build graph changed: %q. ", errorName)
 
 		if i.state == RUN {
-			condStr = "Canceling previously and requerying..."
+			condStr = "Cancelling previous Bazel invocation and requerying..."
 		} else {
 			condStr = "Requerying..."
 		}
@@ -388,7 +388,7 @@ func (i *IBazel) logRunAbort(errorName string, abortType string) {
 		baseStr = fmt.Sprintf("Changed: %q. ", errorName)
 
 		if i.state == RUN {
-			condStr = "Canceling previously and rebuilding...."
+			condStr = "Cancelling previous Bazel invocation and rebuilding..."
 		} else {
 			condStr = "Rebuilding...."
 		}
