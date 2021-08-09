@@ -95,8 +95,7 @@ func New() (*IBazel, error) {
 		return nil, err
 	}
 
-	// The current architecture layout doesn't allow to define a single state machine per target.
-	// As a result the live compilation behaviour has to be a general setting
+	// Check for abort compilation early setting
 	flag, ok := os.LookupEnv("IBAZEL_ABORT_COMPILATION_EARLY")
 	i.abortLoopEarly = ok && flag != "0"
 
