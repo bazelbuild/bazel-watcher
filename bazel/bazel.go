@@ -423,9 +423,6 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 
 func (b *bazel) Wait() error {
 	res := b.cmd.Wait()
-	log.Errorf("%v", b)
-	log.Errorf("%v", b.cmd)
-	log.Errorf("%v", res)
 
 	if res.Error() == "exec: Wait was already called" {
 		if b.cmd.ProcessState.Success() {
