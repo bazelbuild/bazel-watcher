@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
@@ -362,17 +363,14 @@ type CancelableBuildResult struct {
 }
 
 func (b *bazel) CancelableBuild(cancel chan bool, args ...string) chan CancelableBuildResult {
-	buildResult := new(CancelableBuildResult)
 	r := make(chan CancelableBuildResult)
 
 	go func() {
-		defer close(r)
+		buildResult := new(CancelableBuildResult)
 		stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
 
 		runDone := make(chan error)
 		go func() {
-			defer close(runDone)
-
 			runDone <- b.cmd.Run()
 		}()
 
@@ -384,7 +382,8 @@ func (b *bazel) CancelableBuild(cancel chan bool, args ...string) chan Cancelabl
 				log.Errorf("Build error: %v", e)
 			}
 		case <-cancel:
-			b.Cancel()
+			b.cmd.Process.Signal(syscall.SIGTERM)
+			<-runDone
 			buildResult.StdoutBuffer = nil
 			buildResult.Err = nil
 		}

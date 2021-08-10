@@ -348,8 +348,6 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		runDone := make(chan bool)
 
 		go func() {
-			defer close(runDone)
-
 			log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
 			i.beforeCommand(targets, command)
 			res := <-i.buildWithEarlyAbort(cancelRun, targets...)
@@ -358,27 +356,30 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			runDone <- true
 		}()
 
-		select {
-		case e := <-i.sourceFileWatcher.Events():
-			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
-				defer close(cancelRun)
-
-				log.Logf("Changed: %q. Cancelling previous Bazel invocation and rebuilding...", e.Name)
-				cancelRun <- true
-				<-runDone
-				i.changeDetected(targets, "source", e.Name)
-				i.setState(DEBOUNCE_RUN)
+		for {
+			select {
+			case e := <-i.sourceFileWatcher.Events():
+				if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+					log.Logf("Changed: %q. Cancelling previous Bazel invocation and rebuilding...", e.Name)
+					cancelRun <- true
+					<-runDone
+					i.changeDetected(targets, "source", e.Name)
+					i.setState(DEBOUNCE_RUN)
+					return
+				}
+			case e := <-i.buildFileWatcher.Events():
+				if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+					log.Logf("Build graph changed: %q. Cancelling previous Bazel invocation and requerying...", e.Name)
+					cancelRun <- true
+					<-runDone
+					i.changeDetected(targets, "graph", e.Name)
+					i.setState(DEBOUNCE_QUERY)
+					return
+				}
+			case <-runDone:
+				i.setState(WAIT)
+				return
 			}
-		case e := <-i.buildFileWatcher.Events():
-			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
-				log.Logf("Build graph changed: %q. Cancelling previous Bazel invocation and requerying...", e.Name)
-				cancelRun <- true
-				<-runDone
-				i.changeDetected(targets, "graph", e.Name)
-				i.setState(DEBOUNCE_QUERY)
-			}
-		case <-runDone:
-			i.setState(WAIT)
 		}
 	}
 }
