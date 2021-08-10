@@ -299,14 +299,12 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		select {
 		case e := <-i.sourceFileWatcher.Events():
 			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
-				log.Logf("WAIT SOURCE")
 				log.Logf("Changed: %q. Rebuilding...", e.Name)
 				i.changeDetected(targets, "source", e.Name)
 				i.setState(DEBOUNCE_RUN)
 			}
 		case e := <-i.buildFileWatcher.Events():
 			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
-				log.Logf("WAIT BUILD")
 				log.Logf("Build graph changed: %q. Requerying...", e.Name)
 				i.changeDetected(targets, "graph", e.Name)
 				i.setState(DEBOUNCE_QUERY)

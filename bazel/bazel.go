@@ -385,7 +385,6 @@ func (b *bazel) CancelableBuild(cancel chan bool, args ...string) chan Cancelabl
 			}
 		case <-cancel:
 			b.Cancel()
-			b.cmd.Process.Wait()
 			buildResult.StdoutBuffer = nil
 			buildResult.Err = nil
 		}
