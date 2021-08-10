@@ -30,8 +30,8 @@ import (
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/golang/protobuf/proto"
 )
 
 var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to use for actions")
@@ -136,6 +136,7 @@ type Bazel interface {
 	Query(args ...string) (*blaze_query.QueryResult, error)
 	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
+	CancelableBuild(cancel chan bool, args ...string) chan CancelableBuildResult
 	Test(args ...string) (*bytes.Buffer, error)
 	Run(args ...string) (*exec.Cmd, *bytes.Buffer, error)
 	Wait() error
@@ -237,10 +238,10 @@ func (b *bazel) Info() (map[string]string, error) {
 	defer close(doneCh)
 	go func() {
 		select {
-			case <- doneCh:
-				// Do nothing since we're done.
-			case <- time.After(8*time.Second):
-				log.Logf("Running `bazel info`... it's being a little slow")
+		case <-doneCh:
+			// Do nothing since we're done.
+		case <-time.After(8 * time.Second):
+			log.Logf("Running `bazel info`... it's being a little slow")
 		}
 	}()
 
@@ -355,6 +356,47 @@ func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
 	return stdoutBuffer, err
 }
 
+type CancelableBuildResult struct {
+	StdoutBuffer *bytes.Buffer
+	Err          error
+}
+
+func (b *bazel) CancelableBuild(cancel chan bool, args ...string) chan CancelableBuildResult {
+	buildResult := new(CancelableBuildResult)
+	r := make(chan CancelableBuildResult)
+
+	go func() {
+		defer close(r)
+		stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
+
+		runDone := make(chan error)
+		go func() {
+			defer close(runDone)
+
+			runDone <- b.cmd.Run()
+		}()
+
+		select {
+		case e := <-runDone:
+			buildResult.StdoutBuffer = stdoutBuffer
+			buildResult.Err = e
+			if e != nil {
+				log.Errorf("Build error: %v", e)
+			}
+		case <-cancel:
+			b.Cancel()
+			b.cmd.Process.Wait()
+			buildResult.StdoutBuffer = nil
+			buildResult.Err = nil
+		}
+
+		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+		r <- *buildResult
+	}()
+
+	return r
+}
+
 func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
 	stdoutBuffer, stderrBuffer := b.newCommand("test", append(b.args, args...)...)
 	err := b.cmd.Run()
@@ -382,6 +424,10 @@ func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 
 func (b *bazel) Wait() error {
 	res := b.cmd.Wait()
+	log.Errorf("%v", b)
+	log.Errorf("%v", b.cmd)
+	log.Errorf("%v", res)
+
 	if res.Error() == "exec: Wait was already called" {
 		if b.cmd.ProcessState.Success() {
 			return nil

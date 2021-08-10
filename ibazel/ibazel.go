@@ -52,12 +52,13 @@ type State string
 type runnableCommand func(...string) (*bytes.Buffer, error)
 
 const (
-	DEBOUNCE_QUERY State = "DEBOUNCE_QUERY"
-	QUERY          State = "QUERY"
-	WAIT           State = "WAIT"
-	DEBOUNCE_RUN   State = "DEBOUNCE_RUN"
-	RUN            State = "RUN"
-	QUIT           State = "QUIT"
+	DEBOUNCE_QUERY       State = "DEBOUNCE_QUERY"
+	QUERY                State = "QUERY"
+	WAIT                 State = "WAIT"
+	DEBOUNCE_RUN         State = "DEBOUNCE_RUN"
+	RUN                  State = "RUN"
+	RUN_WITH_EARLY_ABORT State = "RUN_WITH_EARLY_ABORT"
+	QUIT                 State = "QUIT"
 )
 
 const sourceQuery = "kind('source file', deps(set(%s)))"
@@ -66,7 +67,6 @@ const buildQuery = "buildfiles(deps(set(%s)))"
 type IBazel struct {
 	debounceDuration time.Duration
 
-	b           bazel.Bazel
 	cmd         command.Command
 	args        []string
 	bazelArgs   []string
@@ -84,8 +84,7 @@ type IBazel struct {
 
 	lifecycleListeners []Lifecycle
 
-	state          State
-	abortLoopEarly bool
+	state State
 }
 
 func New() (*IBazel, error) {
@@ -94,10 +93,6 @@ func New() (*IBazel, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Check for abort compilation early setting
-	flag, ok := os.LookupEnv("IBAZEL_ABORT_COMPILATION_EARLY")
-	i.abortLoopEarly = ok && flag != "0"
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[common.Watcher]map[string]struct{}{}
@@ -177,6 +172,20 @@ func (i *IBazel) newBazel() bazel.Bazel {
 	b.SetStartupArgs(i.startupArgs)
 	b.SetArguments(i.bazelArgs)
 	return b
+}
+
+func isAbortCompilationEarlyEnabled() bool {
+	// Check for abort compilation early env var
+	flag, ok := os.LookupEnv("IBAZEL_ABORT_COMPILATION_EARLY")
+	return ok && flag != "0"
+}
+
+func (i *IBazel) setState(newState State) {
+	i.state = newState
+
+	if newState == RUN && isAbortCompilationEarlyEnabled() {
+		i.state = RUN_WITH_EARLY_ABORT
+	}
 }
 
 func (i *IBazel) SetBazelArgs(args []string) {
@@ -272,7 +281,7 @@ func (i *IBazel) Test(targets ...string) error {
 func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []string) error {
 	joinedTargets := strings.Join(targets, " ")
 
-	i.state = QUERY
+	i.setState(QUERY)
 	for {
 		i.iteration(command, commandToRun, targets, joinedTargets)
 	}
@@ -290,15 +299,17 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		select {
 		case e := <-i.sourceFileWatcher.Events():
 			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+				log.Logf("WAIT SOURCE")
 				log.Logf("Changed: %q. Rebuilding...", e.Name)
 				i.changeDetected(targets, "source", e.Name)
-				i.state = DEBOUNCE_RUN
+				i.setState(DEBOUNCE_RUN)
 			}
 		case e := <-i.buildFileWatcher.Events():
 			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+				log.Logf("WAIT BUILD")
 				log.Logf("Build graph changed: %q. Requerying...", e.Name)
 				i.changeDetected(targets, "graph", e.Name)
-				i.state = DEBOUNCE_QUERY
+				i.setState(DEBOUNCE_QUERY)
 			}
 		}
 	case DEBOUNCE_QUERY:
@@ -307,94 +318,71 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "graph", e.Name)
 			}
-			i.state = DEBOUNCE_QUERY
+			i.setState(DEBOUNCE_QUERY)
 		case <-time.After(i.debounceDuration):
-			i.state = QUERY
+			i.setState(QUERY)
 		}
 	case QUERY:
 		// Query for which files to watch.
 		log.Logf("Querying for files to watch...")
 		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
 		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
-		i.state = RUN
+		i.setState(RUN)
 	case DEBOUNCE_RUN:
 		select {
 		case e := <-i.sourceFileWatcher.Events():
 			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "source", e.Name)
 			}
-			i.state = DEBOUNCE_RUN
+			i.setState(DEBOUNCE_RUN)
 		case <-time.After(i.debounceDuration):
-			i.state = RUN
+			i.setState(RUN)
 		}
 	case RUN:
+		log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
+		i.beforeCommand(targets, command)
+		outputBuffer, err := commandToRun(targets...)
+		i.interruptCount = 0
+		i.afterCommand(targets, command, err == nil, outputBuffer)
+		i.setState(WAIT)
+	case RUN_WITH_EARLY_ABORT:
+		cancelRun := make(chan bool)
 		runDone := make(chan bool)
-		runFn := func(i *IBazel, runDone chan bool) {
+
+		go func() {
+			defer close(runDone)
+
 			log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
 			i.beforeCommand(targets, command)
-			outputBuffer, err := commandToRun(targets...)
+			res := <-i.buildWithEarlyAbort(cancelRun, targets...)
 			i.interruptCount = 0
-			i.afterCommand(targets, command, err == nil, outputBuffer)
-			i.state = WAIT
+			i.afterCommand(targets, command, res.Err == nil, res.StdoutBuffer)
 			runDone <- true
-		}
+		}()
 
-		go runFn(i, runDone)
+		select {
+		case e := <-i.sourceFileWatcher.Events():
+			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+				defer close(cancelRun)
 
-		// use abort compilation early behaviour
-		if i.abortLoopEarly {
-			select {
-			case e := <-i.sourceFileWatcher.Events():
-				if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
-					log.Logf("Changed: %q. Rebuilding...", e.Name)
-					i.logRunAbort(e.Name, "source")
-					i.cancel()
-					i.changeDetected(targets, "source", e.Name)
-					i.state = DEBOUNCE_RUN
-				}
-			case e := <-i.buildFileWatcher.Events():
-				if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
-					i.logRunAbort(e.Name, "build")
-					i.cancel()
-					i.changeDetected(targets, "graph", e.Name)
-					i.state = DEBOUNCE_QUERY
-				}
-			case <-runDone:
+				log.Logf("Changed: %q. Cancelling previous Bazel invocation and rebuilding...", e.Name)
+				cancelRun <- true
+				<-runDone
+				i.changeDetected(targets, "source", e.Name)
+				i.setState(DEBOUNCE_RUN)
 			}
-
-			return
-		}
-
-		// use default compilation behaviour
-		<-runDone
-
-	}
-}
-
-func (i *IBazel) logRunAbort(errorName string, abortType string) {
-	var baseStr string
-	var condStr string
-
-	switch abortType {
-	case "build":
-		baseStr = fmt.Sprintf("Build graph changed: %q. ", errorName)
-
-		if i.state == RUN {
-			condStr = "Cancelling previous Bazel invocation and requerying..."
-		} else {
-			condStr = "Requerying..."
-		}
-	default:
-		baseStr = fmt.Sprintf("Changed: %q. ", errorName)
-
-		if i.state == RUN {
-			condStr = "Cancelling previous Bazel invocation and rebuilding..."
-		} else {
-			condStr = "Rebuilding...."
+		case e := <-i.buildFileWatcher.Events():
+			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+				log.Logf("Build graph changed: %q. Cancelling previous Bazel invocation and requerying...", e.Name)
+				cancelRun <- true
+				<-runDone
+				i.changeDetected(targets, "graph", e.Name)
+				i.setState(DEBOUNCE_QUERY)
+			}
+		case <-runDone:
+			i.setState(WAIT)
 		}
 	}
-
-	log.Logf("%s%s", baseStr, condStr)
 }
 
 func verb(s string) string {
@@ -406,19 +394,8 @@ func verb(s string) string {
 	}
 }
 
-func (i *IBazel) cancel() {
-	if i.b != nil {
-		i.b.Cancel()
-	}
-
-	if i.cmd != nil {
-		i.cmd.Kill()
-	}
-}
-
 func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
-	i.b = b
 
 	b.Cancel()
 	b.WriteToStderr(true)
@@ -431,9 +408,18 @@ func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 	return outputBuffer, nil
 }
 
+func (i *IBazel) buildWithEarlyAbort(cancel chan bool, targets ...string) chan bazel.CancelableBuildResult {
+	b := i.newBazel()
+
+	b.Cancel()
+	b.WriteToStderr(true)
+	b.WriteToStdout(true)
+
+	return b.CancelableBuild(cancel, targets...)
+}
+
 func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
-	i.b = b
 
 	b.Cancel()
 	b.WriteToStderr(true)
