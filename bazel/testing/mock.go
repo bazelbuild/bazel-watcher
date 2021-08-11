@@ -101,6 +101,9 @@ func (b *MockBazel) Test(args ...string) (*bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Test"}, args...))
 	return nil, nil
 }
+func (b *MockBazel) TestCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
+	return b.Test(args...)
+}
 func (b *MockBazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Run"}, args...))
 	return nil, nil, nil

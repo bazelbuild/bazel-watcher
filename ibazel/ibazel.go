@@ -449,8 +449,18 @@ func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 }
 
 func (i *IBazel) testWithEarlyAbort(cancelCh chan bool, targets ...string) (*bytes.Buffer, error) {
-	// TODO: IMPLEMENT
-	return nil, nil
+	b := i.newBazel()
+
+	b.Cancel()
+	b.WriteToStderr(true)
+	b.WriteToStdout(true)
+
+	outputBuffer, err := b.TestCancelable(cancelCh, targets...)
+	if err != nil {
+		log.Errorf("Build error: %v", err)
+		return outputBuffer, err
+	}
+	return outputBuffer, nil
 }
 
 func contains(l []string, e string) bool {

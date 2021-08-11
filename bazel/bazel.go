@@ -140,6 +140,7 @@ type Bazel interface {
 	Build(args ...string) (*bytes.Buffer, error)
 	BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error)
 	Test(args ...string) (*bytes.Buffer, error)
+	TestCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error)
 	Run(args ...string) (*exec.Cmd, *bytes.Buffer, error)
 	Wait() error
 	Cancel()
@@ -389,6 +390,31 @@ func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
 
 	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
 	return stdoutBuffer, err
+}
+
+func (b *bazel) TestCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
+	stdoutBuffer, stderrBuffer := b.newCommand("test", append(b.args, args...)...)
+	doneCh := make(chan error)
+
+	go func() {
+		doneCh <- b.cmd.Run()
+	}()
+
+	select {
+	case e := <-doneCh:
+		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+
+		return stdoutBuffer, e
+	case <-cancelCh:
+		if runtime.GOOS == "windows" {
+			b.Cancel()
+		} else {
+			b.cmd.Process.Signal(syscall.SIGTERM)
+		}
+		<-doneCh
+
+		return nil, nil
+	}
 }
 
 // Build the specified target (singular) and run it with the given arguments.
