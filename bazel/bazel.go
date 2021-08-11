@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -371,7 +372,11 @@ func (b *bazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buff
 
 		return stdoutBuffer, e
 	case <-cancelCh:
-		b.cmd.Process.Signal(syscall.SIGTERM)
+		if runtime.GOOS == "windows" {
+			b.Cancel()
+		} else {
+			b.cmd.Process.Signal(syscall.SIGTERM)
+		}
 		<-doneCh
 
 		return nil, nil
