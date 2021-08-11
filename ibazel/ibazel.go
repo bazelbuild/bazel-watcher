@@ -344,16 +344,16 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.setState(WAIT)
 	case RUN_WITH_EARLY_ABORT:
-		cancelRun := make(chan bool)
-		runDone := make(chan bool)
+		cancelCh := make(chan bool)
+		doneCh := make(chan bool)
 
 		go func() {
 			log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
 			i.beforeCommand(targets, command)
-			res := <-i.buildWithEarlyAbort(cancelRun, targets...)
+			outputBuffer, err := i.buildWithEarlyAbort(cancelCh, targets...)
 			i.interruptCount = 0
-			i.afterCommand(targets, command, res.Err == nil, res.StdoutBuffer)
-			runDone <- true
+			i.afterCommand(targets, command, err == nil, outputBuffer)
+			doneCh <- true
 		}()
 
 		for {
@@ -361,8 +361,8 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			case e := <-i.sourceFileWatcher.Events():
 				if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 					log.Logf("Changed: %q. Cancelling previous Bazel invocation and rebuilding...", e.Name)
-					cancelRun <- true
-					<-runDone
+					cancelCh <- true
+					<-doneCh
 					i.changeDetected(targets, "source", e.Name)
 					i.setState(DEBOUNCE_RUN)
 					return
@@ -370,13 +370,13 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			case e := <-i.buildFileWatcher.Events():
 				if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 					log.Logf("Build graph changed: %q. Cancelling previous Bazel invocation and requerying...", e.Name)
-					cancelRun <- true
-					<-runDone
+					cancelCh <- true
+					<-doneCh
 					i.changeDetected(targets, "graph", e.Name)
 					i.setState(DEBOUNCE_QUERY)
 					return
 				}
-			case <-runDone:
+			case <-doneCh:
 				i.setState(WAIT)
 				return
 			}
@@ -407,14 +407,19 @@ func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 	return outputBuffer, nil
 }
 
-func (i *IBazel) buildWithEarlyAbort(cancel chan bool, targets ...string) chan bazel.CancelableBuildResult {
+func (i *IBazel) buildWithEarlyAbort(cancelCh chan bool, targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
 
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
 
-	return b.CancelableBuild(cancel, targets...)
+	outputBuffer, err := b.BuildCancelable(cancelCh, targets...)
+	if err != nil {
+		log.Errorf("Build error: %v", err)
+		return outputBuffer, err
+	}
+	return outputBuffer, nil
 }
 
 func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {

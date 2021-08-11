@@ -137,7 +137,7 @@ type Bazel interface {
 	Query(args ...string) (*blaze_query.QueryResult, error)
 	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
-	CancelableBuild(cancel chan bool, args ...string) chan CancelableBuildResult
+	BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error)
 	Test(args ...string) (*bytes.Buffer, error)
 	Run(args ...string) (*exec.Cmd, *bytes.Buffer, error)
 	Wait() error
@@ -357,42 +357,26 @@ func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
 	return stdoutBuffer, err
 }
 
-type CancelableBuildResult struct {
-	StdoutBuffer *bytes.Buffer
-	Err          error
-}
-
-func (b *bazel) CancelableBuild(cancel chan bool, args ...string) chan CancelableBuildResult {
-	r := make(chan CancelableBuildResult)
+func (b *bazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
+	var err error = nil
+	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
+	doneCh := make(chan error)
 
 	go func() {
-		buildResult := new(CancelableBuildResult)
-		stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
-
-		runDone := make(chan error)
-		go func() {
-			runDone <- b.cmd.Run()
-		}()
-
-		select {
-		case e := <-runDone:
-			buildResult.StdoutBuffer = stdoutBuffer
-			buildResult.Err = e
-			if e != nil {
-				log.Errorf("Build error: %v", e)
-			}
-		case <-cancel:
-			b.cmd.Process.Signal(syscall.SIGTERM)
-			<-runDone
-			buildResult.StdoutBuffer = nil
-			buildResult.Err = nil
-		}
-
-		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
-		r <- *buildResult
+		doneCh <- b.cmd.Run()
 	}()
 
-	return r
+	select {
+	case e := <-doneCh:
+		err = e
+		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+	case <-cancelCh:
+		b.cmd.Process.Signal(syscall.SIGTERM)
+		<-doneCh
+		err = nil
+	}
+
+	return stdoutBuffer, err
 }
 
 func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
