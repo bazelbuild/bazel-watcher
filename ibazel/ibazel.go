@@ -54,9 +54,6 @@ type runnableCommand struct {
 	cancelableCommand func(chan bool, ...string) (*bytes.Buffer, error)
 }
 
-// type runnableCommand func(...string) (*bytes.Buffer, error)
-// type cancelableRunnableCommand func(chan bool, ...string) (*bytes.Buffer, error)
-
 const (
 	DEBOUNCE_QUERY       State = "DEBOUNCE_QUERY"
 	QUERY                State = "QUERY"
