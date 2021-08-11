@@ -49,7 +49,7 @@ var exitMessages = map[os.Signal]string{
 }
 
 type State string
-type runnableCommand struct {
+type RunnableCommand struct {
 	command           func(...string) (*bytes.Buffer, error)
 	cancelableCommand func(chan bool, ...string) (*bytes.Buffer, error)
 }
@@ -268,23 +268,23 @@ func (i *IBazel) setup() error {
 // Run the specified target (singular) in the IBazel loop.
 func (i *IBazel) Run(target string, args []string) error {
 	i.args = args
-	cmd := runnableCommand{command: i.run, cancelableCommand: i.runWithEarlyAbort}
+	cmd := RunnableCommand{command: i.run, cancelableCommand: i.runWithEarlyAbort}
 	return i.loop("run", cmd, []string{target})
 }
 
 // Build the specified targets in the IBazel loop.
 func (i *IBazel) Build(targets ...string) error {
-	cmd := runnableCommand{command: i.build, cancelableCommand: i.buildWithEarlyAbort}
+	cmd := RunnableCommand{command: i.build, cancelableCommand: i.buildWithEarlyAbort}
 	return i.loop("build", cmd, targets)
 }
 
 // Test the specified targets in the IBazel loop.
 func (i *IBazel) Test(targets ...string) error {
-	cmd := runnableCommand{command: i.run, cancelableCommand: i.runWithEarlyAbort}
+	cmd := RunnableCommand{command: i.test, cancelableCommand: i.testWithEarlyAbort}
 	return i.loop("test", cmd, targets)
 }
 
-func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []string) error {
+func (i *IBazel) loop(command string, commandToRun RunnableCommand, targets []string) error {
 	joinedTargets := strings.Join(targets, " ")
 
 	i.setState(QUERY)
@@ -299,7 +299,7 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 // to avoid triggering builds on file accesses (e.g. due to your IDE checking modified status).
 const modifyingEvents = common.Write | common.Create | common.Rename | common.Remove
 
-func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
+func (i *IBazel) iteration(command string, commandToRun RunnableCommand, targets []string, joinedTargets string) {
 	switch i.state {
 	case WAIT:
 		select {

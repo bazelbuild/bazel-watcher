@@ -91,6 +91,9 @@ func (b *MockBazel) Build(args ...string) (*bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Build"}, args...))
 	return nil, b.buildError
 }
+func (b *MockBazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
+	return b.Build(args...)
+}
 func (b *MockBazel) BuildError(e error) {
 	b.buildError = e
 }

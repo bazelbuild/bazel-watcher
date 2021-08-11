@@ -50,7 +50,7 @@ var _ common.Watcher = &fakeFSNotifyWatcher{}
 
 func (w *fakeFSNotifyWatcher) Close() error                   { return nil }
 func (w *fakeFSNotifyWatcher) UpdateAll(names []string) error { return nil }
-func (w *fakeFSNotifyWatcher) Events() chan common.Event   { return w.EventChan }
+func (w *fakeFSNotifyWatcher) Events() chan common.Event      { return w.EventChan }
 
 var oldCommandDefaultCommand = command.DefaultCommand
 
@@ -217,9 +217,15 @@ func TestIBazelLoop(t *testing.T) {
 
 	// First let's consume all the events from all the channels we care about
 	called := false
-	command := func(targets ...string) (*bytes.Buffer, error) {
-		called = true
-		return nil, nil
+	command := struct {
+		command           func(...string) (*bytes.Buffer, error)
+		cancelableCommand func(chan bool, ...string) (*bytes.Buffer, error)
+	}{
+		func(targets ...string) (*bytes.Buffer, error) {
+			called = true
+			return nil, nil
+		},
+		nil,
 	}
 
 	i.state = QUERY
