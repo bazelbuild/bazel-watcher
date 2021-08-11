@@ -358,7 +358,6 @@ func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
 }
 
 func (b *bazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
-	var err error = nil
 	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
 	doneCh := make(chan error)
 
@@ -368,15 +367,15 @@ func (b *bazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buff
 
 	select {
 	case e := <-doneCh:
-		err = e
 		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+
+		return stdoutBuffer, e
 	case <-cancelCh:
 		b.cmd.Process.Signal(syscall.SIGTERM)
 		<-doneCh
-		err = nil
-	}
 
-	return stdoutBuffer, err
+		return nil, nil
+	}
 }
 
 func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {

@@ -49,7 +49,13 @@ var exitMessages = map[os.Signal]string{
 }
 
 type State string
-type runnableCommand func(...string) (*bytes.Buffer, error)
+type runnableCommand struct {
+	command           func(...string) (*bytes.Buffer, error)
+	cancelableCommand func(chan bool, ...string) (*bytes.Buffer, error)
+}
+
+// type runnableCommand func(...string) (*bytes.Buffer, error)
+// type cancelableRunnableCommand func(chan bool, ...string) (*bytes.Buffer, error)
 
 const (
 	DEBOUNCE_QUERY       State = "DEBOUNCE_QUERY"
@@ -265,17 +271,20 @@ func (i *IBazel) setup() error {
 // Run the specified target (singular) in the IBazel loop.
 func (i *IBazel) Run(target string, args []string) error {
 	i.args = args
-	return i.loop("run", i.run, []string{target})
+	cmd := runnableCommand{command: i.run, cancelableCommand: i.runWithEarlyAbort}
+	return i.loop("run", cmd, []string{target})
 }
 
 // Build the specified targets in the IBazel loop.
 func (i *IBazel) Build(targets ...string) error {
-	return i.loop("build", i.build, targets)
+	cmd := runnableCommand{command: i.build, cancelableCommand: i.buildWithEarlyAbort}
+	return i.loop("build", cmd, targets)
 }
 
 // Test the specified targets in the IBazel loop.
 func (i *IBazel) Test(targets ...string) error {
-	return i.loop("test", i.test, targets)
+	cmd := runnableCommand{command: i.run, cancelableCommand: i.runWithEarlyAbort}
+	return i.loop("test", cmd, targets)
 }
 
 func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []string) error {
@@ -339,7 +348,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case RUN:
 		log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
 		i.beforeCommand(targets, command)
-		outputBuffer, err := commandToRun(targets...)
+		outputBuffer, err := commandToRun.command(targets...)
 		i.interruptCount = 0
 		i.afterCommand(targets, command, err == nil, outputBuffer)
 		i.setState(WAIT)
@@ -349,10 +358,12 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 
 		go func() {
 			log.Logf("%s %s", strings.Title(verb(command)), joinedTargets)
+
 			i.beforeCommand(targets, command)
-			outputBuffer, err := i.buildWithEarlyAbort(cancelCh, targets...)
+			outputBuffer, err := commandToRun.cancelableCommand(cancelCh, targets...)
 			i.interruptCount = 0
 			i.afterCommand(targets, command, err == nil, outputBuffer)
+
 			doneCh <- true
 		}()
 
@@ -361,8 +372,10 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			case e := <-i.sourceFileWatcher.Events():
 				if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 					log.Logf("Changed: %q. Cancelling previous Bazel invocation and rebuilding...", e.Name)
+
 					cancelCh <- true
 					<-doneCh
+
 					i.changeDetected(targets, "source", e.Name)
 					i.setState(DEBOUNCE_RUN)
 					return
@@ -370,8 +383,10 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 			case e := <-i.buildFileWatcher.Events():
 				if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 					log.Logf("Build graph changed: %q. Cancelling previous Bazel invocation and requerying...", e.Name)
+
 					cancelCh <- true
 					<-doneCh
+
 					i.changeDetected(targets, "graph", e.Name)
 					i.setState(DEBOUNCE_QUERY)
 					return
@@ -436,6 +451,11 @@ func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	return outputBuffer, err
 }
 
+func (i *IBazel) testWithEarlyAbort(cancelCh chan bool, targets ...string) (*bytes.Buffer, error) {
+	// TODO: IMPLEMENT
+	return nil, nil
+}
+
 func contains(l []string, e string) bool {
 	for _, i := range l {
 		if i == e {
@@ -485,6 +505,11 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 	log.Logf("Notifying of changes")
 	outputBuffer := i.cmd.NotifyOfChanges()
 	return outputBuffer, nil
+}
+
+func (i *IBazel) runWithEarlyAbort(cancelCh chan bool, targets ...string) (*bytes.Buffer, error) {
+	// TODO: IMPLEMENT
+	return nil, nil
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
