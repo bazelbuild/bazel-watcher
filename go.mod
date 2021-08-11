@@ -9,7 +9,9 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/jaschaephraim/lrserver v0.0.0-20171129202958-50d19f603f71
 	github.com/mattn/go-shellwords v1.0.11
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c // indirect
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )
 
 go 1.13
