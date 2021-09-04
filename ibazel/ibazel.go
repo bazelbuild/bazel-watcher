@@ -515,8 +515,9 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 }
 
 func (i *IBazel) runWithEarlyAbort(cancelCh chan bool, targets ...string) (*bytes.Buffer, error) {
-	// TODO: IMPLEMENT
-	return nil, nil
+	// the run function already handles the early abortion behaviour correctly
+	// we dont need the cancelCh here and we can just call the default run function
+	return i.run(targets...)
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
