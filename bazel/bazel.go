@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,8 +29,8 @@ import (
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/golang/protobuf/proto"
 )
 
 var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to use for actions")
@@ -177,42 +176,6 @@ func (b *bazel) WriteToStdout(v bool) {
 	b.writeToStdout = v
 }
 
-func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *bytes.Buffer) {
-	b.ctx, b.cancel = context.WithCancel(context.Background())
-
-	args = append([]string{command}, args...)
-	args = append(b.startupArgs, args...)
-
-	if b.writeToStderr || b.writeToStdout {
-		containsColor := false
-		for _, arg := range args {
-			if strings.HasPrefix(arg, "--color") {
-				containsColor = true
-			}
-		}
-		if !containsColor {
-			args = append(args, "--color=yes")
-		}
-	}
-
-	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
-
-	stdoutBuffer := new(bytes.Buffer)
-	stderrBuffer := new(bytes.Buffer)
-	if b.writeToStdout {
-		b.cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuffer)
-	} else {
-		b.cmd.Stdout = stdoutBuffer
-	}
-	if b.writeToStderr {
-		b.cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuffer)
-	} else {
-		b.cmd.Stderr = stderrBuffer
-	}
-
-	return stdoutBuffer, stderrBuffer
-}
-
 // Displays information about the state of the bazel process in the
 // form of several "key: value" pairs.  This includes the locations of
 // several output directories.  Because some of the
@@ -237,10 +200,10 @@ func (b *bazel) Info() (map[string]string, error) {
 	defer close(doneCh)
 	go func() {
 		select {
-			case <- doneCh:
-				// Do nothing since we're done.
-			case <- time.After(8*time.Second):
-				log.Logf("Running `bazel info`... it's being a little slow")
+		case <-doneCh:
+			// Do nothing since we're done.
+		case <-time.After(8 * time.Second):
+			log.Logf("Running `bazel info`... it's being a little slow")
 		}
 	}()
 
