@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *bytes.Buffer) {
@@ -44,6 +45,11 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 	}
 
 	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
+	// Always set a process group for unix based systems
+	b.cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+		Pgid:    0,
+	}
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)
@@ -59,4 +65,46 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 	}
 
 	return stdoutBuffer, stderrBuffer
+}
+
+func (b *bazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
+	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
+	doneCh := make(chan error)
+
+	go func() {
+		doneCh <- b.cmd.Run()
+	}()
+
+	select {
+	case e := <-doneCh:
+		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+
+		return stdoutBuffer, e
+	case <-cancelCh:
+		b.cmd.Process.Signal(syscall.SIGTERM)
+		<-doneCh
+
+		return nil, nil
+	}
+}
+
+func (b *bazel) TestCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
+	stdoutBuffer, stderrBuffer := b.newCommand("test", append(b.args, args...)...)
+	doneCh := make(chan error)
+
+	go func() {
+		doneCh <- b.cmd.Run()
+	}()
+
+	select {
+	case e := <-doneCh:
+		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+
+		return stdoutBuffer, e
+	case <-cancelCh:
+		b.cmd.Process.Signal(syscall.SIGTERM)
+		<-doneCh
+
+		return nil, nil
+	}
 }

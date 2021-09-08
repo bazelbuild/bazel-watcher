@@ -23,9 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
@@ -322,62 +320,12 @@ func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
 	return stdoutBuffer, err
 }
 
-func (b *bazel) BuildCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
-	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
-	doneCh := make(chan error)
-
-	go func() {
-		doneCh <- b.cmd.Run()
-	}()
-
-	select {
-	case e := <-doneCh:
-		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
-
-		return stdoutBuffer, e
-	case <-cancelCh:
-		if runtime.GOOS == "windows" {
-			b.Cancel()
-		} else {
-			b.cmd.Process.Signal(syscall.SIGTERM)
-		}
-		<-doneCh
-
-		return nil, nil
-	}
-}
-
 func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
 	stdoutBuffer, stderrBuffer := b.newCommand("test", append(b.args, args...)...)
 	err := b.cmd.Run()
 
 	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
 	return stdoutBuffer, err
-}
-
-func (b *bazel) TestCancelable(cancelCh chan bool, args ...string) (*bytes.Buffer, error) {
-	stdoutBuffer, stderrBuffer := b.newCommand("test", append(b.args, args...)...)
-	doneCh := make(chan error)
-
-	go func() {
-		doneCh <- b.cmd.Run()
-	}()
-
-	select {
-	case e := <-doneCh:
-		_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
-
-		return stdoutBuffer, e
-	case <-cancelCh:
-		if runtime.GOOS == "windows" {
-			b.Cancel()
-		} else {
-			b.cmd.Process.Signal(syscall.SIGTERM)
-		}
-		<-doneCh
-
-		return nil, nil
-	}
 }
 
 // Build the specified target (singular) and run it with the given arguments.
