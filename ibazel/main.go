@@ -79,7 +79,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `iBazel - Version %s
 
 A file watcher for Bazel. Whenever a source file used in a specified
-target, run, build, or test the specified targets.
+target changes, run, build, or test the specified targets.
 
 Usage:
 
