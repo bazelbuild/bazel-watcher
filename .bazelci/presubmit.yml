@@ -2,6 +2,7 @@
 tasks:
   ubuntu1804:
     build_flags:
+    - "--stamp"
     - "--build_tag_filters=-nolinux"
     build_targets:
     - "..."
@@ -12,6 +13,7 @@ tasks:
     - "..."
   ubuntu1604:
     build_flags:
+    - "--stamp"
     - "--build_tag_filters=-nolinux"
     build_targets:
     - "..."
@@ -22,6 +24,7 @@ tasks:
     - "..."
   macos:
     build_flags:
+    - "--stamp"
     - "--build_tag_filters=-nomacos"
     build_targets:
     - "..."
@@ -33,6 +36,7 @@ tasks:
   macos_legacy_watcher:
     platform: macos
     build_flags:
+    - "--stamp"
     - "--build_tag_filters=-nomacos"
     build_targets:
     - "..."
