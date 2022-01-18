@@ -32,6 +32,13 @@ jobs:
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
             ext: ""
 
+          - name: darwin_arm64
+            artifact: ibazel_darwin_arm64
+            os: macos-latest
+            bin: darwin_arm64_stripped
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo --cpu=darwin_arm64
+            ext: ""
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -93,6 +100,7 @@ jobs:
         working-directory: ./npm-staging/bin
         run: |
           mv darwin_amd64/ibazel_darwin_amd64 darwin_amd64/ibazel
+          mv darwin_arm64/ibazel_darwin_arm64 darwin_arm64/ibazel
           mv linux_amd64/ibazel_linux_amd64 linux_amd64/ibazel
           mv windows_amd64/ibazel_windows_amd64.exe windows_amd64/ibazel.exe
           chmod 755 */ibazel*

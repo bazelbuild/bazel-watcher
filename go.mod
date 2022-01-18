@@ -11,4 +11,11 @@ require (
 	github.com/mattn/go-shellwords v1.0.11
 )
 
-go 1.13
+require (
+	github.com/smartystreets/goconvey v1.7.2 // indirect
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	google.golang.org/protobuf v1.26.0 // indirect
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
+)
+
+go 1.17
