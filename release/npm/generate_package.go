@@ -22,7 +22,7 @@ type jsPackage struct {
 // See:
 //   * https://github.com/bazelbuild/rules_go/issues/2379
 //   * https://github.com/golang/go/issues/37369
-var Version string = "VERSION_NOT_SET"
+var Version string = "0.16.0"
 
 func main() {
 	if "VERSION_NOT_SET" == Version {
