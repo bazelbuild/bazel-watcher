@@ -52,7 +52,7 @@ jobs:
         run: cp $(bazel info bazel-bin)/ibazel/${{ matrix.bin }}/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.artifact }}
@@ -107,7 +107,7 @@ jobs:
           bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       - name: Upload npm package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: npm-package
           path: npm-staging/
