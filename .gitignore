@@ -4,3 +4,4 @@ bazel-genfiles
 bazel-ibazel
 bazel-out
 bazel-testlogs
+.DS_Store

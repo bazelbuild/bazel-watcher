@@ -18,16 +18,22 @@ genrule(
     name = "package",
     srcs = [
         "//:CONTRIBUTORS",
+        ":npm"
     ],
     outs = ["package.json"],
-    cmd = "$(location :npm) $(location //:CONTRIBUTORS) > $@",
+    cmd = "$(location :package_sh) ./$(location :npm) $(location //:CONTRIBUTORS) > $@",
     stamp = 1,
     tags = [
         "nowindows",
     ],
     tools = [
-        ":npm",
+        ":package_sh",
     ],
+)
+
+sh_binary(
+    name = "package_sh",
+    srcs = ["package.sh"],
 )
 
 go_library(
