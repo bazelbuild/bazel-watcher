@@ -20,6 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,7 +197,7 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 
 	bazelPath := findBazel()
 	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
-	b.setProcessAttributes(b.cmd, bazelPath, args)
+	setProcessAttributes(b.cmd, bazelPath, args)
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)

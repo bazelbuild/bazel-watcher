@@ -16,4 +16,8 @@
 
 package bazel
 
-func setProcessAttributes(cmd *exec.Command, bazelPath string, args []string) {}
+import (
+	"os/exec"
+)
+
+func setProcessAttributes(cmd *exec.Cmd, bazelPath string, args []string) {}

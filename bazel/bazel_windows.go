@@ -14,6 +14,13 @@
 
 package bazel
 
+import (
+	"fmt"
+	"os/exec"
+	"strings"
+	"syscall"
+)
+
 // Windows specific as it assures the bazelPath is always double quoted
 // which assures we can support paths with whitespaces.
 // It works by specifying the CmdLine after the exec command has been specified
@@ -21,7 +28,7 @@ package bazel
 //
 // NOTE: SysProcAttr.CmdLine does not exist/is supported to be compiled on other
 // OS other than Windows which is the reason why this new fn was created both for Windows and Unix
-func setProcessAttributes(cmd *exec.Command, bazelPath string, args []string) { 
-	b.cmd.SysProcAttr = &syscall.SysProcAttr{} 
-	b.cmd.SysProcAttr.CmdLine = fmt.Sprintf("%s %s", fmt.Sprintf("%q", bazelPath), strings.Join(args[:], " ")) 
+func setProcessAttributes(cmd *exec.Cmd, bazelPath string, args []string) { 
+	cmd.SysProcAttr = &syscall.SysProcAttr{} 
+	cmd.SysProcAttr.CmdLine = fmt.Sprintf("%s %s", fmt.Sprintf("%q", bazelPath), strings.Join(args[:], " ")) 
 }
