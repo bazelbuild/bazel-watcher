@@ -1,1 +1,5 @@
-build --workspace_status_command="python tools/workplace_status.py" --stamp
+build --workspace_status_command="python tools/workplace_status.py"
+
+# Flags used during releases
+build:release --stamp
+test:release --stamp
