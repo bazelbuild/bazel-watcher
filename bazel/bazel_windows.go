@@ -20,7 +20,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-
+	
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
 )
 
