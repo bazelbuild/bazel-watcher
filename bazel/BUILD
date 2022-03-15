@@ -16,7 +16,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["bazel.go"],
+    srcs = [
+        "bazel.go",
+        "bazel_unix.go",
+        "bazel_windows.go",
+    ],
     importpath = "github.com/bazelbuild/bazel-watcher/bazel",
     visibility = ["//visibility:public"],
     deps = [

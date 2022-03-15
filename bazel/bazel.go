@@ -30,8 +30,8 @@ import (
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/bazelbuild/bazel-watcher/ibazel/log"
+	"github.com/golang/protobuf/proto"
 )
 
 var bazelPathFlag = flag.String("bazel_path", "", "Path to the bazel binary to use for actions")
@@ -195,7 +195,9 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 		}
 	}
 
-	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
+	bazelPath := findBazel()
+	b.cmd = exec.CommandContext(b.ctx, bazelPath, args...)
+	setProcessAttributes(b.cmd, bazelPath, args)
 
 	stdoutBuffer := new(bytes.Buffer)
 	stderrBuffer := new(bytes.Buffer)
@@ -237,10 +239,10 @@ func (b *bazel) Info() (map[string]string, error) {
 	defer close(doneCh)
 	go func() {
 		select {
-			case <- doneCh:
-				// Do nothing since we're done.
-			case <- time.After(8*time.Second):
-				log.Logf("Running `bazel info`... it's being a little slow")
+		case <-doneCh:
+			// Do nothing since we're done.
+		case <-time.After(8 * time.Second):
+			log.Logf("Running `bazel info`... it's being a little slow")
 		}
 	}()
 
