@@ -196,7 +196,7 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 	}
 
 	bazelPath := findBazel()
-	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
+	b.cmd = exec.CommandContext(b.ctx, bazelPath, args...)
 	setProcessAttributes(b.cmd, bazelPath, args)
 
 	stdoutBuffer := new(bytes.Buffer)

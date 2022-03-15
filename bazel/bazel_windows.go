@@ -28,7 +28,7 @@ import (
 //
 // NOTE: SysProcAttr.CmdLine does not exist/is supported to be compiled on other
 // OS other than Windows which is the reason why this new fn was created both for Windows and Unix
-func setProcessAttributes(cmd *exec.Cmd, bazelPath string, args []string) { 
-	cmd.SysProcAttr = &syscall.SysProcAttr{} 
-	cmd.SysProcAttr.CmdLine = fmt.Sprintf("%s %s", fmt.Sprintf("%q", bazelPath), strings.Join(args[:], " ")) 
+func setProcessAttributes(cmd *exec.Cmd, bazelPath string, args []string) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.CmdLine = fmt.Sprintf("%s %s", fmt.Sprintf("%q", bazelPath), strings.Join(args[:], " "))
 }
