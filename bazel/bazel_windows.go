@@ -16,10 +16,7 @@ package bazel
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
-	"os"
 	"os/exec"
 	"strings"
 	"syscall"
