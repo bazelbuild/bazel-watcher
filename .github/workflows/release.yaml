@@ -14,28 +14,24 @@ jobs:
           - name: linux_amd64
             artifact: ibazel_linux_amd64
             os: ubuntu-18.04
-            bin: linux_amd64_pure_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
             ext: ""
           
           - name: windows_amd64
             artifact: ibazel_windows_amd64.exe
             os: ubuntu-18.04
-            bin: windows_amd64_pure_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
             ext: ".exe"
 
           - name: darwin_amd64
             artifact: ibazel_darwin_amd64
             os: macos-latest
-            bin: darwin_amd64_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
             ext: ""
 
           - name: darwin_arm64
             artifact: ibazel_darwin_arm64
             os: macos-latest
-            bin: darwin_arm64_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo --cpu=darwin_arm64
             ext: ""
 
@@ -56,7 +52,7 @@ jobs:
         run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }}
       
       - name: Copy binary
-        run: cp $(bazel info bazel-bin)/ibazel/${{ matrix.bin }}/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
+        run: cp $(bazel info bazel-bin)/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v2
