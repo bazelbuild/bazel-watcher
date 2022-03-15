@@ -60,6 +60,9 @@ func TestAbortCompilationEarlyWithoutChanges(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	ibazel.Build("//:abort_compilation_early")
 
+	// wait for a complete start
+	time.Sleep(10 * 1000 * time.Millisecond)
+
 	// assert we have a build success log
 	ibazel.ExpectError(buildSuccStr)
 
