@@ -58,7 +58,6 @@ func TestMain(m *testing.M) {
 func TestAbortCompilationEarlyWithoutChanges(t *testing.T) {
 	os.Setenv("IBAZEL_ABORT_COMPILATION_EARLY", "1")
 	ibazel := e2e.SetUp(t)
-	defer ibazel.Kill()
 
 	// wait for a complete start and assert we have a build success log
 	ibazel.Build("//:abort_compilation_early")
@@ -71,7 +70,6 @@ func TestAbortCompilationEarlyWithoutChanges(t *testing.T) {
 func TestAbortCompilationEarlyAfterChange(t *testing.T) {
 	os.Setenv("IBAZEL_ABORT_COMPILATION_EARLY", "1")
 	ibazel := e2e.SetUp(t)
-	defer ibazel.Kill()
 
 	// wait for a complete start and assert we have a build success log
 	ibazel.Build("//:abort_compilation_early")
