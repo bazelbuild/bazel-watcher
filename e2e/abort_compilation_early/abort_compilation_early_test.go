@@ -58,12 +58,11 @@ func TestMain(m *testing.M) {
 func TestAbortCompilationEarlyWithoutChanges(t *testing.T) {
 	os.Setenv("IBAZEL_ABORT_COMPILATION_EARLY", "1")
 	ibazel := e2e.SetUp(t)
+	defer ibazel.Kill()
+
+	// wait for a complete start and assert we have a build success log
 	ibazel.Build("//:abort_compilation_early")
-
-	// wait for a complete start
 	time.Sleep(10 * 1000 * time.Millisecond)
-
-	// assert we have a build success log
 	ibazel.ExpectError(buildSuccStr)
 
 	defer ibazel.Kill()
@@ -74,34 +73,36 @@ func TestAbortCompilationEarlyAfterChange(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	defer ibazel.Kill()
 
-	// assert we have a build success log
+	// wait for a complete start and assert we have a build success log
 	ibazel.Build("//:abort_compilation_early")
-	ibazel.ExpectError(buildSuccStr)
-
-	// wait for a complete start
 	time.Sleep(10 * 1000 * time.Millisecond)
-
+	ibazel.ExpectError(buildSuccStr)
+	
 	// assert we have a first 'changed:' log
 	e2e.MustWriteFile(t, "abort_compilation_early.sh", "printf \"Started1!\";")
+	time.Sleep(4 * 1000 * time.Millisecond)
 	ibazel.ExpectError(buildChangedStr)
 
 	// assert we have a first 'cancelling previous Bazel invocation and rebuilding...' log
-	time.Sleep(4 * 1000 * time.Millisecond)
 	e2e.MustWriteFile(t, "abort_compilation_early.sh", "printf \"Started2!\";")
+	time.Sleep(2 * 1000 * time.Millisecond)
 	ibazel.ExpectError(buildCancelStr)
 
 	// push two additional abort triggers
-	time.Sleep(2 * 1000 * time.Millisecond)
 	e2e.MustWriteFile(t, "abort_compilation_early.sh", "printf \"Started3!\";")
-
 	time.Sleep(2 * 1000 * time.Millisecond)
-	e2e.MustWriteFile(t, "abort_compilation_early.sh", "printf \"Started4!\";")
-	time.Sleep(10 * 1000 * time.Millisecond)
 	ibazel.ExpectError(buildCancelStr)
+
+	e2e.MustWriteFile(t, "abort_compilation_early.sh", "printf \"Started4!\";")
+	time.Sleep(2 * 1000 * time.Millisecond)
+	ibazel.ExpectError(buildCancelStr)
+
+	time.Sleep(10 * 1000 * time.Millisecond)
 	out := ibazel.GetError()
 
 	// assert we have a build success log
 	number_of_cancelled_invocations := strings.Count(out, buildCancelStr)
+	defer ibazel.Kill()
 	if number_of_cancelled_invocations != 3 {
 		t.Errorf("Expected number of cancelled invokations was 3 but found %d", number_of_cancelled_invocations)
 	}
