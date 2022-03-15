@@ -6,7 +6,7 @@ tasks:
     build_targets:
     - "..."
     test_flags:
-    - "--features=race"
+    - "--@io_bazel_rules_go//go/config:race"
     - "--test_tag_filters=-nolinux"
     test_targets:
     - "..."
@@ -16,7 +16,7 @@ tasks:
     build_targets:
     - "..."
     test_flags:
-    - "--features=race"
+    - "--@io_bazel_rules_go//go/config:race"
     - "--test_tag_filters=-nolinux"
     test_targets:
     - "..."
@@ -26,7 +26,7 @@ tasks:
     build_targets:
     - "..."
     test_flags:
-    - "--features=race"
+    - "--@io_bazel_rules_go//go/config:race"
     - "--test_tag_filters=-nomacos"
     test_targets:
     - "..."
@@ -37,7 +37,7 @@ tasks:
     build_targets:
     - "..."
     test_flags:
-    - "--features=race"
+    - "--@io_bazel_rules_go//go/config:race"
     - "--test_tag_filters=-nomacos"
     - "--test_env=IBAZEL_USE_LEGACY_WATCHER=1"
     test_targets:
