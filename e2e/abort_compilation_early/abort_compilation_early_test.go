@@ -70,6 +70,7 @@ func TestAbortCompilationEarlyWithoutChanges(t *testing.T) {
 func TestAbortCompilationEarlyAfterChange(t *testing.T) {
 	os.Setenv("IBAZEL_ABORT_COMPILATION_EARLY", "1")
 	ibazel := e2e.SetUp(t)
+	defer ibazel.Kill()
 
 	// wait for a complete start and assert we have a build success log
 	ibazel.Build("//:abort_compilation_early")
@@ -100,7 +101,7 @@ func TestAbortCompilationEarlyAfterChange(t *testing.T) {
 
 	// assert we have a build success log
 	number_of_cancelled_invocations := strings.Count(out, buildCancelStr)
-	defer ibazel.Kill()
+	
 	if number_of_cancelled_invocations != 3 {
 		t.Errorf("Expected number of cancelled invokations was 3 but found %d", number_of_cancelled_invocations)
 	}
