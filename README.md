@@ -61,10 +61,8 @@ $ bazel build //ibazel
 Now copy the generated binary onto your path:
 
 ```bash
-$ export PATH=$PATH:$PWD/bazel-bin/ibazel/$GOOS_$GOARCH_pure_stripped
+$ export PATH=$PATH:$PWD/bazel-bin/ibazel/ibazel_/ibazel
 ```
-
-where `$GOOS` and `$GOARCH` are your host OS (e.g., `darwin` or `linux`) and architecture (e.g., `amd64`).
 
 ## Running a target
 
