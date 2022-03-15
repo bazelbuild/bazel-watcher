@@ -16,47 +16,4 @@
 
 package bazel
 
-import (
-	"bytes"
-	"context"
-	"io"
-	"os"
-	"os/exec"
-	"strings"
-)
-
-func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *bytes.Buffer) {
-	b.ctx, b.cancel = context.WithCancel(context.Background())
-
-	args = append([]string{command}, args...)
-	args = append(b.startupArgs, args...)
-
-	if b.writeToStderr || b.writeToStdout {
-		containsColor := false
-		for _, arg := range args {
-			if strings.HasPrefix(arg, "--color") {
-				containsColor = true
-			}
-		}
-		if !containsColor {
-			args = append(args, "--color=yes")
-		}
-	}
-
-	b.cmd = exec.CommandContext(b.ctx, findBazel(), args...)
-
-	stdoutBuffer := new(bytes.Buffer)
-	stderrBuffer := new(bytes.Buffer)
-	if b.writeToStdout {
-		b.cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuffer)
-	} else {
-		b.cmd.Stdout = stdoutBuffer
-	}
-	if b.writeToStderr {
-		b.cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuffer)
-	} else {
-		b.cmd.Stderr = stderrBuffer
-	}
-
-	return stdoutBuffer, stderrBuffer
-}
+func setProcessAttributes(cmd *exec.Command, bazelPath string, args []string) {}

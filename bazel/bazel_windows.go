@@ -14,62 +14,14 @@
 
 package bazel
 
-import (
-	"bytes"
-	"context"
-	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"strings"
-	"syscall"
-)
-
-func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *bytes.Buffer) {
-	b.ctx, b.cancel = context.WithCancel(context.Background())
-
-	args = append([]string{command}, args...)
-	args = append(b.startupArgs, args...)
-
-	if b.writeToStderr || b.writeToStdout {
-		containsColor := false
-		for _, arg := range args {
-			if strings.HasPrefix(arg, "--color") {
-				containsColor = true
-			}
-		}
-		if !containsColor {
-			args = append(args, "--color=yes")
-		}
-	}
-
-	bazelPath := findBazel()
-	b.cmd = exec.CommandContext(b.ctx, bazelPath, args...)
-
-	// windows specific as it assures the bazelPath is always double quoted
-	// which assures we can support paths with whitespaces.
-	// It works by specifying the CmdLine after the exec command has been specified
-	// and by wrapping in double quotes the bazelPath content
-	//
-	// NOTE: SysProcAttr.CmdLine does not exist/is supported to be compiled on other
-	// OS other than Windows which is the reason why newCommand fn was created both
-	// for Windows and Unix
-	bazelPath = fmt.Sprintf("\"%s\"", bazelPath)
-	b.cmd.SysProcAttr = &syscall.SysProcAttr{}
-	b.cmd.SysProcAttr.CmdLine = fmt.Sprintf("%s %s", bazelPath, strings.Join(args[:], " "))
-
-	stdoutBuffer := new(bytes.Buffer)
-	stderrBuffer := new(bytes.Buffer)
-	if b.writeToStdout {
-		b.cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuffer)
-	} else {
-		b.cmd.Stdout = stdoutBuffer
-	}
-	if b.writeToStderr {
-		b.cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuffer)
-	} else {
-		b.cmd.Stderr = stderrBuffer
-	}
-
-	return stdoutBuffer, stderrBuffer
+// Windows specific as it assures the bazelPath is always double quoted
+// which assures we can support paths with whitespaces.
+// It works by specifying the CmdLine after the exec command has been specified
+// and by wrapping in double quotes the bazelPath content
+//
+// NOTE: SysProcAttr.CmdLine does not exist/is supported to be compiled on other
+// OS other than Windows which is the reason why this new fn was created both for Windows and Unix
+func setProcessAttributes(cmd *exec.Command, bazelPath string, args []string) { 
+	b.cmd.SysProcAttr = &syscall.SysProcAttr{} 
+	b.cmd.SysProcAttr.CmdLine = fmt.Sprintf("%s %s", fmt.Sprintf("%q", bazelPath), strings.Join(args[:], " ")) 
 }
