@@ -49,7 +49,7 @@ jobs:
         run: npm --global install @bazel/bazelisk@latest
 
       - name: Build ibazel 
-        run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }}
+        run: bazel build //ibazel:ibazel ${{ matrix.build_flags }}
       
       - name: Copy binary
         run: cp $(bazel info bazel-bin)/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
@@ -108,7 +108,7 @@ jobs:
           cp "README.md" "npm-staging/README.md"
           cp "release/npm/index.js" "npm-staging/index.js"
           cp ".npmrc" "npm-staging/.npmrc"
-          bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
+          bazel run "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       - name: Upload npm package
         uses: actions/upload-artifact@v2
