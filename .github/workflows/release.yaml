@@ -15,24 +15,28 @@ jobs:
             artifact: ibazel_linux_amd64
             os: ubuntu-18.04
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+            cpu_flag:
             ext: ""
           
           - name: windows_amd64
             artifact: ibazel_windows_amd64.exe
             os: ubuntu-18.04
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
+            cpu_flag:
             ext: ".exe"
 
           - name: darwin_amd64
             artifact: ibazel_darwin_amd64
             os: macos-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
+            cpu_flag:
             ext: ""
 
           - name: darwin_arm64
             artifact: ibazel_darwin_arm64
             os: macos-latest
-            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo --cpu=darwin_arm64
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo
+            cpu_flag: --cpu=darwin_arm64
             ext: ""
 
     steps:
@@ -49,10 +53,10 @@ jobs:
         run: npm --global install @bazel/bazelisk@latest
 
       - name: Build ibazel 
-        run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }}
+        run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }} ${{ matrix.cpu_flag }}
       
       - name: Copy binary
-        run: cp $(bazel info bazel-bin)/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
+        run: cp $(bazel info ${{ matrix.cpu_flag }} bazel-bin)/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
