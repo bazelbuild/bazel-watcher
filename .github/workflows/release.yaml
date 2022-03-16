@@ -112,7 +112,7 @@ jobs:
           cp "README.md" "npm-staging/README.md"
           cp "release/npm/index.js" "npm-staging/index.js"
           cp ".npmrc" "npm-staging/.npmrc"
-          bazel run "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
+          bazel run --config="release" "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       - name: Upload npm package
         uses: actions/upload-artifact@v3
