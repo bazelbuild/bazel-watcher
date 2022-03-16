@@ -14,22 +14,25 @@ jobs:
           - name: linux_amd64
             artifact: ibazel_linux_amd64
             os: ubuntu-18.04
-            bin: linux_amd64_pure_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
             ext: ""
           
           - name: windows_amd64
             artifact: ibazel_windows_amd64.exe
             os: ubuntu-18.04
-            bin: windows_amd64_pure_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
             ext: ".exe"
 
           - name: darwin_amd64
             artifact: ibazel_darwin_amd64
             os: macos-latest
-            bin: darwin_amd64_stripped
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
+            ext: ""
+
+          - name: darwin_arm64
+            artifact: ibazel_darwin_arm64
+            os: macos-latest
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo --cpu=darwin_arm64
             ext: ""
 
     steps:
@@ -49,7 +52,7 @@ jobs:
         run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }}
       
       - name: Copy binary
-        run: cp $(bazel info bazel-bin)/ibazel/${{ matrix.bin }}/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
+        run: cp $(bazel info bazel-bin)/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
@@ -93,6 +96,7 @@ jobs:
         working-directory: ./npm-staging/bin
         run: |
           mv darwin_amd64/ibazel_darwin_amd64 darwin_amd64/ibazel
+          mv darwin_arm64/ibazel_darwin_arm64 darwin_arm64/ibazel
           mv linux_amd64/ibazel_linux_amd64 linux_amd64/ibazel
           mv windows_amd64/ibazel_windows_amd64.exe windows_amd64/ibazel.exe
           chmod 755 */ibazel*
@@ -104,7 +108,7 @@ jobs:
           cp "README.md" "npm-staging/README.md"
           cp "release/npm/index.js" "npm-staging/index.js"
           cp ".npmrc" "npm-staging/.npmrc"
-          bazel run --config=release "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
+          bazel run "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       - name: Upload npm package
         uses: actions/upload-artifact@v3

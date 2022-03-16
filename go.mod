@@ -13,4 +13,9 @@ require (
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )
 
-go 1.13
+require (
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	google.golang.org/protobuf v1.26.0 // indirect
+)
+
+go 1.17
