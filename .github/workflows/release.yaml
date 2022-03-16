@@ -56,7 +56,7 @@ jobs:
         run: bazel build //ibazel:ibazel --config release ${{ matrix.build_flags }} ${{ matrix.cpu_flag }}
       
       - name: Copy binary
-        run: cp $(bazel info bazel-bin ${{ matrix.cpu_flag }})/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
+        run: cp $(bazel info ${{ matrix.cpu_flag }} bazel-bin)/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
