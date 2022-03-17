@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-gazelle(
-    name = "gazelle",
-    prefix = "github.com/bazelbuild/bazel-watcher",
+go_library(
+    name = "common",
+    srcs = ["common.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/common",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@com_github_fsnotify_fsnotify//:fsnotify",
+    ],
 )
-
-exports_files(["CONTRIBUTORS"])
-
-# gazelle:prefix github.com/bazelbuild/bazel-watcher
-# gazelle:go_naming_convention import
