@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.5.7
 	github.com/gorilla/websocket v1.5.0
 	github.com/jaschaephraim/lrserver v0.0.0-20171129202958-50d19f603f71
-	github.com/mattn/go-shellwords v1.0.11
+	github.com/mattn/go-shellwords v1.0.12
 	github.com/smartystreets/goconvey v1.7.2 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )
