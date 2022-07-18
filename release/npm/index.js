@@ -23,6 +23,7 @@ const spawn = require('child_process').spawn;
 
 function getNativeBinary() {
   const arch = {
+    'arm64': 'arm64',
     'x64' : 'amd64',
   }[os.arch()];
   // Filter the platform based on the platforms that are build/included.

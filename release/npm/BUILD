@@ -18,16 +18,25 @@ genrule(
     name = "package",
     srcs = [
         "//:CONTRIBUTORS",
+        ":npm"
     ],
     outs = ["package.json"],
-    cmd = "$(location :npm) $(location //:CONTRIBUTORS) > $@",
+    cmd = "$(location :package_sh) ./$(location :npm) $(location //:CONTRIBUTORS) > $@",
     stamp = 1,
     tags = [
         "nowindows",
+        "manual",
     ],
     tools = [
-        ":npm",
+        ":package_sh",
     ],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "package_sh",
+    srcs = ["package.sh"],
+    visibility = ["//visibility:private"],
 )
 
 go_library(
@@ -41,6 +50,9 @@ go_binary(
     name = "npm",
     embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-watcher/npm",
+    tags = [
+        "manual",
+    ],
     visibility = ["//visibility:public"],
     x_defs = {
         "main.Version": "{STABLE_GIT_VERSION}",
