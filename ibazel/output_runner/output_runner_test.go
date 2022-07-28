@@ -48,6 +48,10 @@ func TestConvertArgs(t *testing.T) {
 		{[]string{"$2", "$3", "$4"}, []string{"my_arg1", "my_arg2", "my_arg3"}},
 		{[]string{"$2", "dont_change_arg"}, []string{"my_arg1", "dont_change_arg"}},
 		{[]string{"keep_arg", "$3"}, []string{"keep_arg", "my_arg2"}},
+		{[]string{"$2,$3"}, []string{"my_arg1,my_arg2"}},
+		{[]string{"src/$2:1"}, []string{"src/my_arg1:1"}},
+		{[]string{"literal$$char"}, []string{"literal$char"}},
+		{[]string{"$99"}, []string{"$99"}},
 	} {
 		new_cmd := convertArgs(matches, c.cmd)
 		if !reflect.DeepEqual(c.truth, new_cmd) {
