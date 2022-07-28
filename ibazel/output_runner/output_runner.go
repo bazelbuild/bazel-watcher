@@ -91,7 +91,7 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 	commandLines, commands, args := matchRegex(optcmd, output)
 	for idx, _ := range commandLines {
 		if *runOutputInteractive {
-			if i.promptCommand(commandLines[idx]) {
+			if i.promptCommand(commands[idx], args[idx]) {
 				i.executeCommand(commands[idx], args[idx])
 			}
 		} else {
@@ -182,9 +182,9 @@ func convertArgs(matches []string, args []string) []string {
 	return rst
 }
 
-func (_ *OutputRunner) promptCommand(command string) bool {
+func (_ *OutputRunner) promptCommand(command string, args []string) bool {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Fprintf(os.Stderr, "Do you want to execute this command?\n%s\n[y/N]", command)
+	fmt.Fprintf(os.Stderr, "Do you want to execute this command?\n%s %s\n[y/N]", command, strings.Join(args, " "))
 	text, _ := reader.ReadString('\n')
 	text = strings.ToLower(text)
 	text = strings.TrimSpace(text)
