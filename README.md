@@ -93,6 +93,11 @@ it detects a missing import for your go code.
     "regex": "^buildozer '(.*)'\\s+(.*)$",
     "command": "buildozer",
     "args": [ "$1", "$2" ]
+  },
+  {
+    "regex": "^(\\S+)/[\\w-]+\\.proto:\\d+:\\d+: Import \"\\S+\" was not found or had errors\\.$",
+    "command": "bazel",
+    "args": [ "run", "//:gazelle", "--", "proto/$1" ]
   }
 ]
 ```
@@ -101,13 +106,14 @@ Adding the flag `--run_output_interactive=false` will automatically run the
 command without prompting for confirmation.  The fields in
 `.bazel_fix_commands.json` are:
 
-* regex: a regular expression that will be matched against every line of
+* `regex`: a regular expression that will be matched against every line of
   output.
     * backslash `\` characters will need to be escaped once for the regex to be
       parsed properly.
-* command: a command that will be run from the workspace root.
-* args: a list of arguments to provide to the command, with `$1` being the
-  first match group of `regex`, `$2` being the second and so on.
+* `command`: a command that will be run from the workspace root.
+* `args`: a list of arguments to provide to the command, substituting `$1`
+  with the first match group of `regex`, `$2` with the second, etc., and `$0`
+  for the entire match.
 
 You can disable this feature by adding flag `--run_output=false` or you can
 create a `.bazel_fix_commands.json` that contains an empty json array, `[]`.

@@ -172,12 +172,41 @@ func convertArg(matches []string, arg string) string {
 func convertArgs(matches []string, args []string) []string {
 	var rst []string
 	for i, _ := range args {
-		if strings.HasPrefix(args[i], "$") {
-			val, _ := strconv.Atoi(args[i][1:])
-			rst = append(rst, matches[val])
-		} else {
-			rst = append(rst, args[i])
+		var converted strings.Builder
+		converted.Grow(len(args[i]))
+
+		matchIndex := 0
+		matching := false
+
+		writeMatch := func() {
+			if matching {
+				if matchIndex < len(matches) {
+					converted.WriteString(matches[matchIndex])
+				} else {
+					converted.WriteRune('$')
+					converted.WriteString(strconv.Itoa(matchIndex))
+				}
+				matchIndex = 0
+				matching = false
+			}
 		}
+
+		for _, c := range args[i] {
+			if c == '$' {
+				if matching {
+					converted.WriteRune(c)
+				}
+				matching = !matching
+			} else if matching && c >= '0' && c <= '9' {
+				matchIndex = matchIndex*10 + int(c-'0')
+			} else {
+				writeMatch()
+				converted.WriteRune(c)
+			}
+		}
+		writeMatch()
+
+		rst = append(rst, converted.String())
 	}
 	return rst
 }
