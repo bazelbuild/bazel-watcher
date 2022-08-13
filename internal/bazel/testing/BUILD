@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-gazelle(
-    name = "gazelle",
-    prefix = "github.com/bazelbuild/bazel-watcher",
+go_library(
+    name = "testing",
+    srcs = ["mock.go"],
+    importpath = "github.com/bazelbuild/bazel-watcher/internal/bazel/testing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//third_party/bazel/master/src/main/protobuf/analysis",
+        "//third_party/bazel/master/src/main/protobuf/blaze_query",
+    ],
 )
-
-exports_files(["CONTRIBUTORS"])
-
-# gazelle:prefix github.com/bazelbuild/bazel-watcher
-# gazelle:go_naming_convention import

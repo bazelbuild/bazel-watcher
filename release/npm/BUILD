@@ -18,19 +18,19 @@ genrule(
     name = "package",
     srcs = [
         "//:CONTRIBUTORS",
-        ":npm"
+        ":npm",
     ],
     outs = ["package.json"],
     cmd = "$(location :package_sh) ./$(location :npm) $(location //:CONTRIBUTORS) > $@",
     stamp = 1,
     tags = [
-        "nowindows",
         "manual",
+        "nowindows",
     ],
     tools = [
         ":package_sh",
     ],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
 )
 
 sh_binary(
@@ -40,7 +40,7 @@ sh_binary(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "npm_lib",
     srcs = ["generate_package.go"],
     importpath = "github.com/bazelbuild/bazel-watcher/release/npm",
     visibility = ["//visibility:private"],
@@ -48,12 +48,12 @@ go_library(
 
 go_binary(
     name = "npm",
-    embed = [":go_default_library"],
+    embed = [":npm_lib"],
     importpath = "github.com/bazelbuild/bazel-watcher/npm",
     tags = [
         "manual",
     ],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
     x_defs = {
         "main.Version": "{STABLE_GIT_VERSION}",
     },

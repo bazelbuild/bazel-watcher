@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "example_client",
+    srcs = ["example_client.go"],
+    data = ["//example_client:files"],
+    importpath = "github.com/bazelbuild/bazel-watcher/internal/e2e/example_client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//example_client/data",
+        "//internal/e2e",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+    ],
+)

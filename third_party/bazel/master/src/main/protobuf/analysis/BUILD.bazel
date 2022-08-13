@@ -14,11 +14,11 @@ go_proto_library(
     importpath = "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis",
     proto = ":analysis_proto",
     visibility = ["//visibility:public"],
-    deps = ["//third_party/bazel/master/src/main/protobuf/blaze_query:go_default_library"],
+    deps = ["//third_party/bazel/master/src/main/protobuf/blaze_query"],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "analysis",
     embed = [":analysis_go_proto"],
     importpath = "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis",
     visibility = ["//visibility:public"],
