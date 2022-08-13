@@ -1,0 +1,90 @@
+package simple
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/bazelbuild/bazel-watcher/internal/e2e"
+	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
+)
+
+const mainFiles = `
+-- BUILD.bazel --
+# Create an sh_test that passes and prints some output. Confirm that the
+# results were streamed.
+sh_test(
+  name = "stream",
+  srcs = ["stream.sh"],
+)
+-- stream.sh --
+printf "test output"
+exit 0
+`
+
+func TestMain(m *testing.M) {
+	bazel_testing.TestMain(m, bazel_testing.Args{
+		Main: mainFiles,
+	})
+}
+
+func TestSimpleTest(t *testing.T) {
+	// When iBazel can detect that you're testing a single target, it will run
+	// the test with "--test_output=streamed" so that you can see the results
+	// live.
+	e2e.MustWriteFile(t, "stream.sh", `printf "TestSimpleTest1"`)
+
+	ibazel := e2e.SetUp(t)
+	ibazel.Test([]string{}, "//:stream")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("TestSimpleTest1")
+
+	// Now when the file is updated it should still be run in streaming mode.
+	e2e.MustWriteFile(t, "stream.sh", `printf "TestSimpleTest2"`)
+	ibazel.ExpectOutput("TestSimpleTest2")
+}
+
+func TestSingleQueryTarget(t *testing.T) {
+	// When iBazel can detect that you're testing a single target, it will run
+	// the test with "--test_output=streamed" so that you can see the results
+	// live.
+
+	e2e.MustWriteFile(t, "stream.sh", `printf "TestSingleQueryTarget"`)
+	ibazel := e2e.SetUp(t)
+	ibazel.Test([]string{}, "//:all")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("TestSingleQueryTarget")
+}
+
+func TestMultipleQueryTarget(t *testing.T) {
+	// When iBazel can detect that you're testing a single target, it will run
+	// the test with "--test_output=streamed" so that you can see the results
+	// live.
+
+	e2e.MustWriteFile(t, "stream.sh", `printf "TestMultipleQueryTarget"`)
+	ibazel := e2e.SetUp(t)
+	ibazel.Test([]string{}, "//:all", "//...")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("TestMultipleQueryTarget")
+}
+
+func TestExplicitlySetOutputToSummary(t *testing.T) {
+	// When iBazel can detect that you're testing a single target, it will run
+	// the test with "--test_output=streamed" so that you can see the results
+	// live.
+
+	e2e.MustWriteFile(t, "stream.sh", `printf "TestExplicitlySetOutputToSummary"`)
+	ibazel := e2e.SetUp(t)
+	ibazel.Test([]string{"--test_output=summary"}, "//:all", "//...")
+	defer ibazel.Kill()
+
+	// Wait for it to pass.
+	ibazel.ExpectOutput("PASSED")
+
+	// Now confirm that the sentinel value isn't in the output.
+	if strings.Contains(ibazel.GetOutput(), "TestExplicitlySetOutputToSummary") {
+		t.Errorf("Wanted TestExplicitlySetOutputToSummary to not be printed, but it was. Got:\n\nOutput:\n%s", ibazel.GetOutput())
+	}
+}

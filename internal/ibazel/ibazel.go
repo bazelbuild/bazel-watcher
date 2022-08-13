@@ -60,8 +60,8 @@ const (
 	QUIT           State = "QUIT"
 )
 
-const sourceQuery = "kind('source file', deps(set(%s)))"
-const buildQuery = "buildfiles(deps(set(%s)))"
+const sourceQuery = "kind('source file', deps(set(%q)))"
+const buildQuery = "buildfiles(deps(set(%q)))"
 
 type IBazel struct {
 	debounceDuration time.Duration
@@ -270,8 +270,6 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 	for {
 		i.iteration(command, commandToRun, targets, joinedTargets)
 	}
-
-	return nil
 }
 
 // fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
@@ -356,6 +354,30 @@ func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 
 func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
+
+	// Query the provided target patterns to construct a composite list
+	// Make a set that represents all the found rules.
+	targetRules := map[string]struct{}{}
+	for _, target := range targets {
+		rule, err := i.queryRule(target)
+		if err != nil {
+			log.Errorf("Error: %v", err)
+		}
+		targetRules[rule.GetName()] = struct{}{}
+	}
+
+	if len(targetRules) == 1 {
+		setStream := true
+		for _, arg := range b.Args() {
+			if strings.HasPrefix(arg, "--test_output=") {
+				setStream = false
+			}
+		}
+		if setStream {
+			log.Log("Found a single target test. Streaming results. You can override this by explicitly passing --test_output=summary")
+			b.SetArguments([]string{"--test_output=streamed"})
+		}
+	}
 
 	b.Cancel()
 	b.WriteToStderr(true)

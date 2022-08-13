@@ -128,6 +128,7 @@ func findBazel() string {
 }
 
 type Bazel interface {
+	Args() []string
 	SetArguments([]string)
 	SetStartupArgs([]string)
 	WriteToStderr(v bool)
@@ -157,6 +158,10 @@ type bazel struct {
 
 func New() Bazel {
 	return &bazel{}
+}
+
+func (b *bazel) Args() []string {
+	return b.args
 }
 
 func (b *bazel) SetArguments(args []string) {
