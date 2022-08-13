@@ -35,6 +35,10 @@ type MockBazel struct {
 	waitError  error
 }
 
+func (b *MockBazel) Args() []string {
+	return b.args
+}
+
 func (b *MockBazel) SetArguments(args []string) {
 	b.args = args
 }
