@@ -16,6 +16,7 @@ package testing
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 	"regexp"
 	"testing"
@@ -40,10 +41,12 @@ func (b *MockBazel) Args() []string {
 }
 
 func (b *MockBazel) SetArguments(args []string) {
+	b.actions = append(b.actions, append([]string{"SetArguments"}, args...))
 	b.args = args
 }
 
 func (b *MockBazel) SetStartupArgs(args []string) {
+	b.actions = append(b.actions, append([]string{"SetStartupArgs"}, args...))
 	b.startupArgs = args
 }
 
@@ -69,13 +72,13 @@ func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	res, ok := b.queryResponse[query]
 
 	if !ok || res == nil {
-		res = &blaze_query.QueryResult{}
+		panic(fmt.Sprintf("Unable to find query result for %q", query))
 	}
 
 	return res, nil
 }
 func (b *MockBazel) AddCQueryResponse(query string, res *analysis.CqueryResult) {
-	if b.queryResponse == nil {
+	if b.cqueryResponse == nil {
 		b.cqueryResponse = map[string]*analysis.CqueryResult{}
 	}
 	b.cqueryResponse[query] = res
@@ -86,7 +89,7 @@ func (b *MockBazel) CQuery(args ...string) (*analysis.CqueryResult, error) {
 	res, ok := b.cqueryResponse[query]
 
 	if !ok || res == nil {
-		res = &analysis.CqueryResult{}
+		panic(fmt.Sprintf("Unable to find cquery result for %q", query))
 	}
 
 	return res, nil
@@ -123,18 +126,31 @@ func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
 		return
 	}
 
+	var diffBody string
+	var diff bool
 	for i := range b.actions {
 		if len(b.actions[i]) != len(expected[i]) {
 			t.Errorf("Test didn't meet expectations len(b.actions[%d]) == %d != len(expected[%d]) == %d.\nWant: %#v\nGot:  %#v", i, len(b.actions[i]), i, len(expected[i]), expected, b.actions)
 			return
 		}
 
+		var subDiff bool
 		for j := range b.actions[i] {
 			match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
 			if !match {
-				t.Errorf("Test didn't meet expectations.\nWant: %#v\nGot:  %#v", expected, b.actions)
-				return
+				subDiff = true
+				diff = true
 			}
 		}
+
+		if subDiff {
+			diffBody += fmt.Sprintf("  -%#v\n  +%#v\n", expected[i], b.actions[i])
+		} else {
+			diffBody += fmt.Sprintf("  %#v\n", expected[i])
+		}
+	}
+
+	if diff {
+		t.Errorf("Calls diff (-want,+got):\n%s", diffBody)
 	}
 }
