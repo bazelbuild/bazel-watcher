@@ -32,5 +32,8 @@ go_test(
     data = ["output_runner_test.json"],
     embed = [":output_runner"],
     importpath = "github.com/bazelbuild/bazel-watcher/ibazel",
-    deps = ["//internal/ibazel/workspace"],
+    deps = [
+        "//internal/ibazel/log",
+        "//internal/ibazel/workspace",
+    ],
 )

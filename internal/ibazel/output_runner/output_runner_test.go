@@ -19,10 +19,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/workspace"
 )
 
 func TestConvertArgs(t *testing.T) {
+	log.SetTesting(t)
+
 	matches := []string{"my_command my_arg1 my_arg2 my_arg3", "my_command", "my_arg1", "my_arg2", "my_arg3"}
 	// Command parsing tests
 	for _, c := range []struct {
@@ -62,6 +65,8 @@ func TestConvertArgs(t *testing.T) {
 }
 
 func TestReadConfigs(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &OutputRunner{
 		w: &workspace.FakeWorkspace{},
 	}
@@ -92,6 +97,8 @@ func TestReadConfigs(t *testing.T) {
 }
 
 func TestMatchRegex(t *testing.T) {
+	log.SetTesting(t)
+
 	buf := bytes.Buffer{}
 	buf.WriteString("buildozer 'add deps test_dep1' //target1:target1\n")
 	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
@@ -159,6 +166,8 @@ var cleanerTests = []struct {
 }
 
 func TestMatchCleanRegex(t *testing.T) {
+	log.SetTesting(t)
+
 	optcmd := []Optcmd{
 		{Regex: "^(buildozer) '(.*)'\\s+(.*)$", Command: "$1", Args: []string{"$2", "$3"}},
 	}
@@ -174,5 +183,4 @@ func TestMatchCleanRegex(t *testing.T) {
 			}
 		})
 	}
-
 }

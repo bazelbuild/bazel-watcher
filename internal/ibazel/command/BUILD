@@ -43,6 +43,7 @@ go_test(
     deps = [
         "//internal/bazel",
         "//internal/bazel/testing",
+        "//internal/ibazel/log",
         "//internal/ibazel/process_group",
     ],
 )

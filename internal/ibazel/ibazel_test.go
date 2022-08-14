@@ -38,10 +38,6 @@ import (
 	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
-func init() {
-	log.FakeExit()
-}
-
 type fakeFSNotifyWatcher struct {
 	ErrorChan chan error
 	EventChan chan common.Event
@@ -177,6 +173,8 @@ func newIBazel(t *testing.T) (*IBazel, *mock_bazel.MockBazel) {
 }
 
 func TestIBazelLifecycle(t *testing.T) {
+	log.SetTesting(t)
+
 	i, _ := newIBazel(t)
 	i.Cleanup()
 
@@ -187,7 +185,11 @@ func TestIBazelLifecycle(t *testing.T) {
 }
 
 func TestIBazelLoop(t *testing.T) {
-	i, _ := newIBazel(t)
+	log.SetTesting(t)
+
+	i, mockBazel := newIBazel(t)
+	mockBazel.AddQueryResponse("buildfiles(deps(set(//my:target)))", &blaze_query.QueryResult{})
+	mockBazel.AddQueryResponse("kind('source file', deps(set(//my:target)))", &blaze_query.QueryResult{})
 
 	// Replace the file watching channel with one that has a buffer.
 	i.buildFileWatcher = &fakeFSNotifyWatcher{
@@ -209,9 +211,11 @@ func TestIBazelLoop(t *testing.T) {
 
 	i.state = QUERY
 	step := func() {
-		i.iteration("demo", command, []string{}, "")
+		i.iteration("demo", command, []string{}, "//my:target")
 	}
 	assertRun := func() {
+		t.Helper()
+
 		if called == false {
 			_, file, line, _ := runtime.Caller(1) // decorate + log + public function.
 			t.Errorf("%s:%v Should have run the provided comand", file, line)
@@ -219,6 +223,8 @@ func TestIBazelLoop(t *testing.T) {
 		called = false
 	}
 	assertState := func(state State) {
+		t.Helper()
+
 		if i.state != state {
 			_, file, line, _ := runtime.Caller(1) // decorate + log + public function.
 			t.Errorf("%s:%v Expected state to be %s but was %s", file, line, state, i.state)
@@ -261,6 +267,8 @@ func TestIBazelLoop(t *testing.T) {
 }
 
 func TestIBazelBuild(t *testing.T) {
+	log.SetTesting(t)
+
 	i, mockBazel := newIBazel(t)
 	defer i.Cleanup()
 
@@ -286,8 +294,8 @@ func TestIBazelBuild(t *testing.T) {
 		{"SetStartupArgs"},
 		{"SetArguments"},
 		{"Cancel"},
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},
 	}
 
@@ -295,6 +303,8 @@ func TestIBazelBuild(t *testing.T) {
 }
 
 func TestIBazelTest(t *testing.T) {
+	log.SetTesting(t)
+
 	i, mockBazel := newIBazel(t)
 	defer i.Cleanup()
 
@@ -321,11 +331,13 @@ func TestIBazelTest(t *testing.T) {
 		{"SetArguments"},
 		{"SetStartupArgs"},
 		{"SetArguments"},
+		{"WriteToStderr", "false"},
+		{"WriteToStdout", "false"},
 		{"CQuery", "//path/to:target"},
 		{"SetArguments", "--test_output=streamed"},
 		{"Cancel"},
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Test", "//path/to:target"},
 	}
 
@@ -333,6 +345,8 @@ func TestIBazelTest(t *testing.T) {
 }
 
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
+	log.SetTesting(t)
+
 	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
 		assertEqual(t, startupArgs, []string{}, "Startup args")
 		assertEqual(t, bazelArgs, []string{}, "Bazel args")
@@ -361,6 +375,9 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
+	log.SetTesting(t)
+	log.FakeExit()
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -384,6 +401,8 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -420,6 +439,8 @@ func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -462,6 +483,8 @@ func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -502,6 +525,8 @@ func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
 }
 
 func TestHandleSignals_SIGTERM(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -532,6 +557,8 @@ func TestHandleSignals_SIGTERM(t *testing.T) {
 }
 
 func TestParseTarget(t *testing.T) {
+	log.SetTesting(t)
+
 	tests := []struct {
 		in     string
 		repo   string

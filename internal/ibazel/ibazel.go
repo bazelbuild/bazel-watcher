@@ -60,8 +60,8 @@ const (
 	QUIT           State = "QUIT"
 )
 
-const sourceQuery = "kind('source file', deps(set(%q)))"
-const buildQuery = "buildfiles(deps(set(%q)))"
+const sourceQuery = "kind('source file', deps(set(%s)))"
+const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
 	debounceDuration time.Duration
@@ -116,7 +116,7 @@ func New(version string) (*IBazel, error) {
 
 	info, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
-		l.Initialize(info)
+		l.Initialize(&info)
 	}
 
 	go func() {
@@ -444,6 +444,9 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b := i.newBazel()
 
+	b.WriteToStderr(false)
+	b.WriteToStdout(false)
+
 	res, err := b.CQuery(i.queryArgs(rule)...)
 	if err != nil {
 		log.Errorf("Error running Bazel %v", err)
@@ -460,7 +463,7 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	return nil, errors.New("No information available")
 }
 
-func (i *IBazel) getInfo() (*map[string]string, error) {
+func (i *IBazel) getInfo() (map[string]string, error) {
 	b := i.newBazel()
 
 	res, err := b.Info()
@@ -469,14 +472,13 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 		return nil, err
 	}
 
-	return &res, nil
+	return res, nil
 }
 
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	b := i.newBazel()
 
 	localRepositories, err := i.realLocalRepositoryPaths()
-
 	if err != nil {
 		return nil, err
 	}
@@ -493,11 +495,11 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return nil, err
 	}
 
-	toWatch := make([]string, 0, 10000)
-	for _, target := range res.Target {
+	toWatch := make([]string, 0, len(res.GetTarget()))
+	for _, target := range res.GetTarget() {
 		switch *target.Type {
 		case blaze_query.Target_SOURCE_FILE:
-			label := *target.SourceFile.Name
+			label := target.GetSourceFile().GetName()
 			if strings.HasPrefix(label, "@") {
 				repo, target := parseTarget(label)
 				if realPath, ok := localRepositories[repo]; ok {
@@ -526,6 +528,7 @@ func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
 	toWatch, err := i.queryForSourceFiles(query)
 	if err != nil {
 		// If the query fails, just keep watching the same files as before
+		log.Errorf("Error querying for source files: %v", err)
 		return
 	}
 

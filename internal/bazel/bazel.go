@@ -292,22 +292,21 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
 
-	b.WriteToStderr(true)
+	b.WriteToStderr(false)
 	b.WriteToStdout(false)
-	stdoutBuffer, _ := b.newCommand("query", blazeArgs...)
+	stdoutBuffer, stderrBuff := b.newCommand("query", blazeArgs...)
 
 	err := b.cmd.Run()
-
 	if err != nil {
 		return nil, err
 	}
-	return b.processQuery(stdoutBuffer.Bytes())
+	return b.processQuery(stdoutBuffer.Bytes(), stderrBuff.Bytes())
 }
 
-func (b *bazel) processQuery(out []byte) (*blaze_query.QueryResult, error) {
+func (b *bazel) processQuery(stdout []byte, stderr []byte) (*blaze_query.QueryResult, error) {
 	var qr blaze_query.QueryResult
-	if err := proto.Unmarshal(out, &qr); err != nil {
-		fmt.Fprintf(os.Stderr, "Could not read blaze query response. Error: %s\nOutput: %s\n", err, out)
+	if err := proto.Unmarshal(stdout, &qr); err != nil {
+		log.Errorf("Could not read blaze query response. Error: %s\nOutput: %s\nStderr: %s\n", err, stdout, string(stderr))
 		return nil, err
 	}
 
