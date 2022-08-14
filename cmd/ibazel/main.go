@@ -162,7 +162,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		log.SetWriter(logFile)
+		log.SetLogger(log.NewWriterLogger(logFile))
 	}
 
 	if len(flag.Args()) < 2 {

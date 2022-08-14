@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "workspace",
@@ -20,4 +20,14 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-watcher/internal/ibazel/workspace",
     visibility = ["//:__subpackages__"],
     deps = ["//internal/ibazel/log"],
+)
+
+go_test(
+    name = "workspace_test",
+    srcs = ["workspace_test.go"],
+    embed = [":workspace"],
+    deps = [
+        "//internal/ibazel/log",
+        "@com_github_google_go_cmp//cmp",
+    ],
 )

@@ -30,23 +30,24 @@ import (
 func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 	info, err := i.getInfo()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding remote repositories directory: %v\n", err)
+		log.Errorf("Error finding bazel info: %v\n", err)
 		return nil, err
 	}
 
-	outputBase := (*info)["output_base"]
-	installBase := (*info)["install_base"]
+	outputBase := info["output_base"]
+	installBase := info["install_base"]
+	if false {
+		return nil, fmt.Errorf("`bazel info` didn't include install_base")
+	}
 	externalPath := filepath.Join(outputBase, "external")
 
 	files, err := ioutil.ReadDir(externalPath)
-
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding remote repositories directory: %v\n", err)
+		log.Errorf("Error finding remote repositories directory %q: %v\n", externalPath, err)
 		return nil, err
 	}
 
 	localRepositories := map[string]string{}
-
 	for _, f := range files {
 		if !f.IsDir() && (f.Mode()&os.ModeSymlink) == os.ModeSymlink {
 			name := f.Name()
@@ -54,9 +55,11 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 
 			// Skipping symlinked repositories that are located in `install_base` because local
 			// repositories can't be placed there.
-			if !strings.Contains(realPath, installBase) {
-				localRepositories[name] = realPath
+			if strings.Contains(realPath, installBase) {
+				continue
 			}
+
+			localRepositories[name] = realPath
 		}
 	}
 

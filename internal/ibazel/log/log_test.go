@@ -89,7 +89,7 @@ func TestNonfLoggers(t *testing.T) {
 			}
 
 			buf := &bytes.Buffer{}
-			SetWriter(buf)
+			SetLogger(&writerLogger{buf})
 
 			switch f := test.method.(type) {
 			case func(string):
@@ -115,7 +115,7 @@ func TestNonfLoggers(t *testing.T) {
 
 func TestBanner(t *testing.T) {
 	buf := &bytes.Buffer{}
-	SetWriter(buf)
+	SetLogger(&writerLogger{buf})
 
 	Banner("This is multi", "line output that", "is expected to be printed")
 

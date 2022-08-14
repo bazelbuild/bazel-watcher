@@ -9,14 +9,14 @@ import (
 )
 
 const mainFiles = `
--- BUILD.bazel --
+-- single/BUILD.bazel --
 # Create an sh_test that passes and prints some output. Confirm that the
 # results were streamed.
 sh_test(
   name = "stream",
   srcs = ["stream.sh"],
 )
--- stream.sh --
+-- single/stream.sh --
 printf "test output"
 exit 0
 `
@@ -31,16 +31,16 @@ func TestSimpleTest(t *testing.T) {
 	// When iBazel can detect that you're testing a single target, it will run
 	// the test with "--test_output=streamed" so that you can see the results
 	// live.
-	e2e.MustWriteFile(t, "stream.sh", `printf "TestSimpleTest1"`)
+	e2e.MustWriteFile(t, "single/stream.sh", `printf "TestSimpleTest1"`)
 
 	ibazel := e2e.SetUp(t)
-	ibazel.Test([]string{}, "//:stream")
+	ibazel.Test([]string{}, "//single:stream")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("TestSimpleTest1")
 
 	// Now when the file is updated it should still be run in streaming mode.
-	e2e.MustWriteFile(t, "stream.sh", `printf "TestSimpleTest2"`)
+	e2e.MustWriteFile(t, "single/stream.sh", `printf "TestSimpleTest2"`)
 	ibazel.ExpectOutput("TestSimpleTest2")
 }
 
@@ -49,9 +49,9 @@ func TestSingleQueryTarget(t *testing.T) {
 	// the test with "--test_output=streamed" so that you can see the results
 	// live.
 
-	e2e.MustWriteFile(t, "stream.sh", `printf "TestSingleQueryTarget"`)
+	e2e.MustWriteFile(t, "single/stream.sh", `printf "TestSingleQueryTarget"`)
 	ibazel := e2e.SetUp(t)
-	ibazel.Test([]string{}, "//:all")
+	ibazel.Test([]string{}, "//single:all")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("TestSingleQueryTarget")
@@ -62,9 +62,9 @@ func TestMultipleQueryTarget(t *testing.T) {
 	// the test with "--test_output=streamed" so that you can see the results
 	// live.
 
-	e2e.MustWriteFile(t, "stream.sh", `printf "TestMultipleQueryTarget"`)
+	e2e.MustWriteFile(t, "single/stream.sh", `printf "TestMultipleQueryTarget"`)
 	ibazel := e2e.SetUp(t)
-	ibazel.Test([]string{}, "//:all", "//...")
+	ibazel.Test([]string{}, "//single:all", "//...")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("TestMultipleQueryTarget")
@@ -75,9 +75,9 @@ func TestExplicitlySetOutputToSummary(t *testing.T) {
 	// the test with "--test_output=streamed" so that you can see the results
 	// live.
 
-	e2e.MustWriteFile(t, "stream.sh", `printf "TestExplicitlySetOutputToSummary"`)
+	e2e.MustWriteFile(t, "single/stream.sh", `printf "TestExplicitlySetOutputToSummary"`)
 	ibazel := e2e.SetUp(t)
-	ibazel.Test([]string{"--test_output=summary"}, "//:all", "//...")
+	ibazel.Test([]string{"--test_output=summary"}, "//single:all", "//...")
 	defer ibazel.Kill()
 
 	// Wait for it to pass.

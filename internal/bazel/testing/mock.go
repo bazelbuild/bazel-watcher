@@ -23,6 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+	"github.com/google/go-cmp/cmp"
 )
 
 type MockBazel struct {
@@ -51,10 +52,10 @@ func (b *MockBazel) SetStartupArgs(args []string) {
 }
 
 func (b *MockBazel) WriteToStderr(v bool) {
-	b.actions = append(b.actions, []string{"WriteToStderr"})
+	b.actions = append(b.actions, []string{"WriteToStderr", fmt.Sprint(v)})
 }
 func (b *MockBazel) WriteToStdout(v bool) {
-	b.actions = append(b.actions, []string{"WriteToStdout"})
+	b.actions = append(b.actions, []string{"WriteToStdout", fmt.Sprint(v)})
 }
 func (b *MockBazel) Info() (map[string]string, error) {
 	b.actions = append(b.actions, []string{"Info"})
@@ -71,8 +72,12 @@ func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	query := args[0]
 	res, ok := b.queryResponse[query]
 
-	if !ok || res == nil {
-		panic(fmt.Sprintf("Unable to find query result for %q", query))
+	if !ok {
+		var candidates []string
+		for candidate := range b.queryResponse {
+			candidates = append(candidates, candidate)
+		}
+		panic(fmt.Sprintf("Unable to find query result for %q. Only have %v.", query, candidates))
 	}
 
 	return res, nil
@@ -88,8 +93,12 @@ func (b *MockBazel) CQuery(args ...string) (*analysis.CqueryResult, error) {
 	query := args[0]
 	res, ok := b.cqueryResponse[query]
 
-	if !ok || res == nil {
-		panic(fmt.Sprintf("Unable to find cquery result for %q", query))
+	if !ok {
+		var candidates []string
+		for candidate := range b.cqueryResponse {
+			candidates = append(candidates, candidate)
+		}
+		panic(fmt.Sprintf("Unable to find cquery result for %q. Only have %v.", query, candidates))
 	}
 
 	return res, nil
@@ -121,36 +130,30 @@ func (b *MockBazel) Cancel() {
 func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
 	t.Helper()
 
-	if len(b.actions) != len(expected) {
-		t.Errorf("Test didn't meet expectations len(b.actions) == %d != len(expected) == %d.\nWant: %#v\nGot:  %#v", len(b.actions), len(expected), expected, b.actions)
-		return
-	}
-
-	var diffBody string
-	var diff bool
-	for i := range b.actions {
-		if len(b.actions[i]) != len(expected[i]) {
-			t.Errorf("Test didn't meet expectations len(b.actions[%d]) == %d != len(expected[%d]) == %d.\nWant: %#v\nGot:  %#v", i, len(b.actions[i]), i, len(expected[i]), expected, b.actions)
-			return
-		}
-
-		var subDiff bool
-		for j := range b.actions[i] {
-			match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
-			if !match {
-				subDiff = true
-				diff = true
+	if diff := cmp.Diff(b.actions, expected, cmp.FilterValues(func(a, b string) bool {
+		return true
+	}, cmp.Comparer(func(a, b string) bool {
+		{
+			match, _ := regexp.MatchString(a, b)
+			if match {
+				return true
 			}
 		}
-
-		if subDiff {
-			diffBody += fmt.Sprintf("  -%#v\n  +%#v\n", expected[i], b.actions[i])
-		} else {
-			diffBody += fmt.Sprintf("  %#v\n", expected[i])
+		{
+			match, _ := regexp.MatchString(b, a)
+			if match {
+				return true
+			}
 		}
+		return a == b
+	}))); diff != "" {
+		t.Errorf("Action diff (-got (%d),+want (%d)):\n%s", len(b.actions), len(expected), diff)
 	}
+}
 
-	if diff {
-		t.Errorf("Calls diff (-want,+got):\n%s", diffBody)
+func max(a, b int) int {
+	if a > b {
+		return a
 	}
+	return b
 }
