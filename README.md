@@ -55,13 +55,13 @@ You can, of course, build iBazel using Bazel.
 ```
 $ git clone git@github.com:bazelbuild/bazel-watcher
 $ cd bazel-watcher
-$ bazel build //ibazel
+$ bazel build //cmd/ibazel
 ```
 
 Now copy the generated binary onto your path:
 
 ```bash
-$ export PATH=$PATH:$PWD/bazel-bin/ibazel/ibazel_/ibazel
+$ export PATH=$PATH:$PWD/bazel-bin/cmd/ibazel/ibazel_
 ```
 
 ## Running a target
