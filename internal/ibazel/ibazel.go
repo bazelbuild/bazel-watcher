@@ -375,7 +375,7 @@ func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 		}
 		if setStream {
 			log.Log("Found a single target test. Streaming results. You can override this by explicitly passing --test_output=summary")
-			b.SetArguments([]string{"--test_output=streamed"})
+			b.SetArguments(append([]string{"--test_output=streamed"}, b.Args()...))
 		}
 	}
 
