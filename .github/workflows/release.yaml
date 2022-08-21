@@ -119,7 +119,6 @@ jobs:
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm ci
       - name: Publish NPM Package
         if: ${{ github.event.release.upload_url }}
         env:
