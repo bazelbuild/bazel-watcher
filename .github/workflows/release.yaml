@@ -114,17 +114,19 @@ jobs:
           cp ".npmrc" "npm-staging/.npmrc"
           bazel run --config="release" "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
+      # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v3
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
-
+      - run: npm ci
       - name: Publish NPM Package
         if: ${{ github.event.release.upload_url }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: ./npm-staging
         run: |
+          cat ~/.npmrc || echo "Didn't find .npmrc"
           echo -n "Publishing to NPM as "
           grep "version" < "package.json"
           find . && cat package.json && npm install && echo "Publishing to npm..." && npm publish
