@@ -34,7 +34,7 @@ func TestParsingArgs(t *testing.T) {
 		// arguments after a --.
 		{[]string{"--", "--my_program_flag"}, nil, nil, nil, []string{"--my_program_flag"}},
 		// Whitelisted startup argument.
-		{[]string{"--bazelrc=/home/libsamek/bazelrc"}, nil, []string{"--bazelrc=/home/libsamek/bazelrc"}, nil, nil},
+		{[]string{"--bazelrc=/home/libsamek/bazelrc", "--nohome_rc"}, nil, []string{"--bazelrc=/home/libsamek/bazelrc", "--nohome_rc"}, nil, nil},
 		// Whitelisted bazel flag.
 		{[]string{"--test_output=streaming"}, nil, nil, []string{"--test_output=streaming"}, nil},
 		// Whitelisted bazel flag, arg, and target.
