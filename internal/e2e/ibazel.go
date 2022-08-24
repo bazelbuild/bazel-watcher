@@ -60,6 +60,31 @@ func (i *IBazelTester) Build(target string) {
 	i.build(target, []string{})
 }
 
+func (i *IBazelTester) Test(bazelArgs []string, targets ...string) {
+	i.t.Helper()
+
+	args := []string{"--bazel_path=" + i.bazelPath()}
+	args = append(args,
+		"--log_to_file="+i.ibazelLogFile,
+		"--graceful_termination_wait_duration=1s")
+	args = append(args, "test")
+	args = append(args, "--bazelrc=/dev/null")
+	args = append(args, targets...)
+	args = append(args, bazelArgs...)
+	i.cmd = exec.Command(ibazelPath, args...)
+	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
+
+	i.stdoutBuffer = &Buffer{}
+	i.cmd.Stdout = i.stdoutBuffer
+
+	i.stderrBuffer = &Buffer{}
+	i.cmd.Stderr = i.stderrBuffer
+
+	if err := i.cmd.Start(); err != nil {
+		i.t.Fatalf("Command: %s", i.cmd)
+	}
+}
+
 func (i *IBazelTester) Run(bazelArgs []string, target string) {
 	i.t.Helper()
 	i.run(target, bazelArgs, []string{
@@ -299,6 +324,7 @@ func (i *IBazelTester) runUnverified(target string, bazelArgs []string, addition
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
+	args = append(args, "--bazelrc=/dev/null")
 	args = append(args, target)
 	args = append(args, bazelArgs...)
 	i.cmd = exec.Command(ibazelPath, args...)

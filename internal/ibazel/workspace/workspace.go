@@ -47,11 +47,16 @@ func (m *MainWorkspace) FindWorkspace() (string, error) {
 		}
 
 		// Check if we're at the workspace path
-		if _, err := os.Stat(filepath.Join(path, "WORKSPACE")); !os.IsNotExist(err) {
-			return path, nil
+		if s, err := os.Stat(filepath.Join(path, "WORKSPACE")); err == nil {
+			if !s.IsDir() && s.Name() == "WORKSPACE" {
+				// In macOS directories called "workspace" will match because the file
+				// system isn't case sensitive.
+				return path, nil
+			}
 		}
 
-		if _, err := os.Stat(filepath.Join(path, "WORKSPACE.bazel")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(path, "WORKSPACE.bazel")); err == nil {
+			log.Fatalf("WORKSPACE.bazel")
 			return path, nil
 		}
 

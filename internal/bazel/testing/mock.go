@@ -16,12 +16,14 @@ package testing
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 	"regexp"
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+	"github.com/google/go-cmp/cmp"
 )
 
 type MockBazel struct {
@@ -35,19 +37,25 @@ type MockBazel struct {
 	waitError  error
 }
 
+func (b *MockBazel) Args() []string {
+	return b.args
+}
+
 func (b *MockBazel) SetArguments(args []string) {
+	b.actions = append(b.actions, append([]string{"SetArguments"}, args...))
 	b.args = args
 }
 
 func (b *MockBazel) SetStartupArgs(args []string) {
+	b.actions = append(b.actions, append([]string{"SetStartupArgs"}, args...))
 	b.startupArgs = args
 }
 
 func (b *MockBazel) WriteToStderr(v bool) {
-	b.actions = append(b.actions, []string{"WriteToStderr"})
+	b.actions = append(b.actions, []string{"WriteToStderr", fmt.Sprint(v)})
 }
 func (b *MockBazel) WriteToStdout(v bool) {
-	b.actions = append(b.actions, []string{"WriteToStdout"})
+	b.actions = append(b.actions, []string{"WriteToStdout", fmt.Sprint(v)})
 }
 func (b *MockBazel) Info() (map[string]string, error) {
 	b.actions = append(b.actions, []string{"Info"})
@@ -64,14 +72,18 @@ func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	query := args[0]
 	res, ok := b.queryResponse[query]
 
-	if !ok || res == nil {
-		res = &blaze_query.QueryResult{}
+	if !ok {
+		var candidates []string
+		for candidate := range b.queryResponse {
+			candidates = append(candidates, candidate)
+		}
+		panic(fmt.Sprintf("Unable to find query result for %q. Only have %v.", query, candidates))
 	}
 
 	return res, nil
 }
 func (b *MockBazel) AddCQueryResponse(query string, res *analysis.CqueryResult) {
-	if b.queryResponse == nil {
+	if b.cqueryResponse == nil {
 		b.cqueryResponse = map[string]*analysis.CqueryResult{}
 	}
 	b.cqueryResponse[query] = res
@@ -81,8 +93,12 @@ func (b *MockBazel) CQuery(args ...string) (*analysis.CqueryResult, error) {
 	query := args[0]
 	res, ok := b.cqueryResponse[query]
 
-	if !ok || res == nil {
-		res = &analysis.CqueryResult{}
+	if !ok {
+		var candidates []string
+		for candidate := range b.cqueryResponse {
+			candidates = append(candidates, candidate)
+		}
+		panic(fmt.Sprintf("Unable to find cquery result for %q. Only have %v.", query, candidates))
 	}
 
 	return res, nil
@@ -114,23 +130,30 @@ func (b *MockBazel) Cancel() {
 func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
 	t.Helper()
 
-	if len(b.actions) != len(expected) {
-		t.Errorf("Test didn't meet expectations len(b.actions) == %d != len(expected) == %d.\nWant: %#v\nGot:  %#v", len(b.actions), len(expected), expected, b.actions)
-		return
-	}
-
-	for i := range b.actions {
-		if len(b.actions[i]) != len(expected[i]) {
-			t.Errorf("Test didn't meet expectations len(b.actions[%d]) == %d != len(expected[%d]) == %d.\nWant: %#v\nGot:  %#v", i, len(b.actions[i]), i, len(expected[i]), expected, b.actions)
-			return
-		}
-
-		for j := range b.actions[i] {
-			match, _ := regexp.MatchString(expected[i][j], b.actions[i][j])
-			if !match {
-				t.Errorf("Test didn't meet expectations.\nWant: %#v\nGot:  %#v", expected, b.actions)
-				return
+	if diff := cmp.Diff(b.actions, expected, cmp.FilterValues(func(a, b string) bool {
+		return true
+	}, cmp.Comparer(func(a, b string) bool {
+		{
+			match, _ := regexp.MatchString(a, b)
+			if match {
+				return true
 			}
 		}
+		{
+			match, _ := regexp.MatchString(b, a)
+			if match {
+				return true
+			}
+		}
+		return a == b
+	}))); diff != "" {
+		t.Errorf("Action diff (-got (%d),+want (%d)):\n%s", len(b.actions), len(expected), diff)
 	}
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

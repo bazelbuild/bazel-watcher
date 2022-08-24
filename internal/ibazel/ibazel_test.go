@@ -32,14 +32,11 @@ import (
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/common"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/workspace"
-	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 
 	mock_bazel "github.com/bazelbuild/bazel-watcher/internal/bazel/testing"
+	analysispb "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
+	blaze_query "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
-
-func init() {
-	log.FakeExit()
-}
 
 type fakeFSNotifyWatcher struct {
 	ErrorChan chan error
@@ -139,8 +136,6 @@ func (m *mockCommand) IsSubprocessRunning() bool {
 	return m.started && !m.terminated
 }
 
-var mockBazel *mock_bazel.MockBazel
-
 func getMockCommand(i *IBazel) *mockCommand {
 	c, ok := i.cmd.(*mockCommand)
 	if !ok {
@@ -150,25 +145,6 @@ func getMockCommand(i *IBazel) *mockCommand {
 }
 
 func init() {
-	// Replace the bazel object creation function with one that makes my mock.
-	bazelNew = func() bazel.Bazel {
-		mockBazel = &mock_bazel.MockBazel{}
-		mockBazel.AddQueryResponse("//path/to:target", &blaze_query.QueryResult{
-			Target: []*blaze_query.Target{
-				&blaze_query.Target{
-					Type: blaze_query.Target_RULE.Enum(),
-					Rule: &blaze_query.Rule{
-						Attribute: []*blaze_query.Attribute{
-							&blaze_query.Attribute{
-								Name: proto.String("name"),
-							},
-						},
-					},
-				},
-			},
-		})
-		return mockBazel
-	}
 	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
 		// Don't do anything
 		return &mockCommand{
@@ -180,7 +156,12 @@ func init() {
 	}
 }
 
-func newIBazel(t *testing.T) *IBazel {
+func newIBazel(t *testing.T) (*IBazel, *mock_bazel.MockBazel) {
+	mockBazel := &mock_bazel.MockBazel{}
+	bazelNew = func() bazel.Bazel {
+		return mockBazel
+	}
+
 	i, err := New("testing")
 	if err != nil {
 		t.Errorf("Error creating IBazel: %s", err)
@@ -188,11 +169,13 @@ func newIBazel(t *testing.T) *IBazel {
 
 	i.workspaceFinder = &workspace.FakeWorkspace{}
 
-	return i
+	return i, mockBazel
 }
 
 func TestIBazelLifecycle(t *testing.T) {
-	i := newIBazel(t)
+	log.SetTesting(t)
+
+	i, _ := newIBazel(t)
 	i.Cleanup()
 
 	// Now inspect private API. If things weren't closed properly this will block
@@ -202,7 +185,11 @@ func TestIBazelLifecycle(t *testing.T) {
 }
 
 func TestIBazelLoop(t *testing.T) {
-	i := newIBazel(t)
+	log.SetTesting(t)
+
+	i, mockBazel := newIBazel(t)
+	mockBazel.AddQueryResponse("buildfiles(deps(set(//my:target)))", &blaze_query.QueryResult{})
+	mockBazel.AddQueryResponse("kind('source file', deps(set(//my:target)))", &blaze_query.QueryResult{})
 
 	// Replace the file watching channel with one that has a buffer.
 	i.buildFileWatcher = &fakeFSNotifyWatcher{
@@ -224,9 +211,11 @@ func TestIBazelLoop(t *testing.T) {
 
 	i.state = QUERY
 	step := func() {
-		i.iteration("demo", command, []string{}, "")
+		i.iteration("demo", command, []string{}, "//my:target")
 	}
 	assertRun := func() {
+		t.Helper()
+
 		if called == false {
 			_, file, line, _ := runtime.Caller(1) // decorate + log + public function.
 			t.Errorf("%s:%v Should have run the provided comand", file, line)
@@ -234,6 +223,8 @@ func TestIBazelLoop(t *testing.T) {
 		called = false
 	}
 	assertState := func(state State) {
+		t.Helper()
+
 		if i.state != state {
 			_, file, line, _ := runtime.Caller(1) // decorate + log + public function.
 			t.Errorf("%s:%v Expected state to be %s but was %s", file, line, state, i.state)
@@ -245,8 +236,8 @@ func TestIBazelLoop(t *testing.T) {
 
 	assertState(QUERY)
 	step()
-	i.filesWatched[i.buildFileWatcher] = map[string]struct{}{"/path/to/BUILD": struct{}{}}
-	i.filesWatched[i.sourceFileWatcher] = map[string]struct{}{"/path/to/foo": struct{}{}}
+	i.filesWatched[i.buildFileWatcher] = map[string]struct{}{"/path/to/BUILD": {}}
+	i.filesWatched[i.sourceFileWatcher] = map[string]struct{}{"/path/to/foo": {}}
 	assertState(RUN)
 	step() // Actually run the command
 	assertRun()
@@ -276,36 +267,86 @@ func TestIBazelLoop(t *testing.T) {
 }
 
 func TestIBazelBuild(t *testing.T) {
-	i := newIBazel(t)
+	log.SetTesting(t)
+
+	i, mockBazel := newIBazel(t)
 	defer i.Cleanup()
+
+	mockBazel.AddQueryResponse("//path/to:target", &blaze_query.QueryResult{
+		Target: []*blaze_query.Target{
+			{
+				Type: blaze_query.Target_RULE.Enum(),
+				Rule: &blaze_query.Rule{
+					Name: proto.String("//path/to:target"),
+					Attribute: []*blaze_query.Attribute{
+						{Name: proto.String("name")},
+					},
+				},
+			},
+		},
+	})
 
 	i.build("//path/to:target")
 	expected := [][]string{
-		[]string{"Cancel"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Build", "//path/to:target"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"Info"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"Cancel"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
+		{"Build", "//path/to:target"},
 	}
 
 	mockBazel.AssertActions(t, expected)
 }
 
 func TestIBazelTest(t *testing.T) {
-	i := newIBazel(t)
+	log.SetTesting(t)
+
+	i, mockBazel := newIBazel(t)
 	defer i.Cleanup()
+
+	mockBazel.AddCQueryResponse("//path/to:target", &analysispb.CqueryResult{
+		Results: []*analysispb.ConfiguredTarget{{
+			Target: &blaze_query.Target{
+				Type: blaze_query.Target_RULE.Enum(),
+				Rule: &blaze_query.Rule{
+					Name: proto.String("//path/to:target"),
+					Attribute: []*blaze_query.Attribute{
+						{Name: proto.String("name")},
+					},
+				},
+			},
+		}},
+	})
 
 	i.test("//path/to:target")
 	expected := [][]string{
-		[]string{"Cancel"},
-		[]string{"WriteToStderr"},
-		[]string{"WriteToStdout"},
-		[]string{"Test", "//path/to:target"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"Info"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"WriteToStderr", "false"},
+		{"WriteToStdout", "false"},
+		{"CQuery", "//path/to:target"},
+		{"SetArguments", "--test_output=streamed"},
+		{"Cancel"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
+		{"Test", "//path/to:target"},
 	}
 
 	mockBazel.AssertActions(t, expected)
 }
 
 func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
+	log.SetTesting(t)
+
 	commandDefaultCommand = func(startupArgs []string, bazelArgs []string, target string, args []string) command.Command {
 		assertEqual(t, startupArgs, []string{}, "Startup args")
 		assertEqual(t, bazelArgs, []string{}, "Bazel args")
@@ -315,7 +356,7 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 	}
 	defer func() { commandDefaultCommand = oldCommandDefaultCommand }()
 
-	i := newIBazel(t)
+	i, _ := newIBazel(t)
 	defer i.Cleanup()
 
 	i.args = []string{"--do_it"}
@@ -334,6 +375,9 @@ func TestIBazelRun_notifyPreexistiingJobWhenStarting(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
+	log.SetTesting(t)
+	log.FakeExit()
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -357,6 +401,8 @@ func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -393,6 +439,8 @@ func TestHandleSignals_SIGINTNormalTermination(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -435,6 +483,8 @@ func TestHandleSignals_SIGINTForcefulTermination(t *testing.T) {
 }
 
 func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -475,6 +525,8 @@ func TestHandleSignals_SIGINTHitLimitTermination(t *testing.T) {
 }
 
 func TestHandleSignals_SIGTERM(t *testing.T) {
+	log.SetTesting(t)
+
 	i := &IBazel{}
 	err := i.setup()
 	if err != nil {
@@ -505,6 +557,8 @@ func TestHandleSignals_SIGTERM(t *testing.T) {
 }
 
 func TestParseTarget(t *testing.T) {
+	log.SetTesting(t)
+
 	tests := []struct {
 		in     string
 		repo   string

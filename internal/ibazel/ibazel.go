@@ -116,7 +116,7 @@ func New(version string) (*IBazel, error) {
 
 	info, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
-		l.Initialize(info)
+		l.Initialize(&info)
 	}
 
 	go func() {
@@ -270,8 +270,6 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 	for {
 		i.iteration(command, commandToRun, targets, joinedTargets)
 	}
-
-	return nil
 }
 
 // fsnotify also triggers for file stat and read operations. Explicitly filter the modifying events
@@ -357,6 +355,30 @@ func (i *IBazel) build(targets ...string) (*bytes.Buffer, error) {
 func (i *IBazel) test(targets ...string) (*bytes.Buffer, error) {
 	b := i.newBazel()
 
+	// Query the provided target patterns to construct a composite list
+	// Make a set that represents all the found rules.
+	targetRules := map[string]struct{}{}
+	for _, target := range targets {
+		rule, err := i.queryRule(target)
+		if err != nil {
+			log.Errorf("Error: %v", err)
+		}
+		targetRules[rule.GetName()] = struct{}{}
+	}
+
+	if len(targetRules) == 1 {
+		setStream := true
+		for _, arg := range b.Args() {
+			if strings.HasPrefix(arg, "--test_output=") {
+				setStream = false
+			}
+		}
+		if setStream {
+			log.Log("Found a single target test. Streaming results. You can override this by explicitly passing --test_output=summary")
+			b.SetArguments(append([]string{"--test_output=streamed"}, b.Args()...))
+		}
+	}
+
 	b.Cancel()
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -422,6 +444,9 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b := i.newBazel()
 
+	b.WriteToStderr(false)
+	b.WriteToStdout(false)
+
 	res, err := b.CQuery(i.queryArgs(rule)...)
 	if err != nil {
 		log.Errorf("Error running Bazel %v", err)
@@ -438,7 +463,7 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	return nil, errors.New("No information available")
 }
 
-func (i *IBazel) getInfo() (*map[string]string, error) {
+func (i *IBazel) getInfo() (map[string]string, error) {
 	b := i.newBazel()
 
 	res, err := b.Info()
@@ -447,14 +472,13 @@ func (i *IBazel) getInfo() (*map[string]string, error) {
 		return nil, err
 	}
 
-	return &res, nil
+	return res, nil
 }
 
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	b := i.newBazel()
 
 	localRepositories, err := i.realLocalRepositoryPaths()
-
 	if err != nil {
 		return nil, err
 	}
@@ -471,11 +495,11 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return nil, err
 	}
 
-	toWatch := make([]string, 0, 10000)
-	for _, target := range res.Target {
+	toWatch := make([]string, 0, len(res.GetTarget()))
+	for _, target := range res.GetTarget() {
 		switch *target.Type {
 		case blaze_query.Target_SOURCE_FILE:
-			label := *target.SourceFile.Name
+			label := target.GetSourceFile().GetName()
 			if strings.HasPrefix(label, "@") {
 				repo, target := parseTarget(label)
 				if realPath, ok := localRepositories[repo]; ok {
@@ -504,6 +528,7 @@ func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
 	toWatch, err := i.queryForSourceFiles(query)
 	if err != nil {
 		// If the query fails, just keep watching the same files as before
+		log.Errorf("Error querying for source files: %v", err)
 		return
 	}
 

@@ -20,10 +20,13 @@ import (
 
 	"github.com/bazelbuild/bazel-watcher/internal/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/internal/bazel/testing"
+	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/process_group"
 )
 
 func TestNotifyCommand(t *testing.T) {
+	log.SetLogger(t)
+
 	pg := process_group.Command("cat")
 
 	c := &notifyCommand{
@@ -56,25 +59,37 @@ func TestNotifyCommand(t *testing.T) {
 	c.NotifyOfChanges()
 
 	b.AssertActions(t, [][]string{
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Run", "--script_path=.*", "//path/to:target"},
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},
-		{"WriteToStderr"},
-		{"WriteToStdout"},
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
 		{"Run", "--script_path=.*", "//path/to:target"},
 	})
 }
 
 func TestNotifyCommand_Restart(t *testing.T) {
+	log.SetLogger(t)
+
 	var pg process_group.ProcessGroup
 
 	pg = process_group.Command("ls")

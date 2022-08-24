@@ -22,5 +22,6 @@ go_library(
     deps = [
         "//third_party/bazel/master/src/main/protobuf/analysis",
         "//third_party/bazel/master/src/main/protobuf/blaze_query",
+        "@com_github_google_go_cmp//cmp",
     ],
 )

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/internal/bazel"
+	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/process_group"
 )
 
@@ -38,6 +39,8 @@ func assertKilled(t *testing.T, cmd *exec.Cmd) {
 }
 
 func TestSubprocessRunning(t *testing.T) {
+	log.SetLogger(t)
+
 	execCommand = func(name string, args ...string) process_group.ProcessGroup {
 		return oldExecCommand("ls") // Every system has ls.
 	}
