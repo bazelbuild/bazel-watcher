@@ -29,6 +29,8 @@ var Version = "Development"
 
 var overrideableStartupFlags []string = []string{
 	"--bazelrc",
+	"--home_rc",
+	"--nohome_rc",
 }
 
 var overrideableBazelFlags []string = []string{
