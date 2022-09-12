@@ -37,6 +37,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestTerminationBasic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("termination tests are currently broken on Windows. We would love to test this but don't have a box to test on.")
+	}
+
 	ibazel := e2e.SetUp(t)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 1!\";"+signalHandler)
 	ibazel.Run([]string{}, "//:termination")
@@ -57,6 +61,10 @@ func TestTerminationBasic(t *testing.T) {
 }
 
 func TestTerminationTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("termination tests are currently broken on Windows. We would love to test this but don't have a box to test on.")
+	}
+
 	ibazel := e2e.SetUp(t)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 1!\";"+signalHandlerBroken)
 	ibazel.Run([]string{}, "//:termination")
