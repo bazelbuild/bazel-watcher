@@ -37,11 +37,11 @@ func TestSimpleTest(t *testing.T) {
 	ibazel.Test([]string{}, "//single:stream")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("TestSimpleTest1")
+	ibazel.ExpectOutput("TestSimpleTest1", 30)
 
 	// Now when the file is updated it should still be run in streaming mode.
 	e2e.MustWriteFile(t, "single/stream.sh", `printf "TestSimpleTest2"`)
-	ibazel.ExpectOutput("TestSimpleTest2")
+	ibazel.ExpectOutput("TestSimpleTest2", 30)
 }
 
 func TestSingleQueryTarget(t *testing.T) {
@@ -54,7 +54,7 @@ func TestSingleQueryTarget(t *testing.T) {
 	ibazel.Test([]string{}, "//single:all")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("TestSingleQueryTarget")
+	ibazel.ExpectOutput("TestSingleQueryTarget", 30)
 }
 
 func TestMultipleQueryTarget(t *testing.T) {
@@ -67,7 +67,7 @@ func TestMultipleQueryTarget(t *testing.T) {
 	ibazel.Test([]string{}, "//single:all", "//...")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("TestMultipleQueryTarget")
+	ibazel.ExpectOutput("TestMultipleQueryTarget", 30)
 }
 
 func TestExplicitlySetOutputToSummary(t *testing.T) {
@@ -81,7 +81,7 @@ func TestExplicitlySetOutputToSummary(t *testing.T) {
 	defer ibazel.Kill()
 
 	// Wait for it to pass.
-	ibazel.ExpectOutput("PASSED")
+	ibazel.ExpectOutput("PASSED", 30)
 
 	// Now confirm that the sentinel value isn't in the output.
 	if strings.Contains(ibazel.GetOutput(), "TestExplicitlySetOutputToSummary") {
