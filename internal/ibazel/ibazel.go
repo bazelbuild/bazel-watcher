@@ -447,7 +447,7 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
 
-	res, err := b.CQuery(i.queryArgs(rule)...)
+	res, err := b.CQuery(i.cQueryArgs(rule)...)
 	if err != nil {
 		log.Errorf("Error running Bazel %v", err)
 		osExit(4)
@@ -569,6 +569,13 @@ func (i *IBazel) queryArgs(args ...string) []string {
 	}
 
 	return queryArgs
+}
+
+func (i *IBazel) cQueryArgs(args ...string) []string {
+	// Unlike query, cquery can be affected by the majority of command line option.
+	cQueryArgs := append([]string(nil), args...)
+	cQueryArgs = append(cQueryArgs, i.bazelArgs...)
+	return cQueryArgs
 }
 
 func parseTarget(label string) (repo string, target string) {
