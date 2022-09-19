@@ -108,9 +108,14 @@ func TestMatchRegex(t *testing.T) {
 	buf.WriteString("Check that imports in Go sources match importpath attributes in deps.\n")
 	buf.WriteString("buildozer 'add deps test_dep2' //target2:target2\n")
 
+	buf.WriteString("bar\n")
+	buf.WriteString("'add deps test_dep5'\n")
+	buf.WriteString("//target5:target5\n")
+
 	optcmd := []Optcmd{
-		{Regex: "^Check that imports in Go sources match importpath attributes in deps.$", Command: "bazel", Args: []string{"run", "//:gazelle"}},
 		{Regex: "^(buildozer) '(.*)'\\s+(.*)$", Command: "$1", Args: []string{"$2", "$3"}},
+		{Regex: "^Check that imports in Go sources match importpath attributes in deps.$", Command: "bazel", Args: []string{"run", "//:gazelle"}},
+		{Regex: "^(bar)\n'(.*) deps (.*)'\n(.*)$", Command: "$1", Args: []string{"$2 deps $3", "$4"}},
 	}
 
 	_, commands, args := matchRegex(optcmd, &buf)
@@ -123,6 +128,7 @@ func TestMatchRegex(t *testing.T) {
 		{"buildozer 'add deps test_dep1' //target1:target1", "buildozer", []string{"add deps test_dep1", "//target1:target1"}},
 		{"buildozer 'add deps test_dep2' //target2:target2", "buildozer", []string{"add deps test_dep2", "//target2:target2"}},
 		{"Check that imports in Go sources match importpath attributes in deps.", "bazel", []string{"run", "//:gazelle"}},
+		{"bar\n'add deps test_dep5'\n//target5:target:5", "bar", []string{"add deps test_dep5", "//target5:target5"}},
 	}
 	if len(expected) != len(commands) {
 		t.Errorf("Did not receive expected number of commands:\nGot: %d\nWant: %d", len(commands), len(expected))

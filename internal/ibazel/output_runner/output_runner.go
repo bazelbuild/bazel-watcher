@@ -139,18 +139,16 @@ func matchRegex(optcmd []Optcmd, output *bytes.Buffer) ([]string, []string, [][]
 	var commandLines, commands []string
 	var args [][]string
 	distinctCommands := map[string]bool{}
-	scanner := bufio.NewScanner(output)
-	for scanner.Scan() {
-		line := escapeCodeCleanerRegex.ReplaceAllLiteralString(scanner.Text(), "")
-		for _, oc := range optcmd {
-			re := regexp.MustCompile(oc.Regex)
-			matches := re.FindStringSubmatch(line)
-			if matches != nil && len(matches) >= 0 {
-				command := convertArg(matches, oc.Command)
-				cmdArgs := convertArgs(matches, oc.Args)
+	cleaned := escapeCodeCleanerRegex.ReplaceAllLiteralString(output.String(), "")
+	for _, oc := range optcmd {
+		re := regexp.MustCompile(fmt.Sprintf("(?m)%s", oc.Regex))
+		for _, match := range re.FindAllStringSubmatch(cleaned, -1) {
+			if match != nil && len(match) >= 0 {
+				command := convertArg(match, oc.Command)
+				cmdArgs := convertArgs(match, oc.Args)
 				fullCmd := strings.Join(append([]string{command}, cmdArgs...), " ")
 				if _, found := distinctCommands[fullCmd]; !found {
-					commandLines = append(commandLines, matches[0])
+					commandLines = append(commandLines, match[0])
 					commands = append(commands, command)
 					args = append(args, cmdArgs)
 					distinctCommands[fullCmd] = true
