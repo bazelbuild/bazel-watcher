@@ -31,6 +31,7 @@ var overrideableStartupFlags []string = []string{
 	"--bazelrc",
 	"--home_rc",
 	"--nohome_rc",
+	"--output_base",
 }
 
 var overrideableBazelFlags []string = []string{
