@@ -18,6 +18,9 @@
 package fsevents
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/fsnotify/fsevents"
 
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/common"
@@ -43,7 +46,7 @@ func (w *realFSEventsWatcher) UpdateAll(names []string) error {
 	w.es.Stop()
 	es := &fsevents.EventStream{
 		Events: make(chan []fsevents.Event),
-		Paths:  names,
+		Paths:  findCommonRoot(names),
 		Flags:  w.es.Flags,
 	}
 	w.es = es
@@ -94,6 +97,30 @@ func newEvent(name string, mask fsevents.EventFlags) (common.Event, bool) {
 
 	e.Name = name
 	return e, true
+}
+
+// Find the longest common root path of all directories to watch.
+func findCommonRoot(names []string) []string {
+	if len(names) == 0 {
+		return []string {}
+	}
+
+	rootSplit := strings.Split(strings.Trim(names[0], "/"), "/")
+	rootLength := len(rootSplit)
+
+	for _, dir := range names {
+		split := strings.Split(strings.Trim(dir, "/"), "/")
+		commonLength := 0
+		for i := 0; i < rootLength && i < len(split); i++ {
+			if (rootSplit[i] != split[i]) {
+				break;
+			}
+			commonLength = i + 1
+		}
+		rootLength = commonLength
+	}
+
+	return []string { "/" + filepath.Join(rootSplit[:rootLength]...) + "/" }
 }
 
 func NewWatcher() (common.Watcher, error) {
