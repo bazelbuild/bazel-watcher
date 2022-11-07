@@ -102,7 +102,7 @@ func newEvent(name string, mask fsevents.EventFlags) (common.Event, bool) {
 // Find the longest common root path of all directories to watch.
 func findCommonRoot(names []string) []string {
 	if len(names) == 0 {
-		return []string {}
+		return []string{}
 	}
 
 	rootSplit := strings.Split(strings.Trim(names[0], "/"), "/")
@@ -112,15 +112,19 @@ func findCommonRoot(names []string) []string {
 		split := strings.Split(strings.Trim(dir, "/"), "/")
 		commonLength := 0
 		for i := 0; i < rootLength && i < len(split); i++ {
-			if (rootSplit[i] != split[i]) {
-				break;
+			if rootSplit[i] != split[i] {
+				break
 			}
 			commonLength = i + 1
 		}
 		rootLength = commonLength
 	}
 
-	return []string { "/" + filepath.Join(rootSplit[:rootLength]...) + "/" }
+	if rootLength == 0 {
+		return []string{"/"}
+	}
+
+	return []string{"/" + filepath.Join(rootSplit[:rootLength]...) + "/"}
 }
 
 func NewWatcher() (common.Watcher, error) {

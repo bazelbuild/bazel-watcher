@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "fsevents",
@@ -30,4 +30,15 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "fsevents_test",
+    srcs = ["fsevents_test.go"],
+    embed = [":fsevents"],
+    importpath = "github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/fsevents",
+    deps = [
+        "@com_github_fsnotify_fsevents//:fsevents",
+        "@com_github_google_go_cmp//cmp",
+    ],
 )
