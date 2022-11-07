@@ -46,7 +46,7 @@ sh_binary(
 )
 
 -- watched/many_dirs.sh --
-cat watched/dir_*/data.txt
+printf "Ran!"
 
 -- unwatched/data.txt --
 nothing to see here
@@ -63,14 +63,14 @@ func TestManyDirsRunWithModifiedFile(t *testing.T) {
 	ibazel.Run([]string{}, "//watched:many_dirs")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("first file!")
+	ibazel.ExpectOutput("Ran!")
 
 	e2e.MustWriteFile(t, "watched/dir_10/data.txt", "10th file!")
-	ibazel.ExpectOutput("10th file!")
+	ibazel.ExpectOutput("Ran!")
 
 	lastFile := dirCount - 1
 	e2e.MustWriteFile(t, fmt.Sprintf("watched/dir_%d/data.txt", lastFile), "last file!")
-	ibazel.ExpectOutput("last file!")
+	ibazel.ExpectOutput("Ran!")
 }
 
 func TestManyDirsDoesNotWatchOutsideCone(t *testing.T) {
@@ -78,11 +78,12 @@ func TestManyDirsDoesNotWatchOutsideCone(t *testing.T) {
 	ibazel.Run([]string{}, "//watched:many_dirs")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("first file!")
+	ibazel.ExpectOutput("Ran!")
 
 	// Give it time to start up and query.
-	e2e.MustWriteFile(t, "watched/dir_10/data.txt", "10th file!")
-	ibazel.ExpectOutput("10th file!")
+	lastFile := dirCount - 1
+	e2e.MustWriteFile(t, fmt.Sprintf("watched/dir_%d/data.txt", lastFile), "last file again!")
+	ibazel.ExpectOutput("Ran!")
 
 	e2e.MustWriteFile(t, "unwatched/data.txt", "something else")
 	ibazel.ExpectNoOutput(1 * time.Second)
