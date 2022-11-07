@@ -1,4 +1,4 @@
-package simple
+package many_dirs
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 	// Create directory structure of the form:
 	//   //watched/BAZEL.build
 	//   //watched/many_dirs.sh
-	//   //watched/dir_[0-<dircount - 1>]/data.txt
+	//   //watched/dir_[0-dircount]/data.txt
 	//	 //unwatched/data.txt
 
 	dataFiles := make([]string, dirCount)
