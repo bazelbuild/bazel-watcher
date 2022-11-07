@@ -3,6 +3,7 @@ package many_dirs
 import (
 	"fmt"
 	"math"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +60,10 @@ nothing to see here
 }
 
 func TestManyDirsRunWithModifiedFile(t *testing.T) {
+	if shouldSkip() {
+		return
+	}
+
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//watched:many_dirs")
 	defer ibazel.Kill()
@@ -74,6 +79,15 @@ func TestManyDirsRunWithModifiedFile(t *testing.T) {
 }
 
 func TestManyDirsDoesNotWatchOutsideCone(t *testing.T) {
+	if shouldSkip() {
+		return
+	}
+
+	flag, ok := os.LookupEnv("IBAZEL_USE_LEGACY_WATCHER")
+	if ok && flag == "1" {
+		return
+	}
+
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//watched:many_dirs")
 	defer ibazel.Kill()
@@ -87,4 +101,10 @@ func TestManyDirsDoesNotWatchOutsideCone(t *testing.T) {
 
 	e2e.MustWriteFile(t, "unwatched/data.txt", "something else")
 	ibazel.ExpectNoOutput(1 * time.Second)
+}
+
+func shouldSkip() bool {
+	// Skip the test when using IBAZEL_USE_LEGACY_WATCHER as it will always fail with "too many open files"
+	flag, ok := os.LookupEnv("IBAZEL_USE_LEGACY_WATCHER")
+	return ok && flag == "1"
 }
