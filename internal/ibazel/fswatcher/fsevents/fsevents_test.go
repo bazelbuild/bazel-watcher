@@ -59,7 +59,10 @@ func TestFindCommonRoot(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		got, _ := findCommonRoot(test.in)
+		got, err := findCommonRoot(test.in)
+		if err != nil {
+			t.Errorf("unexpected error %v", err.Error())
+		}
 		if diff := cmp.Diff(got, test.want); diff != "" {
 			t.Errorf("findCommonRoot diff (-got,+want):\n%s", diff)
 		}
