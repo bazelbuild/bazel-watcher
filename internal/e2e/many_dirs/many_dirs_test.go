@@ -83,11 +83,6 @@ func TestManyDirsDoesNotWatchOutsideCone(t *testing.T) {
 		return
 	}
 
-	flag, ok := os.LookupEnv("IBAZEL_USE_LEGACY_WATCHER")
-	if ok && flag == "1" {
-		return
-	}
-
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//watched:many_dirs")
 	defer ibazel.Kill()
