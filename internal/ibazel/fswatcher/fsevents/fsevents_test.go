@@ -52,14 +52,6 @@ func TestFindCommonRoot(t *testing.T) {
 			},
 			[]string{"/a/b/c/"},
 		},
-		// Returns the root if there is no common root directory.
-		{
-			[]string{
-				"/a/",
-				"/b/",
-			},
-			[]string{"/"},
-		},
 		// Returns an empty slice if there are no inputs.
 		{
 			[]string{},
@@ -67,9 +59,16 @@ func TestFindCommonRoot(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		got := findCommonRoot(test.in)
+		got, _ := findCommonRoot(test.in)
 		if diff := cmp.Diff(got, test.want); diff != "" {
 			t.Errorf("findCommonRoot diff (-got,+want):\n%s", diff)
 		}
+	}
+}
+
+func TestNoCommonRootError(t *testing.T) {
+	_, err := findCommonRoot([]string{"/a/", "/b/"})
+	if err == nil {
+		t.Error("expected error when there is no common root")
 	}
 }
