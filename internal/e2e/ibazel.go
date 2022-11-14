@@ -140,6 +140,32 @@ func (i *IBazelTester) ExpectOutput(want string, delay ...time.Duration) {
 	i.Expect(want, i.GetOutput, &i.stdoutOld, d)
 }
 
+func (i *IBazelTester) ExpectNoOutput(delay ...time.Duration) {
+	i.t.Helper()
+
+	i.checkExit()
+
+	d := defaultDelay
+	if len(delay) == 1 {
+		d = delay[0]
+	}
+
+	// Flush the stdout before waiting for new content.
+	i.stdoutOld = i.GetOutput()
+
+	stopAt := time.Now().Add(d)
+	for time.Now().Before(stopAt) {
+		time.Sleep(5 * time.Millisecond)
+
+		stdout := i.GetOutput()[len(*&i.stdoutOld):]
+		if len(stdout) != 0 {
+			i.t.Errorf(`Expected no output, but found stdout "%s".`, stdout)
+			i.stdoutOld = i.GetOutput()
+			return
+		}
+	}
+}
+
 func (i *IBazelTester) ExpectError(want string, delay ...time.Duration) {
 	i.t.Helper()
 
