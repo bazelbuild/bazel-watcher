@@ -64,6 +64,7 @@ var overrideableBazelFlags []string = []string{
 	"--show_result=",
 	"--stamp",
 	"--strategy=",
+	"--target_pattern_file=",
 	"--test_arg=",
 	"--test_env=",
 	"--test_filter=",
