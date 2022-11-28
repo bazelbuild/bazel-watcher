@@ -56,7 +56,6 @@ func (m *MainWorkspace) FindWorkspace() (string, error) {
 		}
 
 		if _, err := os.Stat(filepath.Join(path, "WORKSPACE.bazel")); err == nil {
-			log.Fatalf("WORKSPACE.bazel")
 			return path, nil
 		}
 

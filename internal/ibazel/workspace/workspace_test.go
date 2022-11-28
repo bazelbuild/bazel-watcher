@@ -34,6 +34,14 @@ func TestAppleCaseInsensitivity(t *testing.T) {
 			files:         []string{},
 			err:           false,
 		},
+		"simple with bazel extension": {
+			startingWD:    "",
+			wantPath:      "",
+			dirs:          []string{},
+			workspacePath: "/WORKSPACE.bazel",
+			files:         []string{},
+			err:           false,
+		},
 		"no workspace": {
 			startingWD: "c/d",
 			wantPath:   "",
