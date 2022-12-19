@@ -25,11 +25,10 @@ There are several ways to install iBazel, documented below.
 
 ### Mac (Homebrew)
 
-If you run a mac you can install it from [homebrew](https://brew.sh).
+If you run a macOS you can install it from [homebrew](https://brew.sh).
 
-```
-$ brew tap bazelbuild/tap
-$ brew install bazelbuild/tap/ibazel
+```sh
+$ brew install ibazel
 ```
 
 ### NPM
