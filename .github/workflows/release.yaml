@@ -15,7 +15,14 @@ jobs:
             artifact: ibazel_linux_amd64
             os: ubuntu-18.04
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
-            cpu_flag:
+            cpu_flag: 
+            ext: ""
+
+          - name: linux_arm64
+            artifact: ibazel_linux_amd64
+            os: ubuntu-18.04
+            build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64
+            cpu_flag: --cpu=linux_arm64
             ext: ""
           
           - name: windows_amd64
@@ -102,6 +109,7 @@ jobs:
           mv darwin_amd64/ibazel_darwin_amd64 darwin_amd64/ibazel
           mv darwin_arm64/ibazel_darwin_arm64 darwin_arm64/ibazel
           mv linux_amd64/ibazel_linux_amd64 linux_amd64/ibazel
+          mv linux_arm64/ibazel_linux_arm64 linux_arm64/ibazel
           mv windows_amd64/ibazel_windows_amd64.exe windows_amd64/ibazel.exe
           chmod 755 */ibazel*
 
