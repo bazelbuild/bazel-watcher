@@ -22,7 +22,7 @@ jobs:
             artifact: ibazel_linux_amd64
             os: ubuntu-18.04
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64
-            cpu_flag: --cpu=linux_arm64
+            cpu_flag:
             ext: ""
           
           - name: windows_amd64
@@ -43,7 +43,7 @@ jobs:
             artifact: ibazel_darwin_arm64
             os: macos-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo
-            cpu_flag: --cpu=darwin_arm64
+            cpu_flag:
             ext: ""
 
     steps:
