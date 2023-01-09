@@ -19,7 +19,7 @@ jobs:
             ext: ""
 
           - name: linux_arm64
-            artifact: ibazel_linux_amd64
+            artifact: ibazel_linux_arm64
             os: ubuntu-18.04
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64
             cpu_flag:
