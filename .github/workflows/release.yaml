@@ -43,7 +43,11 @@ jobs:
             artifact: ibazel_darwin_arm64
             os: macos-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo
-            cpu_flag:
+            # TODO: temporary workaround, remove this in the future.
+            # Right now, without the flag, GitHub actions build would link to the "darwin_amd64" go_sdk toolchain and fail the build.
+            # related issue: https://github.com/fsnotify/fsevents/issues/50
+            # also general info on Bazel platforms: https://bazel.build/concepts/platforms#migration
+            cpu_flag: --cpu=darwin_arm64
             ext: ""
 
     steps:
