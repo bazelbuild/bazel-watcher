@@ -68,6 +68,7 @@ var overrideableBazelFlags []string = []string{
 	"--test_arg=",
 	"--test_env=",
 	"--test_filter=",
+	"--test_lang_filters=",
 	"--test_output=",
 	"--test_tag_filters=",
 	"--test_timeout=",
