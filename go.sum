@@ -10,6 +10,8 @@ github.com/bazelbuild/rules_go v0.36.0 h1:hKvFRTyZEoHeIjPe/Kd8RL9cP9s3hoeMlO8vyw
 github.com/bazelbuild/rules_go v0.36.0/go.mod h1:TMHmtfpvyfsxaqfL9WnahCsXMWDMICTw7XeK9yVb+YU=
 github.com/bazelbuild/rules_go v0.37.0 h1:vbnESGv/t2WgGEbXatwbXAS95dTx93Lv6Uh5QkVF13s=
 github.com/bazelbuild/rules_go v0.37.0/go.mod h1:TMHmtfpvyfsxaqfL9WnahCsXMWDMICTw7XeK9yVb+YU=
+github.com/bazelbuild/rules_go v0.38.0 h1:BY67VX6+Dka4FRQH7CDHmIXYOuPFr1YrrKYsboDC6hw=
+github.com/bazelbuild/rules_go v0.38.0/go.mod h1:TMHmtfpvyfsxaqfL9WnahCsXMWDMICTw7XeK9yVb+YU=
 github.com/fsnotify/fsevents v0.1.1 h1:/125uxJvvoSDDBPen6yUZbil8J9ydKZnnl3TWWmvnkw=
 github.com/fsnotify/fsevents v0.1.1/go.mod h1:+d+hS27T6k5J8CRaPLKFgwKYcpS7GwW3Ule9+SC2ZRc=
 github.com/fsnotify/fsnotify v1.5.1 h1:mZcQUHVQUQWoPXXtuf9yuEXKudkV2sx1E06UadKWpgI=
