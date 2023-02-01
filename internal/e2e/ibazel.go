@@ -74,6 +74,34 @@ func (i *IBazelTester) Test(bazelArgs []string, targets ...string) {
 	i.cmd = exec.Command(ibazelPath, args...)
 	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
 
+	// print hello world
+	i.t.Logf("Hello World")
+
+	i.stdoutBuffer = &Buffer{}
+	i.cmd.Stdout = i.stdoutBuffer
+
+	i.stderrBuffer = &Buffer{}
+	i.cmd.Stderr = i.stderrBuffer
+
+	if err := i.cmd.Start(); err != nil {
+		i.t.Fatalf("Command: %s", i.cmd)
+	}
+}
+
+func (i *IBazelTester) Coverage(bazelArgs []string, targets ...string) {
+	i.t.Helper()
+
+	args := []string{"--bazel_path=" + i.bazelPath()}
+	args = append(args,
+		"--log_to_file="+i.ibazelLogFile,
+		"--graceful_termination_wait_duration=1s")
+	args = append(args, "coverage")
+	args = append(args, "--bazelrc=/dev/null")
+	args = append(args, targets...)
+	args = append(args, bazelArgs...)
+	i.cmd = exec.Command(ibazelPath, args...)
+	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
+
 	i.stdoutBuffer = &Buffer{}
 	i.cmd.Stdout = i.stdoutBuffer
 
@@ -176,6 +204,32 @@ func (i *IBazelTester) ExpectError(want string, delay ...time.Duration) {
 		d = delay[0]
 	}
 	i.Expect(want, i.GetError, &i.stderrOld, d)
+}
+
+func (i *IBazelTester) ExpectNoError(delay ...time.Duration) {
+	i.t.Helper()
+
+	i.checkExit()
+
+	d := defaultDelay
+	if len(delay) == 1 {
+		d = delay[0]
+	}
+
+	// Flush the stdout before waiting for new content.
+	i.stderrOld = i.GetError()
+
+	stopAt := time.Now().Add(d)
+	for time.Now().Before(stopAt) {
+		time.Sleep(5 * time.Millisecond)
+
+		stderr := i.GetError()[len(*&i.stderrOld):]
+		if len(stderr) != 0 {
+			i.t.Errorf(`Expected no output err, but found stderr "%s".`, stderr)
+			i.stderrOld = i.GetError()
+			return
+		}
+	}
 }
 
 func (i *IBazelTester) ExpectIBazelError(want string, delay ...time.Duration) {

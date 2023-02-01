@@ -226,6 +226,8 @@ func handle(i *ibazel.IBazel, command string, args []string) {
 		i.Build(targets...)
 	case "test":
 		i.Test(targets...)
+	case "coverage":
+		i.Coverage(targets...)
 	case "run":
 		// Run only takes one target.
 		i.Run(targets[0], args)

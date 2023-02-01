@@ -233,7 +233,7 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 // the bazel User Manual, and can be programmatically obtained with
 // 'bazel help info-keys'.
 //
-//   res, err := b.Info()
+// res, err := b.Info()
 func (b *bazel) Info() (map[string]string, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
@@ -279,15 +279,15 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 //
 // For example, to show all C++ test rules in the strings package, use:
 //
-//   res, err := b.Query('kind("cc_.*test", strings:*)')
+// res, err := b.Query('kind("cc_.*test", strings:*)')
 //
 // or to find all dependencies of //path/to/package:target, use:
 //
-//   res, err := b.Query('deps(//path/to/package:target)')
+// res, err := b.Query('deps(//path/to/package:target)')
 //
 // or to find a dependency path between //path/to/package:target and //dependency:
 //
-//   res, err := b.Query('somepath(//path/to/package:target, //dependency)')
+// res, err := b.Query('somepath(//path/to/package:target, //dependency)')
 func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
@@ -318,15 +318,15 @@ func (b *bazel) processQuery(stdout []byte, stderr []byte) (*blaze_query.QueryRe
 //
 // For example, to show all C++ test rules in the strings package, use:
 //
-//   res, err := b.CQuery('kind("cc_.*test", strings:*)')
+// res, err := b.CQuery('kind("cc_.*test", strings:*)')
 //
 // or to find all dependencies of //path/to/package:target, use:
 //
-//   res, err := b.CQuery('deps(//path/to/package:target)')
+// res, err := b.CQuery('deps(//path/to/package:target)')
 //
 // or to find a dependency path between //path/to/package:target and //dependency:
 //
-//   res, err := b.CQuery('somepath(//path/to/package:target, //dependency)')
+// res, err := b.CQuery('somepath(//path/to/package:target, //dependency)')
 func (b *bazel) CQuery(args ...string) (*analysis.CqueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
