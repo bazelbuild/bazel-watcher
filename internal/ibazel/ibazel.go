@@ -263,6 +263,11 @@ func (i *IBazel) Test(targets ...string) error {
 	return i.loop("test", i.test, targets)
 }
 
+// Get code coverage for the specified targets in the IBazel loop.
+func (i *IBazel) Coverage(targets ...string) error {
+	return i.loop("coverage", i.test, targets)
+}
+
 func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []string) error {
 	joinedTargets := strings.Join(targets, " ")
 
