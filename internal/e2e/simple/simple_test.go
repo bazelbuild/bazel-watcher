@@ -20,6 +20,16 @@ sh_binary(
   srcs = ["simple.sh"],
 )
 
+# Test and Coverage base case test
+sh_test(
+  name = "test_simple_test_failing",
+  srcs = ["test_simple_test_failing.sh"],
+)
+sh_test(
+  name = "test_simple_test_passing",
+  srcs = ["test_simple_test_passing.sh"],
+)
+
 # Environment variable tests
 sh_binary(
   name = "environment",
@@ -54,6 +64,10 @@ sh_binary(
 )
 -- subdir/subdir.sh --
 printf "Hello subdir!"
+-- test_simple_test_failing.sh --
+echo "1"
+-- test_simple_test_passing.sh --
+echo "0"
 `
 
 func TestMain(m *testing.M) {
@@ -68,6 +82,39 @@ func TestSimpleBuild(t *testing.T) {
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("Started!")
+}
+
+func TestSimpleTestFailing(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	ibazel.Test([]string{}, "//:test_simple_test_failing")
+
+	ibazel.ExpectNoOutput()
+	ibazel.ExpectError("")
+}
+
+func TestSimpleTestPassing(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	ibazel.Test([]string{}, "//:test_simple_test_passing")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("1 test passes")
+	ibazel.ExpectNoError()
+}
+
+func TestSimpleCoverageFailing(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	ibazel.Coverage([]string{}, "//:test_simple_test_failing")
+
+	ibazel.ExpectError("")
+}
+
+func TestSimpleCoveragePassing(t *testing.T) {
+	ibazel := e2e.SetUp(t)
+	ibazel.Coverage([]string{}, "//:test_simple_test_passing")
+	defer ibazel.Kill()
+
+	ibazel.ExpectOutput("1 test passes")
+	ibazel.ExpectNoError()
 }
 
 func TestSimpleRunAfterShutdown(t *testing.T) {
