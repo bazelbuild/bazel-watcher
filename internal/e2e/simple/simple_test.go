@@ -65,9 +65,11 @@ sh_binary(
 -- subdir/subdir.sh --
 printf "Hello subdir!"
 -- test_simple_test_failing.sh --
-echo "1"
+echo "I'm a failing test."
+exit 1
 -- test_simple_test_passing.sh --
-echo "0"
+echo "I'm a passing test."
+exit 0
 `
 
 func TestMain(m *testing.M) {
@@ -86,33 +88,37 @@ func TestSimpleBuild(t *testing.T) {
 
 func TestSimpleTestFailing(t *testing.T) {
 	ibazel := e2e.SetUp(t)
-	ibazel.Test([]string{}, "//:test_simple_test_failing")
+	ibazel.Test([]string{"--nocache_test_results", "--test_output=all"}, "//:test_simple_test_failing")
 
-	ibazel.ExpectNoOutput()
-	ibazel.ExpectError("")
+	ibazel.ExpectOutput("I'm a failing test.")
+	ibazel.ExpectError("FAIL")
 }
 
 func TestSimpleTestPassing(t *testing.T) {
 	ibazel := e2e.SetUp(t)
-	ibazel.Test([]string{}, "//:test_simple_test_passing")
+	ibazel.Test([]string{"--nocache_test_results", "--test_output=all"}, "//:test_simple_test_passing")
 	defer ibazel.Kill()
 
+	ibazel.ExpectOutput("I'm a passing test.")
 	ibazel.ExpectOutput("1 test passes")
 	ibazel.ExpectNoError()
 }
 
 func TestSimpleCoverageFailing(t *testing.T) {
 	ibazel := e2e.SetUp(t)
-	ibazel.Coverage([]string{}, "//:test_simple_test_failing")
+	ibazel.Coverage([]string{"--nocache_test_results", "--test_output=all"}, "//:test_simple_test_failing")
 
-	ibazel.ExpectError("")
+	ibazel.ExpectOutput("I'm a failing test.")
+	ibazel.ExpectOutput("FAIL")
+	ibazel.ExpectError("FAIL")
 }
 
 func TestSimpleCoveragePassing(t *testing.T) {
 	ibazel := e2e.SetUp(t)
-	ibazel.Coverage([]string{}, "//:test_simple_test_passing")
+	ibazel.Coverage([]string{"--nocache_test_results", "--test_output=all"}, "//:test_simple_test_passing")
 	defer ibazel.Kill()
 
+	ibazel.ExpectOutput("I'm a passing test.")
 	ibazel.ExpectOutput("1 test passes")
 	ibazel.ExpectNoError()
 }
