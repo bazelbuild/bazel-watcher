@@ -44,7 +44,7 @@ var overrideableBazelFlags []string = []string{
 	"--compile_one_dependency",
 	"--config=",
 	"--copt=",
-	"--curses=yes",
+	"--curses=",
 	"--cxxopt",
 	"-c",
 	"--define=",
