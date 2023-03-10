@@ -14,6 +14,10 @@
 
 package main
 
+func isTerminal() bool {
+	return false
+}
+
 func setUlimit() error {
 	return nil
 }

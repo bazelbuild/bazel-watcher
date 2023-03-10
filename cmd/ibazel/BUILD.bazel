@@ -12,7 +12,15 @@ go_library(
     deps = [
         "//internal/ibazel",
         "//internal/ibazel/log",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@org_golang_x_sys//unix",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 go_binary(
