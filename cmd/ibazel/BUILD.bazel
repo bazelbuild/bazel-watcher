@@ -4,6 +4,8 @@ go_library(
     name = "ibazel_lib",
     srcs = [
         "main.go",
+        "main_bsd.go",
+        "main_linux.go",
         "main_unix.go",
         "main_windows.go",
     ],

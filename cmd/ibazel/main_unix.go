@@ -12,24 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !windows
+//go:build !windows
 
 package main
 
 import (
-	"os"
 	"runtime"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
-
-func isTerminal() bool {
-	_, err1 := unix.IoctlGetTermios(int(os.Stdout.Fd()), unix.TCGETS)
-	_, err2 := unix.IoctlGetTermios(int(os.Stderr.Fd()), unix.TCGETS)
-
-	return err1 == nil && err2 == nil
-}
 
 func setUlimit() error {
 	var lim syscall.Rlimit
