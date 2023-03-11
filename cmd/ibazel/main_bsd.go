@@ -24,7 +24,7 @@ import (
 
 func isTerminal() bool {
 	_, err1 := unix.IoctlGetTermios(int(os.Stdout.Fd()), unix.TIOCGETA)
-	_, err2 := unix.IoctlGetTermios(int(os.Stderr.Fd()), unix.TCGETS)
+	_, err2 := unix.IoctlGetTermios(int(os.Stderr.Fd()), unix.TIOCGETA)
 
 	return err1 == nil && err2 == nil
 }
