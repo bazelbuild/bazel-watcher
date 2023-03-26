@@ -74,9 +74,6 @@ func (i *IBazelTester) Test(bazelArgs []string, targets ...string) {
 	i.cmd = exec.Command(ibazelPath, args...)
 	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
 
-	// print hello world
-	i.t.Logf("Hello World")
-
 	i.stdoutBuffer = &Buffer{}
 	i.cmd.Stdout = i.stdoutBuffer
 
