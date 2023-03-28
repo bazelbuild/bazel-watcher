@@ -188,8 +188,8 @@ func TestIBazelLoop(t *testing.T) {
 	log.SetTesting(t)
 
 	i, mockBazel := newIBazel(t)
-	mockBazel.AddQueryResponse("buildfiles(deps(set(//my:target)))", &blaze_query.QueryResult{})
-	mockBazel.AddQueryResponse("kind('source file', deps(set(//my:target)))", &blaze_query.QueryResult{})
+	mockBazel.AddCQueryResponse("buildfiles(deps(set(//my:target)))", &analysispb.CqueryResult{})
+	mockBazel.AddCQueryResponse("kind('source file', deps(set(//my:target)))", &analysispb.CqueryResult{})
 
 	// Replace the file watching channel with one that has a buffer.
 	i.buildFileWatcher = &fakeFSNotifyWatcher{
@@ -272,9 +272,9 @@ func TestIBazelBuild(t *testing.T) {
 	i, mockBazel := newIBazel(t)
 	defer i.Cleanup()
 
-	mockBazel.AddQueryResponse("//path/to:target", &blaze_query.QueryResult{
-		Target: []*blaze_query.Target{
-			{
+	mockBazel.AddCQueryResponse("//path/to:target", &analysispb.CqueryResult{
+		Results: []*analysispb.ConfiguredTarget{{
+			Target: &blaze_query.Target{
 				Type: blaze_query.Target_RULE.Enum(),
 				Rule: &blaze_query.Rule{
 					Name: proto.String("//path/to:target"),
@@ -283,7 +283,7 @@ func TestIBazelBuild(t *testing.T) {
 					},
 				},
 			},
-		},
+		}},
 	})
 
 	i.build("//path/to:target")
