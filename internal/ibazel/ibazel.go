@@ -61,7 +61,6 @@ const (
 )
 
 const sourceQuery = "kind('source file', deps(set(%s)))"
-const buildQuery = "buildfiles(deps(set(%s)))"
 
 type IBazel struct {
 	debounceDuration time.Duration
@@ -306,7 +305,6 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case QUERY:
 		// Query for which files to watch.
 		log.Logf("Querying for files to watch...")
-		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
 		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
 		i.state = RUN
 	case DEBOUNCE_RUN:
