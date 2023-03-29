@@ -51,6 +51,7 @@ var overrideableBazelFlags []string = []string{
 	"--dynamic_mode=",
 	"--features=",
 	"--flaky_test_attempts=",
+	"--isatty=",
 	"--keep_going",
 	"-k",
 	"--nocache_test_results",
@@ -196,8 +197,24 @@ func main() {
 	handle(i, command, args)
 }
 
+func applyDefaultBazelArgs(bazelArgs []string) []string {
+	for _, bazelArg := range bazelArgs {
+		if strings.HasPrefix(bazelArg, "--isatty=") {
+			return bazelArgs
+		}
+	}
+	if (isTerminal()) {
+		return append(bazelArgs, "--isatty=1")
+	} else {
+		return append(bazelArgs, "--isatty=0")
+	}
+}
+
 func handle(i *ibazel.IBazel, command string, args []string) {
 	targets, startupArgs, bazelArgs, args := parseArgs(args)
+
+	bazelArgs = applyDefaultBazelArgs(bazelArgs)
+
 	i.SetStartupArgs(startupArgs)
 	i.SetBazelArgs(bazelArgs)
 

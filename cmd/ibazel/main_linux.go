@@ -1,3 +1,4 @@
+
 // Copyright 2017 The Bazel Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build (linux || aix || zos)
+
 package main
 
-func isTerminal() bool {
-	return false
-}
+import (
+	"os"
 
-func setUlimit() error {
-	return nil
+	"golang.org/x/sys/unix"
+)
+
+func isTerminal() bool {
+	_, err1 := unix.IoctlGetTermios(int(os.Stdout.Fd()), unix.TCGETS)
+	_, err2 := unix.IoctlGetTermios(int(os.Stderr.Fd()), unix.TCGETS)
+
+	return err1 == nil && err2 == nil
 }

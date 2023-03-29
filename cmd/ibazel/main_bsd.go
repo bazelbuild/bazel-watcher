@@ -12,12 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build (darwin || freebsd || openbsd || netbsd || dragonfly || hurd)
+
 package main
 
-func isTerminal() bool {
-	return false
-}
+import (
+	"os"
 
-func setUlimit() error {
-	return nil
+	"golang.org/x/sys/unix"
+)
+
+func isTerminal() bool {
+	_, err1 := unix.IoctlGetTermios(int(os.Stdout.Fd()), unix.TIOCGETA)
+	_, err2 := unix.IoctlGetTermios(int(os.Stderr.Fd()), unix.TIOCGETA)
+
+	return err1 == nil && err2 == nil
 }
