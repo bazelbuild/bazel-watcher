@@ -16,10 +16,12 @@ package profiler
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	golog "log"
 	"math/rand"
 	"net"
@@ -34,6 +36,8 @@ import (
 )
 
 var profileDev = flag.String("profile_dev", "", "Turn on profiling and append report to file")
+
+var js embed.FS
 
 const (
 
@@ -338,9 +342,18 @@ func (i *Profiler) jsHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	rw.Header().Set("Content-Type", "application/javascript")
-	_, err := rw.Write(js)
+
+	// Read the content of profiler.js into a []byte variable
+	content, err := fs.ReadFile(js, "profiler.js")
 	if err != nil {
-		log.Errorf("Error handling profile.js request: %v", err)
+			log.Errorf("Error reading profiler.js: %v", err)
+			return
+	}
+
+	// Write the content to the response writer
+	_, err = rw.Write(content)
+	if err != nil {
+			log.Errorf("Error handling profile.js request: %v", err)
 	}
 }
 
