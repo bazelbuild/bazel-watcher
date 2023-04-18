@@ -36,6 +36,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/profiler"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/workspace"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
+	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 )
 
 var osExit = os.Exit
@@ -306,8 +307,10 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case QUERY:
 		// Query for which files to watch.
 		log.Logf("Querying for files to watch...")
-		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
-		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
+		// We can't use cquery for our BUILD files query because the `buildfiles` keyword
+		// is not supported in cquery.
+		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), false, i.buildFileWatcher)
+		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), true, i.sourceFileWatcher)
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
@@ -475,7 +478,17 @@ func (i *IBazel) getInfo() (map[string]string, error) {
 	return res, nil
 }
 
-func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
+func (i *IBazel) cQueryResultToTargetList(result []*analysis.ConfiguredTarget) []*blaze_query.Target {
+	targets := make([]*blaze_query.Target, 0, len(result))
+
+	for _, configuredTarget := range result {
+		targets = append(targets, configuredTarget.Target)
+	}
+
+	return targets
+}
+
+func (i *IBazel) queryForSourceFiles(query string, useCquery bool) ([]string, error) {
 	b := i.newBazel()
 
 	localRepositories, err := i.realLocalRepositoryPaths()
@@ -483,11 +496,24 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return nil, err
 	}
 
-	res, err := b.CQuery(i.queryArgs(query)...)
-	if err != nil {
-		log.Errorf("Bazel cquery failed: %v", err)
-		return nil, err
+	var res []*blaze_query.Target
+
+	if useCquery {
+		cQueryRes, err := b.CQuery(i.queryArgs(query)...)
+		if err != nil {
+			log.Errorf("Bazel cquery failed: %v", err)
+			return nil, err
+		}
+		res = i.cQueryResultToTargetList(cQueryRes.Results) 
+	} else {
+		queryRes, err := b.Query(i.queryArgs(query)...)
+		if err != nil {
+			log.Errorf("Bazel query failed: %v", err)
+			return nil, err
+		}
+		res = queryRes.GetTarget() 
 	}
+
 
 	workspacePath, err := i.workspaceFinder.FindWorkspace()
 	if err != nil {
@@ -495,11 +521,11 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return nil, err
 	}
 
-	toWatch := make([]string, 0, len(res.Results))
-	for _, target := range res.Results {
-		switch *target.Target.Type {
+	toWatch := make([]string, 0, len(res))
+	for _, target := range res {
+		switch *target.Type {
 		case blaze_query.Target_SOURCE_FILE:
-			label := target.Target.SourceFile.GetName()
+			label := target.GetSourceFile().GetName()
 			if strings.HasPrefix(label, "@") {
 				repo, target := parseTarget(label)
 				if realPath, ok := localRepositories[repo]; ok {
@@ -524,8 +550,8 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	return toWatch, nil
 }
 
-func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
-	toWatch, err := i.queryForSourceFiles(query)
+func (i *IBazel) watchFiles(query string, useCquery bool, watcher common.Watcher) {
+	toWatch, err := i.queryForSourceFiles(query, useCquery)
 	if err != nil {
 		// If the query fails, just keep watching the same files as before
 		log.Errorf("Error querying for source files: %v", err)

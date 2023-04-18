@@ -36,6 +36,7 @@ go_library(
         "//internal/ibazel/profiler",
         "//internal/ibazel/workspace",
         "//third_party/bazel/master/src/main/protobuf/blaze_query",
+        "//third_party/bazel/master/src/main/protobuf/analysis",
     ],
 )
 
