@@ -483,9 +483,9 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return nil, err
 	}
 
-	res, err := b.CQuery(i.queryArgs(query)...)
+	res, err := b.Query(i.queryArgs(query)...)
 	if err != nil {
-		log.Errorf("Bazel cquery failed: %v", err)
+		log.Errorf("Bazel query failed: %v", err)
 		return nil, err
 	}
 
@@ -495,11 +495,11 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 		return nil, err
 	}
 
-	toWatch := make([]string, 0, len(res.Results))
-	for _, target := range res.Results {
-		switch *target.Target.Type {
+	toWatch := make([]string, 0, len(res.GetTarget()))
+	for _, target := range res.GetTarget() {
+		switch *target.Type {
 		case blaze_query.Target_SOURCE_FILE:
-			label := target.Target.SourceFile.GetName()
+			label := target.GetSourceFile().GetName()
 			if strings.HasPrefix(label, "@") {
 				repo, target := parseTarget(label)
 				if realPath, ok := localRepositories[repo]; ok {
