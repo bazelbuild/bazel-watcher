@@ -40,6 +40,7 @@ var overrideableBazelFlags []string = []string{
 	"--aspects",
 	"--build_tag_filters=",
 	"--build_tests_only",
+	"--check_visibility=",
 	"--compilation_mode",
 	"--compile_one_dependency",
 	"--config=",
