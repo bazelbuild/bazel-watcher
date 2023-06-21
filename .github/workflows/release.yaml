@@ -13,21 +13,21 @@ jobs:
         include:    
           - name: linux_amd64
             artifact: ibazel_linux_amd64
-            os: ubuntu-18.04
+            os: ubuntu-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
             cpu_flag: 
             ext: ""
 
           - name: linux_arm64
             artifact: ibazel_linux_arm64
-            os: ubuntu-18.04
+            os: ubuntu-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64
             cpu_flag:
             ext: ""
           
           - name: windows_amd64
             artifact: ibazel_windows_amd64.exe
-            os: ubuntu-18.04
+            os: ubuntu-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
             cpu_flag:
             ext: ".exe"
