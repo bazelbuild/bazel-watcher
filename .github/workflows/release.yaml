@@ -89,7 +89,7 @@ jobs:
           asset_content_type: application/octet-stream
 
   release_npm:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     needs: [build]
     steps:
       - name: Checkout code
