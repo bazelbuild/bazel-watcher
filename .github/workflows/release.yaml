@@ -56,13 +56,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '14'
-
-      - name: Install Bazelisk
-        run: npm --global install @bazel/bazelisk@latest
-
       - name: Build ibazel 
         run: bazel build //cmd/ibazel:ibazel --config release ${{ matrix.build_flags }} ${{ matrix.cpu_flag }}
       
@@ -100,12 +93,6 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           path: ./npm-staging/bin
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '14'
-
-      - name: Install Bazelisk
-        run: npm --global install @bazel/bazelisk@latest
 
       - name: Prepare ibazel binaries
         working-directory: ./npm-staging/bin
