@@ -124,7 +124,6 @@ jobs:
         working-directory: ./npm-staging
         # The setup-node@v3 step created an .npmrc file, but we changed directories. Copy it first.
         run: |
-          cp ${GITHUB_WORKSPACE}/.npmrc .
           npm config list
           echo -n "Publishing to NPM as "
           grep "version" < "package.json"
