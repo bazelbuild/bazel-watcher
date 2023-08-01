@@ -299,9 +299,7 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	err := b.cmd.Run()
 
 	if err != nil {
-		// If the command exits with an error, check if it's an ExitError
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			// Get the exit code from the ExitError
 			exitCode := exitErr.ExitCode()
 			if (exitCode == 3) {
 				log.Logf("WARNING: Query failed but exited with code 3. This might be because --keep_going is enabled...")
