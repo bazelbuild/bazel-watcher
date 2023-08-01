@@ -297,10 +297,24 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	stdoutBuffer, stderrBuff := b.newCommand("query", blazeArgs...)
 
 	err := b.cmd.Run()
+
 	if err != nil {
-		return nil, err
+		// If the command exits with an error, check if it's an ExitError
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			// Get the exit code from the ExitError
+			exitCode := exitErr.ExitCode()
+			if (exitCode == 3) {
+				log.Logf("WARNING: Query failed but exited with code 3. This might be because --keep_going is enabled...")
+				// Bazel exit code 3 means the build / query still succeeded with some errors (default behavior with --keep_going) 
+				return b.processQuery(stdoutBuffer.Bytes(), stderrBuff.Bytes())
+			}
+		} else {
+			return nil, err
+		}
 	}
+
 	return b.processQuery(stdoutBuffer.Bytes(), stderrBuff.Bytes())
+
 }
 
 func (b *bazel) processQuery(stdout []byte, stderr []byte) (*blaze_query.QueryResult, error) {

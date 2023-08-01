@@ -571,6 +571,9 @@ func (i *IBazel) queryArgs(args ...string) []string {
 		if strings.HasPrefix(arg, "--override_repository=") {
 			queryArgs = append(queryArgs, arg)
 		}
+		if arg == "--keep_going" {
+			queryArgs = append(queryArgs, arg)
+		}
 	}
 
 	return queryArgs
