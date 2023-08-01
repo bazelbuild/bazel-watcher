@@ -309,7 +309,7 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 				return b.processQuery(stdoutBuffer.Bytes(), stderrBuff.Bytes())
 			}
 			
-			return nil, err;
+			return nil, err
 		} else {
 			return nil, err
 		}
