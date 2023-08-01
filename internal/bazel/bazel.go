@@ -308,6 +308,9 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 				// Bazel exit code 3 means the build / query still succeeded with some errors (default behavior with --keep_going) 
 				return b.processQuery(stdoutBuffer.Bytes(), stderrBuff.Bytes())
 			}
+			else {
+				return nil, Err
+			}
 		} else {
 			return nil, err
 		}
