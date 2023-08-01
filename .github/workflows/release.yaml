@@ -84,6 +84,7 @@ jobs:
   release_npm:
     runs-on: ubuntu-latest
     needs: [build]
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -106,11 +107,8 @@ jobs:
 
       - name: Create NPM Package
         run: |
-          pwd
-          find .
           cp "README.md" "npm-staging/README.md"
           cp "release/npm/index.js" "npm-staging/index.js"
-          cp ".npmrc" "npm-staging/.npmrc"
           bazel run --config="release" "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       # Setup .npmrc file to publish to npm
@@ -118,13 +116,16 @@ jobs:
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
+
       - name: Publish NPM Package
         if: ${{ github.event.release.upload_url }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: ./npm-staging
+        # The setup-node@v3 step created an .npmrc file, but we changed directories. Copy it first.
         run: |
-          cat ~/.npmrc || echo "Didn't find .npmrc"
+          cp ${GITHUB_WORKSPACE}/.npmrc .
+          npm config list
           echo -n "Publishing to NPM as "
           grep "version" < "package.json"
           find . && cat package.json && npm install && echo "Publishing to npm..." && npm publish
