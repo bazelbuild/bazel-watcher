@@ -281,6 +281,28 @@ func (i *IBazel) loop(command string, commandToRun runnableCommand, targets []st
 // to avoid triggering builds on file accesses (e.g. due to your IDE checking modified status).
 const modifyingEvents = common.Write | common.Create | common.Rename | common.Remove
 
+// events that indicate that the set of files in a directory has changed.
+const fileSetChangeEvents = common.Create | common.Rename | common.Remove
+
+func (i *IBazel) triggerBuildGraphChange(e common.Event) bool {
+	if e.Op&fileSetChangeEvents != 0 {
+		// A file in a directory with a BUILD file changed.
+		// Re-query to re-evaluate globs.
+		//
+		// This makes #135 (watch for files being added) less bad:
+		// For globs that do not query into subdirectories, we'll now
+		// correctly re-evaluate the necessary files.
+		return true
+	}
+
+	if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+		// A file we explicitly watch has been changed.
+		return true
+	}
+
+	return false
+}
+
 func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets []string, joinedTargets string) {
 	switch i.state {
 	case WAIT:
@@ -292,7 +314,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 				i.state = DEBOUNCE_RUN
 			}
 		case e := <-i.buildFileWatcher.Events():
-			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+			if i.triggerBuildGraphChange(e) {
 				log.Logf("Build graph changed: %q. Requerying...", e.Name)
 				i.changeDetected(targets, "graph", e.Name)
 				i.state = DEBOUNCE_QUERY
@@ -301,7 +323,7 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case DEBOUNCE_QUERY:
 		select {
 		case e := <-i.buildFileWatcher.Events():
-			if _, ok := i.filesWatched[i.buildFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+			if i.triggerBuildGraphChange(e) {
 				i.changeDetected(targets, "graph", e.Name)
 			}
 			i.state = DEBOUNCE_QUERY
