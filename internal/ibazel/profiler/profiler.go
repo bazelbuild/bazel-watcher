@@ -16,6 +16,7 @@ package profiler
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -32,6 +33,11 @@ import (
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
+
+// ProfilerJs is embedded data.
+//
+//go:embed profiler.js
+var ProfilerJs []byte
 
 var profileDev = flag.String("profile_dev", "", "Turn on profiling and append report to file")
 
@@ -338,7 +344,7 @@ func (i *Profiler) jsHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	rw.Header().Set("Content-Type", "application/javascript")
-	_, err := rw.Write(js)
+	_, err := rw.Write(ProfilerJs)
 	if err != nil {
 		log.Errorf("Error handling profile.js request: %v", err)
 	}
