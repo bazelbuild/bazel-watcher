@@ -22,6 +22,9 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
+**Actual behavior**
+A clear and concise description of what really happenend instead of the expected.
+
 **`bazel query --output=build //path/to:target`**
 If your issue is about a specific target in your system working, Please include the output of `bazel query --output=build //path/to:target`,
 
