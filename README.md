@@ -119,6 +119,17 @@ create a `.bazel_fix_commands.json` that contains an empty json array, `[]`.
 This will additionally disable the notification providing usage instructions on
 the first invocation of iBazel.
 
+### Disabling output runner
+
+If you would like to remove the banner but don't wish to configure the output
+runner, you can create an empty configuration file like this:
+
+```sh
+echo "[]" > .bazel_fix_commands.json
+```
+
+You should no longer be prompted when iBazel starts up.
+
 ## Profiling
 
 iBazel has a `--profile_dev` flag which turns on a generated profile output file
