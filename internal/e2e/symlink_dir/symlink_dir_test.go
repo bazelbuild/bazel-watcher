@@ -22,7 +22,6 @@ sh_binary(
 printf "Started 1!"
 `
 
-// something
 func TestMain(m *testing.M) {
 	bazel_testing.TestMain(m, bazel_testing.Args{
 		Main: mainFiles,
