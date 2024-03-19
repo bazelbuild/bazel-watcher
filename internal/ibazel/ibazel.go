@@ -541,11 +541,17 @@ func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
 	uniqueDirectories := map[string]struct{}{}
 
 	for _, file := range toWatch {
-		if _, err := os.Stat(file); !os.IsNotExist(err) {
-			filesWatched[file] = struct{}{}
+		path, err := filepath.EvalSymlinks(file)
+		if err != nil {
+			log.Errorf("Error evaluating symbolic links for source file: %v", err)
+			return
 		}
 
-		parentDirectory, _ := filepath.Split(file)
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			filesWatched[path] = struct{}{}
+		}
+
+		parentDirectory, _ := filepath.Split(path)
 		// Add a watch to the file's parent directory, we might already have this dir in our set but thats OK
 		uniqueDirectories[parentDirectory] = struct{}{}
 	}
