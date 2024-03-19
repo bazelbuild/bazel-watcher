@@ -66,10 +66,10 @@ func TestMain(m *testing.M) {
 	})
 }
 
-// note: an earlier implementation of `ibazel.go` used `os.Getwd` which states
-// "If the current directory can be reached via multiple paths (due to symbolic
+// note: the implementation of `workspace.go` uses `os.Getwd` which states "If
+// the current directory can be reached via multiple paths (due to symbolic
 // links), Getwd may return any one of them." This resulted in inconsistent
-// automatic rebuild behavior.
+// automatic rebuild behavior because `ibazel.go` was not evaluating symlinks.
 func TestSymlinkRun(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//:simple")
