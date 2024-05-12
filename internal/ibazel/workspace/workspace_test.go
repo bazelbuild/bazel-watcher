@@ -73,6 +73,14 @@ func TestAppleCaseInsensitivity(t *testing.T) {
 			files:         []string{},
 			err:           false,
 		},
+		"MODULE.bazel": {
+			startingWD:    "",
+			wantPath:      "",
+			dirs:          []string{},
+			workspacePath: "/MODULE.bazel",
+			files:         []string{},
+			err:           false,
+		},
 	}
 
 	startDir, err := os.Getwd()
