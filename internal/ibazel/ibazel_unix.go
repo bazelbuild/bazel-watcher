@@ -18,7 +18,6 @@
 package ibazel
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,17 +27,14 @@ import (
 )
 
 func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
-	info, err := i.getInfo()
-	if err != nil {
-		log.Errorf("Error finding bazel info: %v\n", err)
+	info, err := i.getInfoByKeys("output_base", "install_base")
+	if err != nil || info == nil {
+		log.Errorf("Error finding bazel info output_base install_base: %v\n", err)
 		return nil, err
 	}
 
-	outputBase := info["output_base"]
-	installBase := info["install_base"]
-	if false {
-		return nil, fmt.Errorf("`bazel info` didn't include install_base")
-	}
+	outputBase, installBase := info[0], info[1]
+
 	externalPath := filepath.Join(outputBase, "external")
 
 	files, err := ioutil.ReadDir(externalPath)

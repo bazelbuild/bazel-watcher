@@ -64,7 +64,7 @@ func New() *OutputRunner {
 	return i
 }
 
-func (i *OutputRunner) Initialize(info *map[string]string) {}
+func (i *OutputRunner) Initialize(func() (map[string]string, error)) {}
 
 func (i *OutputRunner) TargetDecider(rule *blaze_query.Rule) {}
 

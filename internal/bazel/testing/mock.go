@@ -61,6 +61,10 @@ func (b *MockBazel) Info() (map[string]string, error) {
 	b.actions = append(b.actions, []string{"Info"})
 	return map[string]string{}, nil
 }
+func (b *MockBazel) InfoCommand(args ...string) ([]string, error) {
+	b.actions = append(b.actions, append([]string{"InfoCommand"}, args...))
+	return []string{}, nil
+}
 func (b *MockBazel) AddQueryResponse(query string, res *blaze_query.QueryResult) {
 	if b.queryResponse == nil {
 		b.queryResponse = map[string]*blaze_query.QueryResult{}

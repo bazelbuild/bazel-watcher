@@ -100,7 +100,7 @@ func New(version string) *Profiler {
 	return p
 }
 
-func (i *Profiler) Initialize(info *map[string]string) {
+func (i *Profiler) Initialize(getInfo func() (map[string]string, error)) {
 	if *profileDev == "" {
 		return
 	}
@@ -114,9 +114,15 @@ func (i *Profiler) Initialize(info *map[string]string) {
 
 	log.Errorf("Profile output: %s", *profileDev)
 
+	info, err := getInfo()
+	if err != nil {
+		log.Errorf("Failed to get info: %v", err)
+		return
+	}
+
 	i.iterationBuildStart = true
 	i.newIteration()
-	i.startEvent(info)
+	i.startEvent(&info)
 	i.startProfilerServer()
 }
 

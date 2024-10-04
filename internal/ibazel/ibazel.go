@@ -114,9 +114,8 @@ func New(version string) (*IBazel, error) {
 		lifecycleHooks,
 	}
 
-	info, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
-		l.Initialize(&info)
+		l.Initialize(i.getInfo)
 	}
 
 	go func() {
@@ -472,6 +471,18 @@ func (i *IBazel) getInfo() (map[string]string, error) {
 	b := i.newBazel()
 
 	res, err := b.Info()
+	if err != nil {
+		log.Errorf("Error getting Bazel info %v", err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (i *IBazel) getInfoByKeys(keys ...string) ([]string, error) {
+	b := i.newBazel()
+
+	res, err := b.InfoCommand(keys...)
 	if err != nil {
 		log.Errorf("Error getting Bazel info %v", err)
 		return nil, err

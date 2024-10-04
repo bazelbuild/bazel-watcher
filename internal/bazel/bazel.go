@@ -134,6 +134,7 @@ type Bazel interface {
 	WriteToStderr(v bool)
 	WriteToStdout(v bool)
 	Info() (map[string]string, error)
+	InfoCommand(args ...string) ([]string, error)
 	Query(args ...string) (*blaze_query.QueryResult, error)
 	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
@@ -258,6 +259,33 @@ func (b *bazel) Info() (map[string]string, error) {
 	return b.processInfo(stdoutBuffer.String())
 }
 
+func (b *bazel) InfoCommand(commands ...string) ([]string, error) {
+	b.WriteToStderr(false)
+	b.WriteToStdout(false)
+
+	infoArgs := append([]string(nil), commands...)
+
+	stdoutBuffer, _ := b.newCommand("info", infoArgs...)
+
+	// This gofunction only prints if 'bazel info' takes longer than 8 seconds
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	go func() {
+		select {
+		case <-doneCh:
+			// Do nothing since we're done.
+		case <-time.After(8 * time.Second):
+			log.Logf("Running `bazel info`... it's being a little slow")
+		}
+	}()
+
+	err := b.cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	return b.processInfoCommand(stdoutBuffer.String())
+}
+
 func (b *bazel) processInfo(info string) (map[string]string, error) {
 	lines := strings.Split(info, "\n")
 	output := make(map[string]string, 0)
@@ -270,6 +298,23 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 			return nil, errors.New("Bazel info returned a non key-value pair")
 		}
 		output[data[0]] = data[1]
+	}
+	return output, nil
+}
+
+func (b *bazel) processInfoCommand(info string) ([]string, error) {
+	lines := strings.Split(info, "\n")
+	output := []string{}
+
+	for _, line := range lines {
+		if line == "" || strings.Contains(line, "Starting local Bazel server and connecting to it...") {
+			continue
+		}
+		data := strings.SplitN(line, ": ", 2)
+		if len(data) < 2 {
+			return nil, errors.New("Bazel info returned a non key-value pair")
+		}
+		output = append(output, data[1])
 	}
 	return output, nil
 }
