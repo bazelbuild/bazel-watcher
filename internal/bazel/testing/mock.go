@@ -32,6 +32,7 @@ type MockBazel struct {
 	cqueryResponse map[string]*analysis.CqueryResult
 	args           []string
 	startupArgs    []string
+	info           map[string]string
 
 	buildError error
 	waitError  error
@@ -51,6 +52,9 @@ func (b *MockBazel) SetStartupArgs(args []string) {
 	b.startupArgs = args
 }
 
+func (b *MockBazel) SetInfo(info map[string]string) {
+	b.info = info
+}
 func (b *MockBazel) WriteToStderr(v bool) {
 	b.actions = append(b.actions, []string{"WriteToStderr", fmt.Sprint(v)})
 }
@@ -59,7 +63,7 @@ func (b *MockBazel) WriteToStdout(v bool) {
 }
 func (b *MockBazel) Info() (map[string]string, error) {
 	b.actions = append(b.actions, []string{"Info"})
-	return map[string]string{}, nil
+	return b.info, nil
 }
 func (b *MockBazel) AddQueryResponse(query string, res *blaze_query.QueryResult) {
 	if b.queryResponse == nil {

@@ -61,7 +61,8 @@ const (
 )
 
 const sourceQuery = "kind('source file', deps(set(%s)))"
-const buildQuery = "buildfiles(deps(set(%s)))"
+const targetQuery = "deps(set(%s))"
+const buildQuery = "buildfiles(set(%s))"
 
 type IBazel struct {
 	debounceDuration time.Duration
@@ -311,8 +312,21 @@ func (i *IBazel) iteration(command string, commandToRun runnableCommand, targets
 	case QUERY:
 		// Query for which files to watch.
 		log.Logf("Querying for files to watch...")
-		i.watchFiles(fmt.Sprintf(buildQuery, joinedTargets), i.buildFileWatcher)
-		i.watchFiles(fmt.Sprintf(sourceQuery, joinedTargets), i.sourceFileWatcher)
+
+		toWatchBuildFiles, err := i.queryForBuildFiles(joinedTargets)
+		if err != nil {
+			log.Errorf("Error querying for build files: %v", err)
+		} else {
+			i.watchFiles(toWatchBuildFiles, i.buildFileWatcher)
+		}
+
+		toWatchSourceFiles, err := i.queryForSourceFiles(joinedTargets)
+		if err != nil {
+			log.Errorf("Error querying for source files: %v", err)
+		} else {
+			i.watchFiles(toWatchSourceFiles, i.sourceFileWatcher)
+		}
+
 		i.state = RUN
 	case DEBOUNCE_RUN:
 		select {
@@ -480,63 +494,95 @@ func (i *IBazel) getInfo() (map[string]string, error) {
 	return res, nil
 }
 
-func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
+func (i *IBazel) queryForSourceFiles(targets string) ([]string, error) {
 	b := i.newBazel()
 
-	localRepositories, err := i.realLocalRepositoryPaths()
+	res, err := b.CQuery(i.cQueryArgs(fmt.Sprintf(sourceQuery, targets))...)
 	if err != nil {
+		log.Errorf("Bazel cquery failed: %v", err)
 		return nil, err
 	}
 
-	res, err := b.Query(i.queryArgs(query)...)
-	if err != nil {
-		log.Errorf("Bazel query failed: %v", err)
-		return nil, err
-	}
-
-	workspacePath, err := i.workspaceFinder.FindWorkspace()
-	if err != nil {
-		log.Errorf("Error finding workspace: %v", err)
-		return nil, err
-	}
-
-	toWatch := make([]string, 0, len(res.GetTarget()))
-	for _, target := range res.GetTarget() {
-		switch *target.Type {
+	labels := make([]string, 0, len(res.Results))
+	for _, target := range res.Results {
+		switch *target.Target.Type {
 		case blaze_query.Target_SOURCE_FILE:
-			label := target.GetSourceFile().GetName()
-			if strings.HasPrefix(label, "@") {
-				repo, target := parseTarget(label)
-				if realPath, ok := localRepositories[repo]; ok {
-					label = strings.Replace(target, ":", string(filepath.Separator), 1)
-					toWatch = append(toWatch, filepath.Join(realPath, label))
-					break
-				}
-				continue
-			}
-			if strings.HasPrefix(label, "//external") {
-				continue
-			}
-
-			label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
-			toWatch = append(toWatch, filepath.Join(workspacePath, label))
-			break
+			label := target.Target.SourceFile.GetName()
+			labels = append(labels, label)
 		default:
 			log.Errorf("%v\n", target)
 		}
 	}
 
-	return toWatch, nil
+	return i.labelsToWatch(labels)
 }
 
-func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
-	toWatch, err := i.queryForSourceFiles(query)
+func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
+	b := i.newBazel()
+
+	targetRes, err := b.CQuery(i.cQueryArgs(fmt.Sprintf(targetQuery, targets))...)
 	if err != nil {
-		// If the query fails, just keep watching the same files as before
-		log.Errorf("Error querying for source files: %v", err)
-		return
+		log.Errorf("Bazel target query failed: %v", err)
+		return nil, err
 	}
 
+	localRepositories, err := i.realLocalRepositoryPaths()
+	if err != nil {
+		return nil, err
+	}
+	buildTargets := make([]string, 0, len(targetRes.Results))
+	for _, configuredTarget := range targetRes.Results {
+		target := configuredTarget.GetTarget()
+		if *target.Type == blaze_query.Target_RULE {
+			label := target.GetRule().GetName()
+			if strings.HasPrefix(label, "@") {
+				repo, _ := parseTarget(label)
+				if _, ok := localRepositories[repo]; !ok {
+					continue
+				}
+			}
+			if strings.HasPrefix(label, "//external") {
+				continue
+			}
+
+			buildTargets = append(buildTargets, label)
+		}
+	}
+
+	f, err := os.CreateTemp("", "query")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create query file: %w", err)
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+	_, err = f.WriteString(fmt.Sprintf(buildQuery, strings.Join(buildTargets, " ")))
+	if err != nil {
+		return nil, fmt.Errorf("failed to write query file: %w", err)
+	}
+
+	res, err := b.Query(i.queryArgs(fmt.Sprintf("--query_file=%s", f.Name()))...)
+	if err != nil {
+		log.Errorf("Bazel query failed: %v", err)
+		return nil, err
+	}
+
+	labels := make([]string, 0, len(res.GetTarget()))
+	for _, target := range res.GetTarget() {
+		switch *target.Type {
+		case blaze_query.Target_SOURCE_FILE:
+			label := target.GetSourceFile().GetName()
+			labels = append(labels, label)
+		default:
+			log.Errorf("%v\n", target)
+		}
+	}
+
+	return i.labelsToWatch(labels)
+}
+
+func (i *IBazel) watchFiles(toWatch []string, watcher common.Watcher) {
 	filesWatched := map[string]struct{}{}
 	uniqueDirectories := map[string]struct{}{}
 
@@ -557,16 +603,50 @@ func (i *IBazel) watchFiles(query string, watcher common.Watcher) {
 	}
 
 	watchList := keys(uniqueDirectories)
-	err = watcher.UpdateAll(watchList)
+	err := watcher.UpdateAll(watchList)
 	if err != nil {
 		log.Errorf("Error(s) updating watch list:\n %v", err)
 	}
 
 	if len(filesWatched) == 0 {
-		log.Errorf("Didn't find any files to watch from query %s", query)
+		log.Errorf("Didn't find any files to watch for")
 	}
 
 	i.filesWatched[watcher] = filesWatched
+}
+
+func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
+	localRepositories, err := i.realLocalRepositoryPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	workspacePath, err := i.workspaceFinder.FindWorkspace()
+	if err != nil {
+		log.Errorf("Error finding workspace: %v", err)
+		return nil, err
+	}
+
+	toWatch := make([]string, 0, len(labels))
+	for _, label := range labels {
+		if strings.HasPrefix(label, "@") {
+			repo, target := parseTarget(label)
+			if realPath, ok := localRepositories[repo]; ok {
+				label = strings.Replace(target, ":", string(filepath.Separator), 1)
+				toWatch = append(toWatch, filepath.Join(realPath, label))
+				break
+			}
+			continue
+		}
+		if strings.HasPrefix(label, "//external") {
+			continue
+		}
+
+		label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
+		toWatch = append(toWatch, filepath.Join(workspacePath, label))
+	}
+
+	return toWatch, nil
 }
 
 func (i *IBazel) queryArgs(args ...string) []string {

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"runtime/debug"
@@ -188,8 +189,68 @@ func TestIBazelLoop(t *testing.T) {
 	log.SetTesting(t)
 
 	i, mockBazel := newIBazel(t)
-	mockBazel.AddQueryResponse("buildfiles(deps(set(//my:target)))", &blaze_query.QueryResult{})
-	mockBazel.AddQueryResponse("kind('source file', deps(set(//my:target)))", &blaze_query.QueryResult{})
+
+	ruleType := blaze_query.Target_RULE
+	sourceFileType := blaze_query.Target_SOURCE_FILE
+	target := "//my:target"
+	sourceDir := t.TempDir()
+
+	basePath := filepath.Join(sourceDir, "/path/to/")
+	if err := os.MkdirAll(basePath, 0o700); err != nil {
+		t.Errorf("failed to create based path: %v", err)
+		t.FailNow()
+	}
+
+	buildFilePath := filepath.Join(basePath, "BUILD")
+	sourceFilePath := filepath.Join(basePath, "foo")
+
+	if err := os.WriteFile(buildFilePath, []byte(""), 0o700); err != nil {
+		t.Errorf("failed to create BUILD file: %v", err)
+		t.FailNow()
+	}
+	if err := os.WriteFile(sourceFilePath, []byte(""), 0o700); err != nil {
+		t.Errorf("failed to create source file: %v", err)
+		t.FailNow()
+	}
+
+	mockBazel.AddQueryResponse(fmt.Sprintf("buildfiles(set(%s))", target), &blaze_query.QueryResult{
+		Target: []*blaze_query.Target{{
+			Type: &sourceFileType,
+			SourceFile: &blaze_query.SourceFile{
+				Name: &buildFilePath,
+			},
+		}},
+	})
+	mockBazel.AddCQueryResponse(fmt.Sprintf("deps(set(%s))", target), &analysispb.CqueryResult{
+		Results: []*analysispb.ConfiguredTarget{{
+			Target: &blaze_query.Target{
+				Type: &ruleType,
+				Rule: &blaze_query.Rule{
+					Name: &target,
+				},
+			},
+		}},
+	})
+	mockBazel.AddCQueryResponse(fmt.Sprintf("kind('source file', deps(set(%s)))", target), &analysispb.CqueryResult{
+		Results: []*analysispb.ConfiguredTarget{{
+			Target: &blaze_query.Target{
+				Type: &sourceFileType,
+				SourceFile: &blaze_query.SourceFile{
+					Name: &sourceFilePath,
+				},
+			},
+		}},
+	})
+
+	outputBase := t.TempDir()
+	if err := os.Mkdir(filepath.Join(outputBase, "external"), 0o700); err != nil {
+		t.Errorf("failed to create external directory: %v", err)
+		t.FailNow()
+	}
+	mockBazel.SetInfo(map[string]string{
+		"output_base":  outputBase,
+		"install_base": t.TempDir(),
+	})
 
 	// Replace the file watching channel with one that has a buffer.
 	i.buildFileWatcher = &fakeFSNotifyWatcher{
@@ -211,7 +272,7 @@ func TestIBazelLoop(t *testing.T) {
 
 	i.state = QUERY
 	step := func() {
-		i.iteration("demo", command, []string{}, "//my:target")
+		i.iteration("demo", command, []string{}, target)
 	}
 	assertRun := func() {
 		t.Helper()
@@ -236,14 +297,12 @@ func TestIBazelLoop(t *testing.T) {
 
 	assertState(QUERY)
 	step()
-	i.filesWatched[i.buildFileWatcher] = map[string]struct{}{"/path/to/BUILD": {}}
-	i.filesWatched[i.sourceFileWatcher] = map[string]struct{}{"/path/to/foo": {}}
 	assertState(RUN)
 	step() // Actually run the command
 	assertRun()
 	assertState(WAIT)
 	// Source file change.
-	go func() { i.sourceFileWatcher.Events() <- common.Event{Op: common.Write, Name: "/path/to/foo"} }()
+	go func() { i.sourceFileWatcher.Events() <- common.Event{Op: common.Write, Name: sourceFilePath} }()
 	step()
 	assertState(DEBOUNCE_RUN)
 	step()
@@ -253,7 +312,7 @@ func TestIBazelLoop(t *testing.T) {
 	assertRun()
 	assertState(WAIT)
 	// Build file change.
-	i.buildFileWatcher.Events() <- common.Event{Op: common.Write, Name: "/path/to/BUILD"}
+	i.buildFileWatcher.Events() <- common.Event{Op: common.Write, Name: buildFilePath}
 	step()
 	assertState(DEBOUNCE_QUERY)
 	// Don't send another event in to test the timer
