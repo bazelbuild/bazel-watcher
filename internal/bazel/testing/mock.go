@@ -16,7 +16,10 @@ package testing
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"regexp"
 	"testing"
@@ -32,6 +35,7 @@ type MockBazel struct {
 	cqueryResponse map[string]*analysis.CqueryResult
 	args           []string
 	startupArgs    []string
+	info           map[string]string
 
 	buildError error
 	waitError  error
@@ -51,6 +55,9 @@ func (b *MockBazel) SetStartupArgs(args []string) {
 	b.startupArgs = args
 }
 
+func (b *MockBazel) SetInfo(info map[string]string) {
+	b.info = info
+}
 func (b *MockBazel) WriteToStderr(v bool) {
 	b.actions = append(b.actions, []string{"WriteToStderr", fmt.Sprint(v)})
 }
@@ -59,7 +66,7 @@ func (b *MockBazel) WriteToStdout(v bool) {
 }
 func (b *MockBazel) Info() (map[string]string, *bytes.Buffer, error) {
 	b.actions = append(b.actions, []string{"Info"})
-	return map[string]string{}, nil, nil
+	return b.info, nil, nil
 }
 func (b *MockBazel) DumpRepoMapping(canonicalRepoName string) (map[string]string, *bytes.Buffer, error) {
 	b.actions = append(b.actions, []string{"DumpRepoMapping", canonicalRepoName})
@@ -73,9 +80,12 @@ func (b *MockBazel) AddQueryResponse(query string, res *blaze_query.QueryResult)
 }
 func (b *MockBazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	b.actions = append(b.actions, append([]string{"Query"}, args...))
-	query := args[0]
+	queryArgs, err := parseQueryArgs(args)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse query args: %v", err))
+	}
+	query := queryArgs[0]
 	res, ok := b.queryResponse[query]
-
 	if !ok {
 		var candidates []string
 		for candidate := range b.queryResponse {
@@ -161,9 +171,19 @@ func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
 	}
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
+func parseQueryArgs(args []string) ([]string, error) {
+	fs := flag.NewFlagSet("", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	queryFile := fs.String("query_file", "", "")
+	if err := fs.Parse(args); err != nil {
+		return args, nil
 	}
-	return b
+	if *queryFile == "" {
+		return args, nil
+	}
+	contents, err := os.ReadFile(*queryFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read query file: %w", err)
+	}
+	return []string{string(contents)}, nil
 }
