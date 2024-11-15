@@ -87,6 +87,12 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 		return outputBuffer, err
 	}
 	log.Log("Starting...")
+	go func() {
+		err := c.pg.Wait()
+		if err != nil {
+			log.Errorf("Error waiting for process: %v", err)
+		}
+	}()
 	c.termSync = sync.Once{}
 	return outputBuffer, nil
 }
