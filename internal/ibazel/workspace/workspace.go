@@ -59,6 +59,10 @@ func (m *MainWorkspace) FindWorkspace() (string, error) {
 			return path, nil
 		}
 
+		if _, err := os.Stat(filepath.Join(path, "WORKSPACE.bzlmod")); err == nil {
+			return path, nil
+		}
+
 		// If we've reached the root, then we know the cwd isn't within a workspace
 		if path == volume {
 			return "", errors.New("ibazel was not invoked from within a workspace\n")
