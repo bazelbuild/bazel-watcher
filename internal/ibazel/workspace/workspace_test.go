@@ -42,6 +42,22 @@ func TestAppleCaseInsensitivity(t *testing.T) {
 			files:         []string{},
 			err:           false,
 		},
+		"simple with bzlmod extension": {
+			startingWD:    "",
+			wantPath:      "",
+			dirs:          []string{},
+			workspacePath: "/WORKSPACE.bzlmod",
+			files:         []string{},
+			err:           false,
+		},
+		"simple with MODULE.bazel": {
+			startingWD:    "",
+			wantPath:      "",
+			dirs:          []string{},
+			workspacePath: "/MODULE.bazel",
+			files:         []string{},
+			err:           false,
+		},
 		"no workspace": {
 			startingWD: "c/d",
 			wantPath:   "",
@@ -52,6 +68,43 @@ func TestAppleCaseInsensitivity(t *testing.T) {
 			workspacePath: "/a/WORKSPACE",
 			files:         []string{},
 			err:           true,
+		},
+		"no workspace in workspace-named path": {
+			startingWD: "c/WORKSPACE",
+			wantPath:   "/a",
+			dirs: []string{
+				"a/b",
+				"c/WORKSPACE",
+			},
+			workspacePath: "/a/WORKSPACE",
+			files:         []string{},
+			err:           true,
+		},
+		"no workspace in MODULE.bazel-named path": {
+			startingWD: "c/MODULE.bazel",
+			wantPath:   "",
+			dirs: []string{
+				"a/b",
+				"c/MODULE.bazel",
+			},
+			workspacePath: "/a/WORKSPACE",
+			files:         []string{},
+			err:           true,
+		},
+		"workspace nested in workspace-named path": {
+			// this is intended to catch case-insensitive Macs but mimics the
+			// case-insensitive match with a case-sensitive match of the dir
+			// the "WORKSPACE" dirname should not early-quit the search, allowing
+			// us to find /c/MODULE.bazel
+			startingWD: "c/d/WORKSPACE",
+			wantPath:   "/c",
+			dirs: []string{
+				"a/b",
+				"c/d/WORKSPACE",
+			},
+			workspacePath: "/c/MODULE.bazel",
+			files:         []string{},
+			err:           false,
 		},
 		"nested workspace": {
 			startingWD: "a/workspace",
