@@ -71,7 +71,7 @@ func TestAppleCaseInsensitivity(t *testing.T) {
 		},
 		"no workspace in workspace-named path": {
 			startingWD: "c/WORKSPACE",
-			wantPath:   "/a",
+			wantPath:   filepath.FromSlash("/a"),
 			dirs: []string{
 				"a/b",
 				"c/WORKSPACE",
@@ -97,7 +97,7 @@ func TestAppleCaseInsensitivity(t *testing.T) {
 			// the "WORKSPACE" dirname should not early-quit the search, allowing
 			// us to find /c/MODULE.bazel
 			startingWD: "c/d/WORKSPACE",
-			wantPath:   "/c",
+			wantPath:   filepath.FromSlash("/c"),
 			dirs: []string{
 				"a/b",
 				"c/d/WORKSPACE",
