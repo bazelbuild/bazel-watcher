@@ -6,16 +6,18 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
-	github.com/gorilla/websocket v1.5.0
-	github.com/jaschaephraim/lrserver v0.0.0-20171129202958-50d19f603f71
+	github.com/gorilla/websocket v1.5.1
+	github.com/jaschaephraim/lrserver v0.0.0-20240306232639-afed386b3640
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/smartystreets/goconvey v1.7.2 // indirect
-	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )
 
+require golang.org/x/sys v0.13.0
+
 require (
-	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 )
 
-go 1.19
+go 1.22.0
+
+toolchain go1.23.4
