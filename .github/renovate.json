@@ -15,6 +15,7 @@
   "extends": [
     "config:recommended"
   ],
+  "forkProcessing": "enabled",
   "labels": [
     "dependencies"
   ],
