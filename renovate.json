@@ -34,7 +34,7 @@
         "digest",
         "major",
         "minor",
-        "patch",
+        "patch"
       ]
     }
   ],

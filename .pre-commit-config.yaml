@@ -1,0 +1,30 @@
+# To install the dependencies for this file:
+# 1) pip install pre-commit
+#   (really, "sudo python3 -m pip install pre-commit")
+#   (really, I've been carrying this boilerplate for years, but now it's all python3?)
+#
+# 2) pre-commit install --allow-missing-config
+#
+# yamllint checks this .pre-commit-config file as well
+---
+repos:
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [
+          '-d',
+          '{extends: relaxed, rules: {line-length: {max: 120}}}'
+        ]
+        files: .*\.(yml|yaml)$
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-json
+      - id: no-commit-to-branch
+      - id: trailing-whitespace
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.4
+    hooks:
+      - id: check-github-workflows
+      - id: check-renovate
