@@ -13,7 +13,7 @@ require (
 
 require golang.org/x/sys v0.29.0
 
-require google.golang.org/protobuf v1.33.0 // indirect
+require google.golang.org/protobuf v1.36.3 // indirect
 
 go 1.22.0
 
