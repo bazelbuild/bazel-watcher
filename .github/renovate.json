@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "automerge": true,
+      "enabled": true,
+      "matchManagers": [
+        "bazel",
+        "bazel-module",
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ]
+    }
+  ],
+  "postUpdateOptions": [
+    "gomodMassage",
+    "gomodTidy"
+  ]
+}
