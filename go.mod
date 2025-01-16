@@ -11,7 +11,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.12
 )
 
-require golang.org/x/sys v0.13.0
+require golang.org/x/sys v0.29.0
 
 require google.golang.org/protobuf v1.33.0 // indirect
 
