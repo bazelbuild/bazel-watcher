@@ -5,6 +5,6 @@ go_bazel_test(
     srcs = ["lifecycle_hooks_test.go"],
     deps = [
         "//internal/e2e",
-        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing",
     ],
 )

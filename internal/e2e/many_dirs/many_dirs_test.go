@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 // Create 4096 + 1 (1 above the fsevents limit) data files in individual directories to be watched.
@@ -54,7 +53,7 @@ nothing to see here
 
 `, strings.Join(dataFileNames, ", ")) + strings.Join(dataFiles, "\n")
 
-	bazel_testing.TestMain(m, bazel_testing.Args{
+	e2e.TestMain(m, e2e.Args{
 		Main: mainFiles,
 	})
 }

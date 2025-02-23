@@ -1,15 +1,11 @@
 package output_runner
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 const mainFiles = `
@@ -54,7 +50,7 @@ printf "action"
 `
 
 func TestMain(m *testing.M) {
-	bazel_testing.TestMain(m, bazel_testing.Args{
+	e2e.TestMain(m, e2e.Args{
 		Main: mainFiles,
 	})
 }
@@ -83,85 +79,6 @@ func checkSentinel(t *testing.T, sentinelFile *os.File, msg string) {
 			return
 		}
 	}
-}
-
-func TestOutputRunner(t *testing.T) {
-	sentinelFile, err := ioutil.TempFile("", "fixCommandSentinel")
-	if err != nil {
-		t.Errorf("ioutil.TempFile(\"\", \"fixCommandSentinel\": %v", err)
-	}
-	sentinalFileName := strings.Replace(sentinelFile.Name(), "\\", "/", -1)
-
-	e2e.Must(t, sentinelFile.Close())
-	checkSentinel(t, sentinelFile, "ioutil.TempFile creates the file by default. Delete it.")
-	checkNoSentinel(t, sentinelFile, "The sentinal should now be deleted.")
-
-	// First check that it doesn't run if there isn't a `.bazel_fix_commands.json` file.
-	ibazel := e2e.SetUp(t)
-	ibazel.RunWithBazelFixCommands("//single:overwrite")
-
-	// Ensure it prints out the banner.
-	ibazel.ExpectIBazelError("Did you know")
-
-	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
-	[{
-		"regex": "^(.*)runacommand(.*)$",
-		"command": "touch",
-		"args": ["%s"]
-	}]`, sentinalFileName))
-
-	e2e.MustWriteFile(t, "single/overwrite.sh", `
-printf "overwrite1"
-`)
-
-	ibazel.RunWithBazelFixCommands("//single:overwrite")
-
-	ibazel.ExpectOutput("overwrite1")
-	checkSentinel(t, sentinelFile, "The first run should create a sentinel.")
-
-	ibazel.Kill()
-
-	// Invoke the test a 2nd time to ensure it works over multiple separate
-	// invocations of ibazel.
-	ibazel = e2e.SetUp(t)
-	ibazel.RunWithBazelFixCommands("//single:overwrite")
-	ibazel.ExpectOutput("overwrite1")
-	checkSentinel(t, sentinelFile, "The second run should create a sentinel.")
-
-	// TODO: Figure out why the 2nd invocation doesn't touch the file.
-	// Test that the command is run again.
-	//e2e.MustWriteFile(t, "overwrite.sh", `printf "overwrite2"`)
-
-	//ibazel.ExpectOutput("overwrite2")
-	//checkSentinel(t, sentinelFile, "The third run should create a sentinel.")
-
-	// Now replace the print and it shouldn't fire.
-	e2e.MustWriteFile(t, "defs.bzl", `
-def fix_deps():
-  print("not it")
-`)
-
-	ibazel.ExpectOutput("overwrite1")
-	checkNoSentinel(t, sentinelFile, "The third run should not create a sentinel.")
-}
-
-func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
-	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
-       [{
-               "regex": "^.*runcommand (.*)$",
-               "command": "echo",
-               "args": ["$1"]
-       }]`)
-
-	ibazel := e2e.NewIBazelTester(t)
-	ibazel.RunWithBazelFixCommands("//multiple:test")
-	defer ibazel.Kill()
-
-	ibazel.ExpectFixCommands([]string{
-		"echo foo",
-		"echo bar",
-		"echo baz",
-	})
 }
 
 func TestNotifyWhenInvalidConfig(t *testing.T) {

@@ -4,11 +4,10 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/bazel-watcher/internal/e2e/example_client"
 )
 
 func TestMain(m *testing.M) {
-	example_client.TestMain(m)
+	e2e.TestMain(m, e2e.Args{})
 }
 
 func TestSimpleBuildWithoutSourceFiles(t *testing.T) {

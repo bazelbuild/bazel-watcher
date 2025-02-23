@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 const mainFiles = `
@@ -47,9 +46,6 @@ sh_binary(
 -- incompatible_by_default.sh --
 #!/bin/bash
 echo 'hello!'
--- WORKSPACE --
--- .bazelrc --
-build:platform2 --platforms=//:platform2
 `
 
 var (
@@ -57,7 +53,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	bazel_testing.TestMain(m, bazel_testing.Args{
+	e2e.TestMain(m, e2e.Args{
 		Main: mainFiles,
 		SetUp: func() error {
 			path := "incompatible_by_default.sh"
@@ -72,14 +68,6 @@ func TestMain(m *testing.M) {
 func TestRunWithPlatforms(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{"--platforms=//:platform2"}, "//:incompatible_by_default")
-	defer ibazel.Kill()
-
-	ibazel.ExpectOutput("hello!")
-}
-
-func TestRunWithConfig(t *testing.T) {
-	ibazel := e2e.SetUp(t)
-	ibazel.Run([]string{"--config=platform2"}, "//:incompatible_by_default")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("hello!")

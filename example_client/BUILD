@@ -41,6 +41,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//example_client/data",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel",
     ],
 )

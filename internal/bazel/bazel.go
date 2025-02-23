@@ -373,10 +373,13 @@ func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
 func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	stdoutBuffer, stderrBuffer := b.newCommand("run", append(b.args, args...)...)
+	runArgs := append(b.args, args...)
+	stdoutBuffer, stderrBuffer := b.newCommand("run", runArgs...)
 	b.cmd.Stdin = os.Stdin
 
-	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+	if _, err := stdoutBuffer.Write(stderrBuffer.Bytes()); err != nil {
+		return nil, nil, fmt.Errorf("stdout.write(): %w", err)
+	}
 
 	err := b.cmd.Run()
 	if err != nil {
