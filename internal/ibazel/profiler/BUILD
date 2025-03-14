@@ -14,12 +14,9 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-
 go_library(
     name = "profiler",
-    srcs = [
-        "profiler.go",
-    ],
+    srcs = ["profiler.go"],
     embedsrcs = ["profiler.js"],
     importpath = "github.com/bazelbuild/bazel-watcher/internal/ibazel/profiler",
     visibility = ["//:__subpackages__"],

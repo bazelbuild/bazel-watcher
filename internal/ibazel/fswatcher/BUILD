@@ -35,7 +35,6 @@ go_library(
             "//internal/ibazel/fswatcher/common",
             "//internal/ibazel/fswatcher/fsevents",
             "//internal/ibazel/fswatcher/fsnotify",
-            "//internal/ibazel/log",
         ],
         "@io_bazel_rules_go//go/platform:dragonfly": [
             "//internal/ibazel/fswatcher/common",
@@ -53,7 +52,6 @@ go_library(
             "//internal/ibazel/fswatcher/common",
             "//internal/ibazel/fswatcher/fsevents",
             "//internal/ibazel/fswatcher/fsnotify",
-            "//internal/ibazel/log",
         ],
         "@io_bazel_rules_go//go/platform:js": [
             "//internal/ibazel/fswatcher/common",
@@ -71,7 +69,15 @@ go_library(
             "//internal/ibazel/fswatcher/common",
             "//internal/ibazel/fswatcher/fsnotify",
         ],
+        "@io_bazel_rules_go//go/platform:osx": [
+            "//internal/ibazel/fswatcher/common",
+            "//internal/ibazel/fswatcher/fsnotify",
+        ],
         "@io_bazel_rules_go//go/platform:plan9": [
+            "//internal/ibazel/fswatcher/common",
+            "//internal/ibazel/fswatcher/fsnotify",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx": [
             "//internal/ibazel/fswatcher/common",
             "//internal/ibazel/fswatcher/fsnotify",
         ],
