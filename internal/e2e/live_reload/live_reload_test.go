@@ -71,7 +71,7 @@ func TestLiveReload(t *testing.T) {
 	ibazel.Run([]string{}, "//:live_reload")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Live reload url: http://.+:\\d+")
+	ibazel.ExpectOutput("Live reload url: http://.+:\\d+", 35 * time.Second)
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 

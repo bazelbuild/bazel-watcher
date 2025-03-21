@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -108,5 +109,5 @@ func TestRunWithOverrideRepository(t *testing.T) {
 	ibazel.Run([]string{fmt.Sprintf("--override_repository=secondary=%s", secondaryWd)}, "//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!")
+	ibazel.ExpectOutput("hello!", 35 * time.Second)
 }

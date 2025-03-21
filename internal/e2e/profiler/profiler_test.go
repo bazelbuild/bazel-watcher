@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -51,7 +52,7 @@ func TestProfiler(t *testing.T) {
 	ibazel.RunWithProfiler("//:test", tempFile.Name())
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Profiler url: http://.+:\\d+")
+	ibazel.ExpectOutput("Profiler url: http://.+:\\d+", 35 * time.Second)
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 

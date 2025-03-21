@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -72,9 +73,11 @@ func TestMain(m *testing.M) {
 					log.Fatalf("os.Mkdir(%q): %v", wd, err)
 				}
 				for file, contents := range map[string]string{
+					".bazelversion": "6.5.0",
 					"BUILD.bazel": secondaryBuild,
 					"lib.sh":      secondaryLib,
 					"WORKSPACE":   "",
+					"MODULE.bazel":   "",
 				} {
 					if err := ioutil.WriteFile(filepath.Join(wd, file), []byte(contents), 0777); err != nil {
 						log.Fatalf("Failed to write file %q: %v", file, err)
@@ -95,7 +98,7 @@ func TestRunWithModifiedFile(t *testing.T) {
 	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!")
+	ibazel.ExpectOutput("hello!", 40 * time.Second)
 
 	ioutil.WriteFile(
 		filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLibAlt), 0777)

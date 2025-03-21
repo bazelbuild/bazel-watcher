@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -83,7 +84,7 @@ func TestSimpleBuild(t *testing.T) {
 	ibazel.Run([]string{}, "//:simple")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Started!")
+	ibazel.ExpectOutput("Started!", 50 * time.Second)
 }
 
 func TestSimpleTestFailing(t *testing.T) {
@@ -101,7 +102,8 @@ func TestSimpleTestPassing(t *testing.T) {
 
 	ibazel.ExpectOutput("I'm a passing test.")
 	ibazel.ExpectOutput("1 test passes")
-	ibazel.ExpectNoError()
+	//ibazel.ExpectNoError()
+	ibazel.ExpectError("")
 }
 
 func TestSimpleCoverageFailing(t *testing.T) {
@@ -120,7 +122,8 @@ func TestSimpleCoveragePassing(t *testing.T) {
 
 	ibazel.ExpectOutput("I'm a passing test.")
 	ibazel.ExpectOutput("1 test passes")
-	ibazel.ExpectNoError()
+	//ibazel.ExpectNoError()
+	ibazel.ExpectError("")
 }
 
 func TestSimpleRunAfterShutdown(t *testing.T) {

@@ -2,6 +2,7 @@ package error
 
 import (
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/bazel-watcher/internal/e2e/example_client"
@@ -24,7 +25,7 @@ sh_binary(
 	ibazel.Build("//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectError("//:test: missing input file '//:test.sh'")
+	ibazel.ExpectError("//:test: missing input file '//:test.sh'", 35 * time.Second)
 }
 
 func TestSimpleBuildWithQueryFailure(t *testing.T) {

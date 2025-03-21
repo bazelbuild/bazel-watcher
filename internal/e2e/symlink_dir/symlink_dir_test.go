@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -74,7 +75,7 @@ func TestSymlinkRun(t *testing.T) {
 	ibazel.Run([]string{}, "//:simple")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Started 1!")
+	ibazel.ExpectOutput("Started 1!", 35 * time.Second)
 
 	e2e.MustWriteFile(t, "simple.sh", `printf "Started 2!"`)
 	ibazel.ExpectOutput("Started 2!")

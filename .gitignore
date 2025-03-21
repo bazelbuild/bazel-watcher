@@ -1,7 +1,2 @@
 .DS_Store
-bazel-bazel-watcher
-bazel-bin
-bazel-genfiles
-bazel-ibazel
-bazel-out
-bazel-testlogs
+bazel-*
