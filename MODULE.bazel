@@ -5,12 +5,8 @@ module(
 
 # Define direct Bazel dependencies
 bazel_dep(name = "rules_proto", version = "6.0.0")
-bazel_dep(name = "rules_go", version = "0.53.0", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "rules_go", version = "0.51.0", repo_name = "io_bazel_rules_go")
 bazel_dep(name = "gazelle", version = "0.42.0")
-
-# Register the Go toolchain
-go_register = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_register_toolchains")
-go_register.register_toolchains(version = "1.19.4")
 
 # Configure Go dependencies using go.mod directly
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
