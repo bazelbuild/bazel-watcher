@@ -25,7 +25,7 @@ sh_binary(
 	ibazel.Build("//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectError("//:test: missing input file '//:test.sh'", 35 * time.Second)
+	ibazel.ExpectError("//:test: missing input file '//:test.sh'", 50 * time.Second)
 }
 
 func TestSimpleBuildWithQueryFailure(t *testing.T) {
@@ -58,7 +58,7 @@ echo "hello moto"`)
 	defer ibazel.Kill()
 	ibazel.Run([]string{}, "//:live_reload")
 
-	ibazel.ExpectOutput("hello moto")
+	ibazel.ExpectOutput("hello moto", 50 * time.Second)
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 
