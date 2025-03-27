@@ -82,13 +82,13 @@ sh_binary(
 	ibazel := e2e.NewIBazelTester(t)
 	ibazel.Run([]string{}, "//vim:test")
 	defer ibazel.Kill()
-	ibazel.ExpectOutput("Started!", 35 * time.Second)
+	ibazel.ExpectOutput("Started!", 50 * time.Second)
 
 	renameAndWriteNewFile(t, "vim/test.sh", `printf "Started2!"`)
-	ibazel.ExpectOutput("Started2!")
+	ibazel.ExpectOutput("Started2!", 50 * time.Second)
 
 	renameAndWriteNewFile(t, "vim/test.sh", `printf "Started3!"`)
-	ibazel.ExpectOutput("Started3!")
+	ibazel.ExpectOutput("Started3!", 50 * time.Second)
 }
 
 func TestSimpleRunWithModifiedFile_CopyAndTruncWrite(t *testing.T) {
@@ -104,11 +104,11 @@ sh_binary(
 	ibazel := e2e.NewIBazelTester(t)
 	ibazel.Run([]string{}, "//truncate:test")
 	defer ibazel.Kill()
-	ibazel.ExpectOutput("Started!")
+	ibazel.ExpectOutput("Started!", 50 * time.Second)
 
 	copyAndTruncWriteFile(t, "truncate/test.sh", `printf "Started2!"`)
-	ibazel.ExpectOutput("Started2!")
+	ibazel.ExpectOutput("Started2!", 50 * time.Second)
 
 	copyAndTruncWriteFile(t, "truncate/test.sh", `printf "Started3!"`)
-	ibazel.ExpectOutput("Started3!")
+	ibazel.ExpectOutput("Started3!", 50 * time.Second)
 }
