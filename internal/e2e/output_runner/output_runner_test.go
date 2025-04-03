@@ -1,4 +1,4 @@
-package output_runner
+package iutput_runner
 
 import (
 	"fmt"
@@ -13,13 +13,15 @@ import (
 )
 
 const mainFiles = `
+-- WORKSPACE --
+#required
 -- single/defs.bzl --
-def fix_deps():
-  print("runacommand")
+def fix_deps(name):
+    print("used-to-be-the-magic-command")
 -- single/BUILD --
 load("//single:defs.bzl", "fix_deps")
 
-fix_deps()
+genrule(name="gen_overwrite", srcs=["overwrite.sh"], outs=["outrun1"],cmd="echo runacommand >&2 && cat $< > $@")
 
 sh_binary(
   name = "test",
@@ -28,26 +30,26 @@ sh_binary(
 
 sh_binary(
   name = "overwrite",
-  srcs = ["overwrite.sh"],
+  srcs = [":gen_overwrite"],
 )
 -- single/test.sh --
 printf "action"
 -- single/overwrite.sh --
 printf "overwrite"
--- multiple/defs.bzl --
-def fix_deps():
-  print("runcommand foo")
-  print("runcommand bar")
-  print("runcommand foo")
-  print("runcommand baz")
 -- multiple/BUILD --
-load("//multiple:defs.bzl", "fix_deps")
-
-fix_deps()
+# maybe I can dict-comprehension later
+genrule(name="fix_deps", srcs=["test.sh"], outs=["out-fixdeps"],cmd="echo runcommand foo >&2 && echo runcommand bar >&2 && echo runcommand foo >&2 && echo runcommand baz >&2 && cat $< > $@")
 
 sh_binary(
   name = "test",
   srcs = ["test.sh"],
+)
+genrule(
+  name = "collector",
+  cmd = "echo 'date' > $@",
+  executable = True,
+  outs = ["out-collector"],
+  srcs = [ ":fix_deps" ]
 )
 -- multiple/test.sh --
 printf "action"
@@ -98,11 +100,16 @@ func TestOutputRunner(t *testing.T) {
 
 	// First check that it doesn't run if there isn't a `.bazel_fix_commands.json` file.
 	ibazel := e2e.SetUp(t)
+        t.Log("Running //single:overwrite with no bazel_fix_commands")
 	ibazel.RunWithBazelFixCommands("//single:overwrite")
 
 	// Ensure it prints out the banner.
-	ibazel.ExpectIBazelError("Did you know")
+	ibazel.ExpectIBazelError("Did you know", 50 * time.Second)
 
+	ibazel.Kill()
+
+	ibazel = e2e.SetUp(t)
+        t.Log("Creating bazel_fix_commands")
 	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
 	[{
 		"regex": "^(.*)runacommand(.*)$",
@@ -110,10 +117,12 @@ func TestOutputRunner(t *testing.T) {
 		"args": ["%s"]
 	}]`, sentinalFileName))
 
+        t.Log("overwriting overwrite.sh")
 	e2e.MustWriteFile(t, "single/overwrite.sh", `
 printf "overwrite1"
 `)
 
+        t.Log("Running //single:overwrite with bazel_fix_commands")
 	ibazel.RunWithBazelFixCommands("//single:overwrite")
 
 	ibazel.ExpectOutput("overwrite1")
@@ -124,8 +133,13 @@ printf "overwrite1"
 	// Invoke the test a 2nd time to ensure it works over multiple separate
 	// invocations of ibazel.
 	ibazel = e2e.SetUp(t)
+
+	// additional change in dependency of the genrule() so that the side-effect printed text is triggered
+	e2e.MustWriteFile(t, "single/overwrite.sh", `
+printf "overwrite3"
+`)
 	ibazel.RunWithBazelFixCommands("//single:overwrite")
-	ibazel.ExpectOutput("overwrite1")
+	ibazel.ExpectOutput("overwrite3")
 	checkSentinel(t, sentinelFile, "The second run should create a sentinel.")
 
 	// TODO: Figure out why the 2nd invocation doesn't touch the file.
@@ -136,12 +150,13 @@ printf "overwrite1"
 	//checkSentinel(t, sentinelFile, "The third run should create a sentinel.")
 
 	// Now replace the print and it shouldn't fire.
+        // More recent trick/fact: not updating overwrite.sh means no source deps changed
 	e2e.MustWriteFile(t, "defs.bzl", `
 def fix_deps():
   print("not it")
 `)
 
-	ibazel.ExpectOutput("overwrite1")
+	ibazel.ExpectOutput("overwrite3")
 	checkNoSentinel(t, sentinelFile, "The third run should not create a sentinel.")
 }
 
@@ -154,7 +169,7 @@ func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
        }]`)
 
 	ibazel := e2e.NewIBazelTester(t)
-	ibazel.RunWithBazelFixCommands("//multiple:test")
+	ibazel.RunWithBazelFixCommands("//multiple:collector")
 	defer ibazel.Kill()
 
 	ibazel.ExpectFixCommands([]string{

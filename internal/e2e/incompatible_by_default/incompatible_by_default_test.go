@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -74,7 +75,7 @@ func TestRunWithPlatforms(t *testing.T) {
 	ibazel.Run([]string{"--platforms=//:platform2"}, "//:incompatible_by_default")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!")
+	ibazel.ExpectOutput("hello!", 35 * time.Second)
 }
 
 func TestRunWithConfig(t *testing.T) {

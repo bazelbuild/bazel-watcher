@@ -292,7 +292,7 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
 
-	b.WriteToStderr(false)
+	b.WriteToStderr(true)  // revert 34c48343 (#536: Improve logging infrastructure) TODO: hide behind argument?
 	b.WriteToStdout(false)
 	stdoutBuffer, stderrBuff := b.newCommand("query", blazeArgs...)
 

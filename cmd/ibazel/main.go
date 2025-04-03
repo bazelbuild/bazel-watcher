@@ -55,7 +55,7 @@ var overrideableBazelFlags []string = []string{
 	"--flaky_test_attempts=",
 	"--host_jvmopt",
 	"--isatty=",
-	"--jvmopt",
+	"--jvmopt",  // breaks in query on bazel < 6.0, ignored bazel >= 6.0
 	"--keep_going",
 	"-k",
 	"--nocache_test_results",

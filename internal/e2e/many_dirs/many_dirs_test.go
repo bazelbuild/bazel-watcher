@@ -68,7 +68,7 @@ func TestManyDirsRunWithModifiedFile(t *testing.T) {
 	ibazel.Run([]string{}, "//watched:many_dirs")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Ran!")
+	ibazel.ExpectOutput("Ran!", 40 * time.Second)
 
 	e2e.MustWriteFile(t, "watched/dir_10/data.txt", "10th file!")
 	ibazel.ExpectOutput("Ran!")

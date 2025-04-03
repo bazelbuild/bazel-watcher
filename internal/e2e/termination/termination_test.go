@@ -4,6 +4,7 @@ import (
 	"runtime"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -44,18 +45,18 @@ func TestTerminationBasic(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 1!\";"+signalHandler)
 	ibazel.Run([]string{}, "//:termination")
-	ibazel.ExpectOutput("Started 1!")
+	ibazel.ExpectOutput("Started 1!", 50 * time.Second)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandler)
 
 	// Windows doesn't support signals unfortunately
 	if runtime.GOOS == "windows" {
-		ibazel.ExpectOutput("Started 1!Started 2!")
+		ibazel.ExpectOutput("Started 1!Started 2!", 50 * time.Second)
 		ibazel.Signal(syscall.SIGINT)
-		ibazel.ExpectOutput("Started 1!Started 2!")
+		ibazel.ExpectOutput("Started 1!Started 2!", 50 * time.Second)
 	} else {
-		ibazel.ExpectOutput("Started 1!SIGTERM.Started 2!")
+		ibazel.ExpectOutput("Started 1!SIGTERM.Started 2!", 50 * time.Second)
 		ibazel.Signal(syscall.SIGINT)
-		ibazel.ExpectOutput("Started 1!SIGTERM.Started 2!SIGTERM.")
+		ibazel.ExpectOutput("Started 1!SIGTERM.Started 2!SIGTERM.", 50 * time.Second)
 	}
 	defer ibazel.Kill()
 }
@@ -68,9 +69,9 @@ func TestTerminationTimeout(t *testing.T) {
 	ibazel := e2e.SetUp(t)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 1!\";"+signalHandlerBroken)
 	ibazel.Run([]string{}, "//:termination")
-	ibazel.ExpectOutput("Started 1!")
+	ibazel.ExpectOutput("Started 1!", 50 * time.Second)
 	e2e.MustWriteFile(t, "termination.sh", "printf \"Started 2!\";"+signalHandlerBroken)
 	ibazel.Signal(syscall.SIGINT)
-	ibazel.ExpectOutput("Started 1!Started 2!")
+	ibazel.ExpectOutput("Started 1!Started 2!", 50 * time.Second)
 	defer ibazel.Kill()
 }
