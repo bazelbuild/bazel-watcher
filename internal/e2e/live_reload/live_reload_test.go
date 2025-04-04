@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 	"github.com/gorilla/websocket"
 )
 
@@ -34,7 +33,7 @@ printf "Live reload url: ${IBAZEL_LIVERELOAD_URL}"
 `
 
 func TestMain(m *testing.M) {
-	bazel_testing.TestMain(m, bazel_testing.Args{
+	e2e.TestMain(m, e2e.Args{
 		Main: mainFiles,
 	})
 }
@@ -46,7 +45,6 @@ type liveReloadHello struct {
 
 func assertEqual(t *testing.T, want, got interface{}, msg string) {
 	t.Helper()
-
 }
 
 func verify(t *testing.T, conn *websocket.Conn, want interface{}) {

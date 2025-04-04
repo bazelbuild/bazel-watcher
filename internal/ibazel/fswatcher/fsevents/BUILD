@@ -37,8 +37,13 @@ go_test(
     srcs = ["fsevents_test.go"],
     embed = [":fsevents"],
     importpath = "github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/fsevents",
-    deps = [
-        "@com_github_fsnotify_fsevents//:fsevents",
-        "@com_github_google_go_cmp//cmp",
-    ],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@com_github_google_go_cmp//cmp",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "@com_github_google_go_cmp//cmp",
+        ],
+        "//conditions:default": [],
+    }),
 )
