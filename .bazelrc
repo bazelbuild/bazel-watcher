@@ -4,4 +4,4 @@ build --workspace_status_command="python3 tools/workplace_status.py"
 build:release --stamp
 test:release --stamp
 
---noenable_bzlmod
+--enable_bzlmod

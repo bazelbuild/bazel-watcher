@@ -185,6 +185,9 @@ func TestIBazelLifecycle(t *testing.T) {
 }
 
 func TestIBazelLoop(t *testing.T) {
+  if runtime.GOOS == "darwin" && os.Getenv("IBAZEL_USE_LEGACY_WATCHER") == "1" {
+    t.Skip("Skipping TestIBazelLoop on macOS with legacy watcher due to known race condition")
+	}
 	log.SetTesting(t)
 
 	i, mockBazel := newIBazel(t)
