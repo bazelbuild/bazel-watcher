@@ -39,6 +39,7 @@ func (m *MainWorkspace) FindWorkspace() (string, error) {
 	}
 
 	volume := filepath.VolumeName(path)
+	sentinel_filenames := []string{"WORKSPACE.bzlmod", "WORKSPACE.bazel", "MODULE.bazel", "WORKSPACE"} // search order
 
 	for {
 		// filepath.Dir() includes a trailing separator if we're at the root
@@ -46,17 +47,16 @@ func (m *MainWorkspace) FindWorkspace() (string, error) {
 			path = volume
 		}
 
-		// Check if we're at the workspace path
-		if s, err := os.Stat(filepath.Join(path, "WORKSPACE")); err == nil {
-			if !s.IsDir() && s.Name() == "WORKSPACE" {
-				// In macOS directories called "workspace" will match because the file
-				// system isn't case sensitive.
-				return path, nil
-			}
-		}
+		for _, sentinel := range sentinel_filenames {
+			// Check if we're at the workspace path
+			if s, err := os.Stat(filepath.Join(path, sentinel)); err == nil {
+				// In macOS directories called "workspace" will match "WORKSPACE"
+				// because the file system isn't case sensitive
 
-		if _, err := os.Stat(filepath.Join(path, "WORKSPACE.bazel")); err == nil {
-			return path, nil
+				if !s.IsDir() && s.Name() == sentinel {
+					return path, nil
+				}
+			}
 		}
 
 		// If we've reached the root, then we know the cwd isn't within a workspace
