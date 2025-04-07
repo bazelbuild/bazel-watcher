@@ -3,7 +3,7 @@ module github.com/bazelbuild/bazel-watcher
 require (
 	github.com/bazelbuild/rules_go v0.53.0
 	github.com/fsnotify/fsevents v0.1.1
-	github.com/fsnotify/fsnotify v1.6.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.0
