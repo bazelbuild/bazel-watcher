@@ -9,14 +9,12 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 // Create 4096 + 1 (1 above the fsevents limit) data files in individual directories to be watched.
 var dirCount = int(math.Pow(2, 12)) + 1
 
 func TestMain(m *testing.M) {
-
 	// Create directory structure of the form:
 	//   //watched/BAZEL.build
 	//   //watched/many_dirs.sh
@@ -54,7 +52,7 @@ nothing to see here
 
 `, strings.Join(dataFileNames, ", ")) + strings.Join(dataFiles, "\n")
 
-	bazel_testing.TestMain(m, bazel_testing.Args{
+	e2e.TestMain(m, e2e.Args{
 		Main: mainFiles,
 	})
 }

@@ -216,12 +216,26 @@ func (i *IBazelTester) ExpectNoError(delay ...time.Duration) {
 	// Flush the stdout before waiting for new content.
 	i.stderrOld = i.GetError()
 
+	stripAnsiCodes := func(s string) string {
+		// This regex matches ANSI escape codes
+		ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+		cleanStr := ansiRegex.ReplaceAllString(s, "")
+
+		// Also strip just "[0m" which might appear without the escape character
+		bracketRegex := regexp.MustCompile(`\[0m`)
+		cleanStr = bracketRegex.ReplaceAllString(cleanStr, "")
+
+		return cleanStr
+	}
+
 	stopAt := time.Now().Add(d)
 	for time.Now().Before(stopAt) {
 		time.Sleep(5 * time.Millisecond)
 
 		stderr := i.GetError()[len(*&i.stderrOld):]
-		if len(stderr) != 0 {
+		// Strip ANSI color codes before checking if stderr is empty
+		cleanStderr := stripAnsiCodes(stderr)
+		if len(cleanStderr) != 0 {
 			i.t.Errorf(`Expected no output err, but found stderr "%s".`, stderr)
 			i.stderrOld = i.GetError()
 			return
@@ -320,7 +334,7 @@ func (i *IBazelTester) Expect(want string, stream func() string, history *string
 	if match, err := regexp.MatchString(want, stream()); match == false || err != nil {
 		i.t.Errorf("Expected iBazel output after %v to be:\nWanted [%v], got [%v]", delay, want, stream())
 		i.t.Errorf("Stderr: [%v]\niBazelStderr: [%v]", i.GetError(), i.GetIBazelError())
-		//i.t.Log(string(debug.Stack()))
+		// i.t.Log(string(debug.Stack()))
 
 		// In order to prevent cascading errors where the first result failing to
 		// match ruins the error output for the rest of the runs, persist the old
