@@ -137,6 +137,7 @@ type Bazel interface {
 	Query(args ...string) (*blaze_query.QueryResult, error)
 	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
+	Norun(args ...string) (*bytes.Buffer, error)
 	Test(args ...string) (*bytes.Buffer, error)
 	Run(args ...string) (*exec.Cmd, *bytes.Buffer, error)
 	Wait() error
@@ -355,6 +356,15 @@ func (b *bazel) processCQuery(out []byte) (*analysis.CqueryResult, error) {
 
 func (b *bazel) Build(args ...string) (*bytes.Buffer, error) {
 	stdoutBuffer, stderrBuffer := b.newCommand("build", append(b.args, args...)...)
+	err := b.cmd.Run()
+
+	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+	return stdoutBuffer, err
+}
+
+// Builds a target using `bazel run --norun` to get the target's runfiles setup correctly even under `--remote_download_outputs=minimal`
+func (b *bazel) Norun(args ...string) (*bytes.Buffer, error) {
+	stdoutBuffer, stderrBuffer := b.newCommand("run", append(append(b.args, "--norun"), args...)...)
 	err := b.cmd.Run()
 
 	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
