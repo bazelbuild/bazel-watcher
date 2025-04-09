@@ -46,7 +46,6 @@ tasks:
       - "--test_env=IBAZEL_USE_LEGACY_WATCHER=1"
     test_targets:
       - "..."
-      - "-//internal/e2e/stream:stream_test"
   windows:
     build_flags:
       - "--build_tag_filters=-nowindows"
