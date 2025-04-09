@@ -60,7 +60,7 @@ func TestNotifyCommand(t *testing.T) {
 
 	b.AssertActions(t, [][]string{
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--remote_download_outputs=toplevel"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},
@@ -70,12 +70,12 @@ func TestNotifyCommand(t *testing.T) {
 		{"WriteToStdout", "true"},
 		{"Run", "--script_path=.*", "//path/to:target"},
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--remote_download_outputs=toplevel"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--remote_download_outputs=toplevel"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
 		{"Build", "//path/to:target"},

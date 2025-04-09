@@ -94,7 +94,8 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 	b := bazelNew()
 	b.SetStartupArgs(c.startupArgs)
-	b.SetArguments(c.bazelArgs)
+	// We must always pass --remote_download_outputs=toplevel to ensure that the runfiles of the target are correctly downloaded before we notify the process
+	b.SetArguments(append(c.bazelArgs, "--remote_download_outputs=toplevel"))
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
