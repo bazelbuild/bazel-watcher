@@ -199,10 +199,22 @@ func TestIBazelLoop(t *testing.T) {
 	mockBazel.AddQueryResponse("buildfiles(deps(set(//my:target)))", &blaze_query.QueryResult{})
 	mockBazel.AddQueryResponse("kind('source file', deps(set(//my:target)))", &blaze_query.QueryResult{})
 
-	// Replace the file watching channel with one that has a buffer.
-	i.buildFileWatcher = &fakeFSNotifyWatcher{
+	// Replace the file watching channels with ones that have buffers.
+	fakeBuildWatcher := &fakeFSNotifyWatcher{
 		EventChan: make(chan common.Event, 1),
 	}
+	i.buildFileWatcher = fakeBuildWatcher
+
+	fakeSourceWatcher := &fakeFSNotifyWatcher{
+		EventChan: make(chan common.Event, 1),
+	}
+	i.sourceFileWatcher = fakeSourceWatcher
+
+	// Ensure i.filesWatched uses the fake watchers, clearing any potential
+	// entries added for the real watchers during i.setup()
+	i.filesWatched = make(map[common.Watcher]map[string]struct{})
+	i.filesWatched[fakeBuildWatcher] = map[string]struct{}{}
+	i.filesWatched[fakeSourceWatcher] = map[string]struct{}{}
 
 	defer i.Cleanup()
 
@@ -244,8 +256,8 @@ func TestIBazelLoop(t *testing.T) {
 
 	assertState(QUERY)
 	step()
-	i.filesWatched[i.buildFileWatcher] = map[string]struct{}{"/path/to/BUILD": {}}
-	i.filesWatched[i.sourceFileWatcher] = map[string]struct{}{"/path/to/foo": {}}
+	i.filesWatched[fakeBuildWatcher]["/path/to/BUILD"] = struct{}{}
+	i.filesWatched[fakeSourceWatcher]["/path/to/foo"] = struct{}{}
 	assertState(RUN)
 	step() // Actually run the command
 	assertRun()
