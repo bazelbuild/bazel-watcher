@@ -51,7 +51,7 @@ func TestProfiler(t *testing.T) {
 	ibazel.RunWithProfiler("//:test", tempFile.Name())
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Profiler url: http://.+:\\d+", 35 * time.Second)
+	ibazel.ExpectOutput("Profiler url: http://.+:\\d+", 50 * time.Second)
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 

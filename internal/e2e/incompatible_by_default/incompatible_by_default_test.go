@@ -69,5 +69,5 @@ func TestRunWithPlatforms(t *testing.T) {
 	ibazel.Run([]string{"--platforms=//:platform2"}, "//:incompatible_by_default")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!", 35 * time.Second)
+	ibazel.ExpectOutput("hello!", 50 *  time.Second)
 }

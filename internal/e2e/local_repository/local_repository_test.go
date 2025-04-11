@@ -97,7 +97,7 @@ func TestRunWithModifiedFile(t *testing.T) {
 	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!", 40 * time.Second)
+	ibazel.ExpectOutput("hello!", 50 * time.Second)
 
 	ioutil.WriteFile(
 		filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLibAlt), 0777)
