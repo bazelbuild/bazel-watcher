@@ -57,7 +57,6 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 		debug.PrintStack()
 	}
 }
-
 func assertOsExited(t *testing.T, osExitChan chan int) {
 	select {
 	case exitCode := <-osExitChan:
@@ -67,7 +66,6 @@ func assertOsExited(t *testing.T, osExitChan chan int) {
 		debug.PrintStack()
 	}
 }
-
 func assertNotOsExited(t *testing.T, osExitChan chan int) {
 	select {
 	case <-osExitChan:
@@ -100,12 +98,10 @@ func (m *mockCommand) Start() (*bytes.Buffer, error) {
 	m.started = true
 	return nil, nil
 }
-
 func (m *mockCommand) NotifyOfChanges() *bytes.Buffer {
 	m.notifiedOfChanges = true
 	return nil
 }
-
 func (m *mockCommand) Terminate() {
 	if !m.started {
 		panic("Terminated before starting")
@@ -115,14 +111,12 @@ func (m *mockCommand) Terminate() {
 	m.terminated = true
 	m.didTermChan <- struct{}{}
 }
-
 func (m *mockCommand) Kill() {
 	if !m.started {
 		panic("Sending kill signal before terminating")
 	}
 	m.signalChan <- syscall.SIGKILL
 }
-
 func (m *mockCommand) assertTerminated(t *testing.T) {
 	select {
 	case <-m.didTermChan:
@@ -132,14 +126,12 @@ func (m *mockCommand) assertTerminated(t *testing.T) {
 		debug.PrintStack()
 	}
 }
-
 func (m *mockCommand) assertSignal(t *testing.T, signum syscall.Signal) {
 	if <-m.signalChan != signum {
 		t.Errorf("An incorrect signal was used to terminate a process")
 		debug.PrintStack()
 	}
 }
-
 func (m *mockCommand) IsSubprocessRunning() bool {
 	return m.started && !m.terminated
 }

@@ -2,56 +2,56 @@
 tasks:
   ubuntu1804:
     build_flags:
-      - "--build_tag_filters=-nolinux"
+    - "--build_tag_filters=-nolinux"
     build_targets:
-      - "..."
+    - "..."
     test_flags:
-      - "--@io_bazel_rules_go//go/config:race"
-      - "--test_tag_filters=-nolinux"
+    - "--@io_bazel_rules_go//go/config:race"
+    - "--test_tag_filters=-nolinux"
     test_targets:
-      - "..."
+    - "..."
   ubuntu1604:
     build_flags:
-      - "--build_tag_filters=-nolinux"
+    - "--build_tag_filters=-nolinux"
     build_targets:
-      - "..."
+    - "..."
     test_flags:
-      - "--@io_bazel_rules_go//go/config:race"
-      - "--test_tag_filters=-nolinux"
+    - "--@io_bazel_rules_go//go/config:race"
+    - "--test_tag_filters=-nolinux"
     test_targets:
-      - "..."
+    - "..."
   macos:
     build_flags:
-      - "--build_tag_filters=-nomacos"
+    - "--build_tag_filters=-nomacos"
     build_targets:
-      - "..."
+    - "..."
     test_flags:
-      - "--@io_bazel_rules_go//go/config:race"
-      - "--test_tag_filters=-nomacos"
+    - "--@io_bazel_rules_go//go/config:race"
+    - "--test_tag_filters=-nomacos"
     test_targets:
-      - "..."
+    - "..."
   macos_legacy_watcher:
     platform: macos
     build_flags:
-      - "--build_tag_filters=-nomacos"
+    - "--build_tag_filters=-nomacos"
     build_targets:
-      - "..."
+    - "..."
     test_flags:
-      - "--@io_bazel_rules_go//go/config:race"
-      - "--test_tag_filters=-nomacos"
-      - "--test_env=IBAZEL_USE_LEGACY_WATCHER=1"
+    - "--@io_bazel_rules_go//go/config:race"
+    - "--test_tag_filters=-nomacos"
+    - "--test_env=IBAZEL_USE_LEGACY_WATCHER=1"
     test_targets:
-      - "..."
+    - "..."    
   windows:
     build_flags:
-      - "--build_tag_filters=-nowindows"
+    - "--build_tag_filters=-nowindows"
     build_targets:
-      - "..."
+    - "..."
     test_flags:
-      - "--test_tag_filters=-nowindows"
-      - "--enable_runfiles"
-      # On Windows CI, bazel (bazelisk) needs %LocalAppData% to find the cache directory.
-      # We invoke bazel in tests, so the tests need this, too.
-      - "--test_env=LOCALAPPDATA"
+    - "--test_tag_filters=-nowindows"
+    - "--enable_runfiles"
+    # On Windows CI, bazel (bazelisk) needs %LocalAppData% to find the cache directory.
+    # We invoke bazel in tests, so the tests need this, too.
+    - "--test_env=LOCALAPPDATA"
     test_targets:
-      - "..."
+    - "..."
