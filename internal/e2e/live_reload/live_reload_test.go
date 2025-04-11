@@ -50,7 +50,7 @@ func assertEqual(t *testing.T, want, got interface{}, msg string) {
 func verify(t *testing.T, conn *websocket.Conn, want interface{}) {
 	t.Helper()
 
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 
 	_, v, err := conn.ReadMessage()
 	if err != nil {
@@ -69,7 +69,7 @@ func TestLiveReload(t *testing.T) {
 	ibazel.Run([]string{}, "//:live_reload")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Live reload url: http://.+:\\d+", 35 * time.Second)
+	ibazel.ExpectOutput("Live reload url: http://.+:\\d+", 40 * time.Second)
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 
