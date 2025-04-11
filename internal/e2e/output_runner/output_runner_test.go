@@ -109,12 +109,12 @@ func TestOutputRunner(t *testing.T) {
 
 	ibazel = e2e.SetUp(t)
         t.Log("Creating bazel_fix_commands")
-	e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
-	[{
-		"regex": "^(.*)runacommand(.*)$",
-		"command": "touch",
-		"args": ["%s"]
-	}]`, sentinalFileName))
+      e2e.MustWriteFile(t, ".bazel_fix_commands.json", fmt.Sprintf(`
+      [{
+              "regex": "INFO: Build completed successfully",
+              "command": "touch",
+              "args": ["%s"]
+      }]`, sentinalFileName))
 
         t.Log("overwriting overwrite.sh")
 	e2e.MustWriteFile(t, "single/overwrite.sh", `
@@ -160,22 +160,30 @@ def fix_deps():
 }
 
 func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
-	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
+        e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
        [{
-               "regex": "^.*runcommand (.*)$",
+               "regex": "INFO: Found 1 target",
                "command": "echo",
-               "args": ["$1"]
+               "args": ["foo"]
+       }, {
+               "regex": "bazel-bin/multiple/out-collector",
+               "command": "echo",
+               "args": ["baz"]
+       }, {
+               "regex": "INFO: Build completed successfully",
+               "command": "echo",
+               "args": ["bar"]
        }]`)
 
-	ibazel := e2e.NewIBazelTester(t)
-	ibazel.RunWithBazelFixCommands("//multiple:collector")
-	defer ibazel.Kill()
+      ibazel := e2e.NewIBazelTester(t)
+      ibazel.RunWithBazelFixCommands("//multiple:collector")
+      defer ibazel.Kill()
 
-	ibazel.ExpectFixCommands([]string{
-		"echo foo",
-		"echo bar",
-		"echo baz",
-	})
+      ibazel.ExpectFixCommands([]string{
+              "echo foo",
+              "echo baz",
+              "echo bar",
+      })
 }
 
 func TestNotifyWhenInvalidConfig(t *testing.T) {
