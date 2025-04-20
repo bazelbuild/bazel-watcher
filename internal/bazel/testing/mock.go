@@ -114,6 +114,12 @@ func (b *MockBazel) Test(args ...string) (*bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Test"}, args...))
 	return nil, nil
 }
+
+func (b *MockBazel) Norun(args ...string) (*bytes.Buffer, error) {
+	b.actions = append(b.actions, append([]string{"Norun"}, args...))
+	return nil, b.buildError
+}
+
 func (b *MockBazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.actions = append(b.actions, append([]string{"Run"}, args...))
 	return nil, nil, nil
