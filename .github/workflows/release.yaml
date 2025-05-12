@@ -63,7 +63,7 @@ jobs:
         run: cp $(bazel info ${{ matrix.cpu_flag }} bazel-bin)/cmd/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.artifact }}
@@ -91,7 +91,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           path: ./npm-staging/bin
 
@@ -112,7 +112,7 @@ jobs:
           bazel run --config="release" "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
@@ -122,7 +122,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: ./npm-staging
-        # The setup-node@v3 step created an .npmrc file, but we changed directories. Copy it first.
+        # The setup-node step created an .npmrc file, but we changed directories. Copy it first.
         run: |
           npm config list
           echo -n "Publishing to NPM as "
