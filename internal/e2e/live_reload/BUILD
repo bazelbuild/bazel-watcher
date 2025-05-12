@@ -6,6 +6,6 @@ go_bazel_test(
     deps = [
         "//internal/e2e",
         "@com_github_gorilla_websocket//:websocket",
-        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing",
     ],
 )

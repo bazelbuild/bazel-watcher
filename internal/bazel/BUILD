@@ -27,7 +27,7 @@ go_library(
         "//internal/ibazel/log",
         "//third_party/bazel/master/src/main/protobuf/analysis",
         "//third_party/bazel/master/src/main/protobuf/blaze_query",
-        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//proto",
     ],
 )
 

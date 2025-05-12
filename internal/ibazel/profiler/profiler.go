@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	golog "log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -29,14 +28,19 @@ import (
 	"sync"
 	"time"
 
+	_ "embed"
+	golog "log"
+
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
 var profileDev = flag.String("profile_dev", "", "Turn on profiling and append report to file")
 
-const (
+//go:embed profiler.js
+var js []byte
 
+const (
 	// DefaultPort is the profiler Server's default server port
 	DefaultPort uint16 = 30000
 )
@@ -100,7 +104,7 @@ func (i *Profiler) Initialize(info *map[string]string) {
 	}
 
 	var err error
-	i.file, err = os.OpenFile(*profileDev, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	i.file, err = os.OpenFile(*profileDev, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Errorf("Failed to open profile output file: %s", *profileDev)
 		return
@@ -355,7 +359,6 @@ func (i *Profiler) profilerEventHandler(rw http.ResponseWriter, req *http.Reques
 	decoder := json.NewDecoder(req.Body)
 	var remoteEvent profilerRemoteEvent
 	err := decoder.Decode(&remoteEvent)
-
 	if err != nil {
 		log.Errorf("Failed to decode profile post data: %v", err)
 		rw.WriteHeader(http.StatusBadRequest)
@@ -387,7 +390,6 @@ func makeTimestamp() int64 {
 
 func testPort(port uint16) bool {
 	ln, err := net.Listen("tcp", ":"+strconv.FormatInt(int64(port), 10))
-
 	if err != nil {
 		log.Errorf("Error opening port %d: %v", port, err)
 		return false

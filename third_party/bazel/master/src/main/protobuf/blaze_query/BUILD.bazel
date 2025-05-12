@@ -1,23 +1,26 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# gazelle:ignore build.pb.go
 
 proto_library(
     name = "blaze_query_proto",
     srcs = ["build.proto"],
-    visibility = ["//visibility:public"],
+    visibility = ["//:__subpackages__"],
 )
 
 go_proto_library(
     name = "blaze_query_go_proto",
     importpath = "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query",
     proto = ":blaze_query_proto",
-    visibility = ["//visibility:public"],
+    visibility = ["//:__subpackages__"],
 )
 
 go_library(
     name = "blaze_query",
     embed = [":blaze_query_go_proto"],
     importpath = "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query",
-    visibility = ["//visibility:public"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_golang_protobuf//proto"],
 )
