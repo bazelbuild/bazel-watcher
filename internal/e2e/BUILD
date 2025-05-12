@@ -17,5 +17,6 @@ go_library(
     deps = [
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
         "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "@org_golang_x_tools//txtar",
     ],
 )
