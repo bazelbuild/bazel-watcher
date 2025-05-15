@@ -38,6 +38,8 @@ var overrideableBazelFlags []string = []string{
 	"--action_env",
 	"--announce_rc",
 	"--aspects",
+	"--bes_backend=",
+	"--bes_keywords=",
 	"--build_tag_filters=",
 	"--build_tests_only",
 	"--check_visibility=",
