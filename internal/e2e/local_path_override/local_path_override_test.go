@@ -113,7 +113,7 @@ func TestRunWithOverrideRepository(t *testing.T) {
 
 	ibazel.ExpectOutput("hello!", 35 * time.Second)
 
-	if err := ioutil.WriteFile(filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryRecompiledLib), 0777); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLib), 0777); err != nil {
 		log.Fatalf("Failed to write file lib.sh a second time. (%v)", err)
 	}
 	ibazel.ExpectOutput("hello!", 35 * time.Second)
