@@ -44,7 +44,9 @@ sh_binary(
 -- test.sh --
 #!/bin/bash
 # Due to a lack of runfiles file support, search any potential override path.
-for f in "../secondary*/lib.sh"; do source $f; done
+for f in '../secondary*/lib.sh'; do source $f; done
+# Including Windows.
+for f in '..\secondary*\lib.sh'; do source $f; done
 say_hello
 
 -- MODULE.bazel --
