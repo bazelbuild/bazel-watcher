@@ -117,7 +117,7 @@ func TestRunWithOverrideRepository(t *testing.T) {
 	}
 
 	ibazel := e2e.SetUp(t)
-	ibazel.Run([]string{}, "//:test")
+	ibazel.Run([]string{"--enable_bzlmod=1"}, "//:test")
 	defer ibazel.Kill()
 
 	ibazel.ExpectOutput("hello!", 35 * time.Second)
