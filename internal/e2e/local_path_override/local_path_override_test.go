@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -112,10 +111,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestRunWithOverrideRepository(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skipf("Skipping windows tests.")
-	}
-
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{"--enable_bzlmod=1"}, "//:test")
 	defer ibazel.Kill()
