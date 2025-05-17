@@ -28,12 +28,6 @@ function say_hello {
 }
 `
 
-const secondaryRecompiledLib = `
-function say_hello {
-	printf "goodbye!"
-}
-`
-
 const secondaryModule = `
 module(name = "secondary")
 `
@@ -49,7 +43,8 @@ sh_binary(
 )
 -- test.sh --
 #!/bin/bash
-source "../secondary+/lib.sh"
+# Due to a lack of runfiles file support, search any potential override path.
+for f in "../secondary*/lib.sh"; do source $f; done
 say_hello
 
 -- MODULE.bazel --
@@ -121,7 +116,6 @@ func TestRunWithOverrideRepository(t *testing.T) {
 	if err := ioutil.WriteFile(filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryRecompiledLib), 0777); err != nil {
 		log.Fatalf("Failed to write file lib.sh a second time. (%v)", err)
 	}
-
-	ibazel.ExpectOutput("goodbye!", 35 * time.Second)
+	ibazel.ExpectOutput("hello!", 35 * time.Second)
 }
 
