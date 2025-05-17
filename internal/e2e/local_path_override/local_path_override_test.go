@@ -79,6 +79,7 @@ func TestMain(m *testing.M) {
 				"BUILD.bazel": secondaryBuild,
 				"lib.sh":      secondaryLib,
 				"MODULE.bazel":   secondaryModule,
+				"WORKSPACE":   "",
 			} {
 				if err := ioutil.WriteFile(filepath.Join(secondaryWd, file), []byte(contents), 0777); err != nil {
 					log.Fatalf("Failed to write file %q: %v", file, err)
