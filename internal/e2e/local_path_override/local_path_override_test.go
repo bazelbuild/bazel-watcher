@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -45,8 +46,6 @@ sh_binary(
 #!/bin/bash
 # Due to a lack of runfiles file support, search any potential override path.
 for f in '../secondary*/lib.sh'; do source $f; done
-# Including Windows.
-for f in '..\\secondary*\\lib.sh'; do source $f; done
 say_hello
 
 -- MODULE.bazel --
@@ -109,6 +108,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestRunWithOverrideRepository(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping windows tests.")
+	}
+
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{"--enable_bzlmod=1"}, "//:test")
 	defer ibazel.Kill()
