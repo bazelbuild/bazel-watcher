@@ -580,3 +580,33 @@ func TestParseTarget(t *testing.T) {
 		})
 	}
 }
+
+func TestFindInLocalRepositoryBasic(t *testing.T) {
+	log.SetTesting(t)
+	localRepos := make(map[string]string)
+	localRepos["@@bazel-watcher"] = "foo"
+	if key, ok := findInLocalRepository(localRepos, "@@bazel-watcher"); !ok {
+		t.Errorf("findInLocalRepository(%q, %q) = %q failed, want %q", localRepos, "bazel-watcher", key, "foo")
+	} else {
+		assertEqual(t, key, "foo", "Missing key.")
+	}
+}
+
+func TestFindInLocalRepositoryOverriden(t *testing.T) {
+	log.SetTesting(t)
+	localRepos := make(map[string]string)
+	localRepos["@@bazel-watcher+"] = "foo"
+	if key, ok := findInLocalRepository(localRepos, "@@bazel-watcher"); !ok {
+		t.Errorf("findInLocalRepository(%q, %q) = %q failed, want %q", localRepos, "bazel-watcher", key, "foo")
+	} else {
+		assertEqual(t, key, "foo", "Missing key.")
+	}
+}
+
+func TestFindInLocalRepositoryMissing(t *testing.T) {
+	log.SetTesting(t)
+	localRepos := make(map[string]string)
+	localRepos["@@exists"] = "foo"
+	_, ok := findInLocalRepository(localRepos, "@@missing")
+	assertEqual(t, ok, false, "Should be missing.")
+}
