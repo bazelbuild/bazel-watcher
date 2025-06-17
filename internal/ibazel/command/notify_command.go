@@ -104,7 +104,7 @@ func (c *notifyCommand) NotifyOfChanges() *bytes.Buffer {
 		log.Errorf("Error writing build to stdin: %s", err)
 	}
 
-	outputBuffer, res := b.Build(c.target)
+	outputBuffer, res := b.Norun(c.target)
 	if res != nil {
 		log.Errorf("IBAZEL BUILD FAILURE: %v", res)
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED FAILURE\n"))

@@ -38,6 +38,8 @@ var overrideableBazelFlags []string = []string{
 	"--action_env",
 	"--announce_rc",
 	"--aspects",
+	"--bes_backend=",
+	"--bes_keywords=",
 	"--build_tag_filters=",
 	"--build_tests_only",
 	"--check_visibility=",
@@ -79,6 +81,7 @@ var overrideableBazelFlags []string = []string{
 	"--test_output=",
 	"--test_tag_filters=",
 	"--test_timeout=",
+	"--test_sharding_strategy=",
 	"--test_summary=",
 	// Custom Starlark build settings
 	// https://docs.bazel.build/versions/master/skylark/config.html#using-build-settings-on-the-command-line
