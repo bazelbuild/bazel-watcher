@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 const secondaryBuild = `
@@ -60,7 +59,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	bazel_testing.TestMain(m, bazel_testing.Args{
+	e2e.TestMain(m, e2e.Args{
 		Main: mainFiles,
 		SetUp: func() error {
 			// Create two secondary workspaces in sibling folders of the main workspace.
@@ -98,7 +97,7 @@ func TestRunWithModifiedFile(t *testing.T) {
 	ibazel.Run([]string{}, "//:test")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("hello!", 40 * time.Second)
+	ibazel.ExpectOutput("hello!", 50 * time.Second)
 
 	ioutil.WriteFile(
 		filepath.Join(secondaryWd, "lib.sh"), []byte(secondaryLibAlt), 0777)

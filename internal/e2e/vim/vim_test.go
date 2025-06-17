@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/e2e"
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
 func TestMain(m *testing.M) {
-	bazel_testing.TestMain(m, bazel_testing.Args{})
+	e2e.TestMain(m, e2e.Args{})
 }
 
 func renameAndWriteNewFile(t *testing.T, fname, content string) {
