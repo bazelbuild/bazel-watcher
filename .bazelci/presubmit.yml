@@ -1,6 +1,6 @@
 ---
 tasks:
-  ubuntu1804:
+  ubuntu2204:
     build_flags:
     - "--build_tag_filters=-nolinux"
     build_targets:
@@ -10,7 +10,7 @@ tasks:
     - "--test_tag_filters=-nolinux"
     test_targets:
     - "..."
-  ubuntu1604:
+  ubuntu2404:
     build_flags:
     - "--build_tag_filters=-nolinux"
     build_targets:
@@ -41,7 +41,7 @@ tasks:
     - "--test_tag_filters=-nomacos"
     - "--test_env=IBAZEL_USE_LEGACY_WATCHER=1"
     test_targets:
-    - "..."    
+    - "..."
   windows:
     build_flags:
     - "--build_tag_filters=-nowindows"
