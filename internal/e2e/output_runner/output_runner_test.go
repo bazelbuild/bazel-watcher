@@ -160,6 +160,7 @@ def fix_deps():
 }
 
 func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
+        // TODO: Change this to validate that execution happens based on the executables defined in main instead of on the output of Bazel itself
         e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
        [{
                "regex": "INFO: Found 1 target",
