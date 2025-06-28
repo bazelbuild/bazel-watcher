@@ -1,5 +1,9 @@
 module github.com/bazelbuild/bazel-watcher
 
+go 1.23.0
+
+toolchain go1.24.4
+
 require (
 	github.com/bazelbuild/rules_go v0.55.1
 	github.com/fsnotify/fsevents v0.2.0
@@ -7,19 +11,10 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/jaschaephraim/lrserver v0.0.0-20171129202958-50d19f603f71
+	github.com/jaschaephraim/lrserver v0.0.0-20240306232639-afed386b3640
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/smartystreets/goconvey v1.7.2 // indirect
-	gopkg.in/fsnotify.v1 v1.4.7 // indirect
-)
-
-require (
 	golang.org/x/sys v0.33.0
 	golang.org/x/tools v0.34.0
 )
 
-require google.golang.org/protobuf v1.36.3 // indirect
-
-go 1.23.0
-
-toolchain go1.24.4
+require google.golang.org/protobuf v1.36.6 // indirect
