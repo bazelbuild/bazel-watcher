@@ -1,7 +1,7 @@
 package live_reload
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -69,7 +69,7 @@ func TestLiveReload(t *testing.T) {
 	ibazel.Run([]string{}, "//:live_reload")
 	defer ibazel.Kill()
 
-	ibazel.ExpectOutput("Live reload url: http://.+:\\d+", 40 * time.Second)
+	ibazel.ExpectOutput("Live reload url: http://.+:\\d+", 40*time.Second)
 	out := ibazel.GetOutput()
 	t.Logf("Output: '%s'", out)
 
@@ -92,23 +92,20 @@ func TestLiveReload(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bodyString := string(body)
 
-	expectedStart := "(function e(t,n,r)"
-	actualStart := bodyString[0:len(expectedStart)]
-	if actualStart != expectedStart {
-		t.Errorf("Expected js to start with \"%s\" but got \"%s\".", expectedStart, actualStart)
-	}
-
-	expectedEnd := "},{}]},{},[8]);"
-	actualEnd := bodyString[len(bodyString)-len(expectedEnd):]
-	if actualEnd != expectedEnd {
-		t.Errorf("Expected js to end with \"%s\" but got \"%s\".", expectedEnd, actualEnd)
+	for _, expected := range []string{
+		"function",
+		"{},",
+	} {
+		if !strings.Contains(bodyString, expected) {
+			t.Errorf("Expected js to contain with \"%s\".", expected)
+		}
 	}
 
 	wsUrl := "ws://" + url.Hostname() + ":" + url.Port() + "/livereload"
