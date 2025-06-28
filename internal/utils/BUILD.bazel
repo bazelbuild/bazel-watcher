@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+  name = "utils",
+  srcs = ["compatibility.go"],
+  importpath = "github.com/bazelbuild/bazel-watcher/internal/utils",
+  visibility = ["//visibility:public"],
+)
+
+go_test(
+  name = "utils_test", 
+  srcs = ["compatibility_test.go"],
+  embed = [":utils"],
+)
