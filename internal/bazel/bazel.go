@@ -238,8 +238,8 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 func (b *bazel) Info() (map[string]string, *bytes.Buffer, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
-	stdoutBuffer, stderrBuffer := b.newCommand("info")
 
+	stdoutBuffer, stderrBuffer:= b.newCommand("info", b.args...)
 	// This gofunction only prints if 'bazel info' takes longer than 8 seconds
 	doneCh := make(chan struct{})
 	defer close(doneCh)
@@ -293,6 +293,7 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
+	blazeArgs = append(blazeArgs, b.args...)
 
 	b.WriteToStderr(true)  // revert 34c48343 (#536: Improve logging infrastructure) TODO: hide behind argument?
 	b.WriteToStdout(false)
@@ -384,10 +385,13 @@ func (b *bazel) Test(args ...string) (*bytes.Buffer, error) {
 func (b *bazel) Run(args ...string) (*exec.Cmd, *bytes.Buffer, error) {
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
-	stdoutBuffer, stderrBuffer := b.newCommand("run", append(b.args, args...)...)
+	runArgs := append(b.args, args...)
+	stdoutBuffer, stderrBuffer := b.newCommand("run", runArgs...)
 	b.cmd.Stdin = os.Stdin
 
-	_, _ = stdoutBuffer.Write(stderrBuffer.Bytes())
+	if _, err := stdoutBuffer.Write(stderrBuffer.Bytes()); err != nil {
+		return nil, nil, fmt.Errorf("stdout.write(): %w", err)
+	}
 
 	err := b.cmd.Run()
 	if err != nil {
