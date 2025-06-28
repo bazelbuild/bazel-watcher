@@ -29,12 +29,15 @@ var Version = "Development"
 
 var overrideableStartupFlags []string = []string{
 	"--bazelrc",
+	"--bazelrc=",
+	"--nobazelrc", 
 	"--home_rc",
 	"--nohome_rc",
 	"--output_base",
 }
 
 var overrideableBazelFlags []string = []string{
+	"--announce_rc",
 	"--action_env",
 	"--announce_rc",
 	"--aspects",
@@ -53,6 +56,9 @@ var overrideableBazelFlags []string = []string{
 	"--define=",
 	"--dynamic_mode=",
 	"--enable_bzlmod=",
+	"--enable_bzlmod",
+	"--enable_workspace",
+	"--enable_workspace=",
 	"--features=",
 	"--flaky_test_attempts=",
 	"--host_jvmopt",
@@ -62,6 +68,7 @@ var overrideableBazelFlags []string = []string{
 	"-k",
 	"--nocache_test_results",
 	"--noenable_bzlmod",
+	"--noenable_workspace",
 	"--nostamp",
 	"--output_groups=",
 	"--override_repository=",
@@ -157,6 +164,7 @@ func parseArgs(in []string) (targets, startupArgs, bazelArgs, args []string) {
 			if isOverrideableStartupFlag(arg) {
 				startupArgs = append(startupArgs, arg)
 			} else if isOverrideableBazelFlag(arg) {
+				println("overriding bazel flag: %s", arg)
 				bazelArgs = append(bazelArgs, arg)
 			} else {
 				// If none of those things then it's probably a target.
@@ -213,7 +221,7 @@ func applyDefaultBazelArgs(bazelArgs []string) []string {
 			return bazelArgs
 		}
 	}
-	if (isTerminal()) {
+	if isTerminal() {
 		return append(bazelArgs, "--isatty=1")
 	} else {
 		return append(bazelArgs, "--isatty=0")
