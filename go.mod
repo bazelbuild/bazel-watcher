@@ -7,9 +7,9 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/jaschaephraim/lrserver v0.0.0-20171129202958-50d19f603f71
+	github.com/jaschaephraim/lrserver v0.0.0-20240306232639-afed386b3640
 	github.com/mattn/go-shellwords v1.0.12
-	github.com/smartystreets/goconvey v1.7.2 // indirect
+	github.com/smartystreets/goconvey v1.8.1 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )
 
