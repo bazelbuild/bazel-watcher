@@ -15,8 +15,8 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-watcher/internal/e2e",
     visibility = ["//visibility:public"],
     deps = [
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
-        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel",
+        "@io_bazel_rules_go//go/tools/bazel_testing",
         "@org_golang_x_tools//txtar",
     ],
 )

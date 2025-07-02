@@ -69,7 +69,15 @@ go_library(
             "//internal/ibazel/fswatcher/common",
             "//internal/ibazel/fswatcher/fsnotify",
         ],
+        "@io_bazel_rules_go//go/platform:osx": [
+            "//internal/ibazel/fswatcher/common",
+            "//internal/ibazel/fswatcher/fsnotify",
+        ],
         "@io_bazel_rules_go//go/platform:plan9": [
+            "//internal/ibazel/fswatcher/common",
+            "//internal/ibazel/fswatcher/fsnotify",
+        ],
+        "@io_bazel_rules_go//go/platform:qnx": [
             "//internal/ibazel/fswatcher/common",
             "//internal/ibazel/fswatcher/fsnotify",
         ],
