@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/bazel"
+	"github.com/bazelbuild/bazel-watcher/internal/utils"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/common"
@@ -43,9 +44,9 @@ var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 var exitMessages = map[os.Signal]string{
-	syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
-	syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
-	syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
+        syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
+        syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
+        syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
 }
 
 type State string
@@ -169,7 +170,8 @@ func (i *IBazel) handleSignals() {
 func (i *IBazel) newBazel() bazel.Bazel {
 	b := bazelNew()
 	b.SetStartupArgs(i.startupArgs)
-	b.SetArguments(i.bazelArgs)
+	bazelArgs := utils.EnsureBazel8Compatibility(i.bazelArgs)
+	b.SetArguments(bazelArgs)
 	return b
 }
 
