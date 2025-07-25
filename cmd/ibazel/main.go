@@ -70,6 +70,7 @@ var overrideableBazelFlags []string = []string{
 	"--repo_env",
 	"--runs_per_test=",
 	"--run_under=",
+	"--sandbox_add_mount_pair=",
 	"--show_result=",
 	"--stamp",
 	"--strategy=",
