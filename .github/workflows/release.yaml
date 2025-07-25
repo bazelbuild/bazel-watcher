@@ -35,7 +35,7 @@ jobs:
 
           - name: darwin_amd64
             artifact: ibazel_darwin_amd64
-            os: macos-latest
+            os: macos-13
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
             # See comment below for more information on this flag.
             cpu_flag: --cpu=darwin_amd64
