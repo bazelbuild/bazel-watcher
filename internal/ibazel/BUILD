@@ -26,6 +26,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/bazel",
+        "//internal/utils",
         "//internal/ibazel/command",
         "//internal/ibazel/fswatcher",
         "//internal/ibazel/fswatcher/common",
