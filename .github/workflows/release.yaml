@@ -16,40 +16,30 @@ jobs:
             artifact: ibazel_linux_amd64
             os: ubuntu-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
-            cpu_flag: 
             ext: ""
 
           - name: linux_arm64
             artifact: ibazel_linux_arm64
             os: ubuntu-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64
-            cpu_flag:
             ext: ""
           
           - name: windows_amd64
             artifact: ibazel_windows_amd64.exe
             os: ubuntu-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
-            cpu_flag:
             ext: ".exe"
 
           - name: darwin_amd64
             artifact: ibazel_darwin_amd64
             os: macos-13
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
-            # See comment below for more information on this flag.
-            cpu_flag: --cpu=darwin_amd64
             ext: ""
 
           - name: darwin_arm64
             artifact: ibazel_darwin_arm64
             os: macos-latest
             build_flags: --platforms=@io_bazel_rules_go//go/toolchain:darwin_arm64_cgo
-            # TODO: temporary workaround, remove this in the future.
-            # Right now, without the flag, GitHub actions build would link to the "darwin_amd64" go_sdk toolchain and fail the build.
-            # related issue: https://github.com/fsnotify/fsevents/issues/50
-            # also general info on Bazel platforms: https://bazel.build/concepts/platforms#migration
-            cpu_flag: --cpu=darwin_arm64
             ext: ""
 
     steps:
@@ -59,10 +49,10 @@ jobs:
           fetch-depth: 0
 
       - name: Build ibazel 
-        run: bazel build //cmd/ibazel:ibazel --config release ${{ matrix.build_flags }} ${{ matrix.cpu_flag }}
+        run: bazel build //cmd/ibazel:ibazel --config release ${{ matrix.build_flags }}
       
       - name: Copy binary
-        run: cp $(bazel info ${{ matrix.cpu_flag }} bazel-bin)/cmd/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
+        run: cp $(bazel info bazel-bin)/cmd/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
