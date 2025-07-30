@@ -14,7 +14,7 @@ type jsPackage struct {
 	Bin           map[string]string `json:"bin"`
 	Contributors  []string          `json:"contributors"`
 	License       string            `json:"license"`
-	PublishConfig map[string]string `json:"publish_config"`
+	PublishConfig map[string]string `json:"publishConfig"`
 }
 
 // Note that Version must be assigned to a constant value to allow stamping to
