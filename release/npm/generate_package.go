@@ -31,7 +31,7 @@ func main() {
 
 	pkg := jsPackage{
 		Name:        "@bazel/ibazel",
-		Version:     Version,
+		Version:     strings.TrimPrefix(Version, "v"),
 		Description: "node distribution of ibazel",
 		Bin: map[string]string{
 			"ibazel": "index.js",
