@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.5
 
 require (
-	github.com/bazelbuild/rules_go v0.55.1
+	github.com/bazelbuild/rules_go v0.56.0
 	github.com/fsnotify/fsevents v0.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang/protobuf v1.5.4
