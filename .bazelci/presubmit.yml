@@ -53,5 +53,8 @@ tasks:
     # On Windows CI, bazel (bazelisk) needs %LocalAppData% to find the cache directory.
     # We invoke bazel in tests, so the tests need this, too.
     - "--test_env=LOCALAPPDATA"
+    - "--repo_env=BAZEL_SH=C:\\Progra~1\\Git\\bin\\bash.exe"
+    - "--action_env=BAZEL_SH=C:\\Progra~1\\Git\\bin\\bash.exe"
+    - "--test_env=BAZEL_SH=C:\\Progra~1\\Git\\bin\\bash.exe"
     test_targets:
     - "..."
