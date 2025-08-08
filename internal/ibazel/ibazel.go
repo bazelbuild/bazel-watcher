@@ -507,7 +507,7 @@ func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 			label := target.GetSourceFile().GetName()
 			if strings.HasPrefix(label, "@") {
 				repo, target := parseTarget(label)
-				if realPath, ok := localRepositories[repo]; ok {
+				if realPath, ok := findInLocalRepository(localRepositories, repo); ok {
 					label = strings.Replace(target, ":", string(filepath.Separator), 1)
 					toWatch = append(toWatch, filepath.Join(realPath, label))
 					break
@@ -602,4 +602,14 @@ func keys(m map[string]struct{}) []string {
 		i++
 	}
 	return keys
+}
+
+func findInLocalRepository(localRepositories map[string]string, repo string) (string, bool) {
+	if realPath, ok := localRepositories[repo]; ok {
+		return realPath, ok
+	}
+	if realPath, ok := localRepositories[repo + "+"]; ok {
+		return realPath, ok
+	}
+	return "", false
 }
