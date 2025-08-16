@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/bazelbuild/bazel-watcher/internal/bazel"
+	"github.com/bazelbuild/bazel-watcher/internal/utils"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/command"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/fswatcher/common"
@@ -169,7 +170,8 @@ func (i *IBazel) handleSignals() {
 func (i *IBazel) newBazel() bazel.Bazel {
 	b := bazelNew()
 	b.SetStartupArgs(i.startupArgs)
-	b.SetArguments(i.bazelArgs)
+	bazelArgs := utils.EnsureBazel8Compatibility(i.bazelArgs)
+	b.SetArguments(bazelArgs)
 	return b
 }
 

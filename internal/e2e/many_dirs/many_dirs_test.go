@@ -36,7 +36,11 @@ func TestMain(m *testing.M) {
 	// Create a project that cats the contents of all data files
 
 	mainFiles := fmt.Sprintf(`
+-- MODULE.bazel --
+bazel_dep(name = "rules_shell", version = "0.2.0")
+
 -- watched/BUILD.bazel --
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 sh_binary(
   name = "many_dirs",

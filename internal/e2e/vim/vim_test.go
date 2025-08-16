@@ -70,8 +70,10 @@ func copyAndTruncWriteFile(t *testing.T, fname string, content string) {
 
 func TestSimpleRunWithModifiedFile_RenameAndWrite(t *testing.T) {
 	e2e.MustMkdir(t, "vim")
+	e2e.MustWriteFile(t, "MODULE.bazel", `bazel_dep(name = "rules_shell", version = "0.2.0")`)
 	e2e.MustWriteFile(t, "vim/test.sh", `printf "Started!"`)
 	e2e.MustWriteFile(t, "vim/BUILD", `
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 sh_binary(
 	name = "test",
 	srcs = ["test.sh"],
@@ -92,8 +94,10 @@ sh_binary(
 
 func TestSimpleRunWithModifiedFile_CopyAndTruncWrite(t *testing.T) {
 	e2e.MustMkdir(t, "truncate")
+	e2e.MustWriteFile(t, "MODULE.bazel", `bazel_dep(name = "rules_shell", version = "0.2.0")`)
 	e2e.MustWriteFile(t, "truncate/test.sh", `printf "Started!"`)
 	e2e.MustWriteFile(t, "truncate/BUILD", `
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 sh_binary(
 	name = "test",
 	srcs = ["test.sh"],
