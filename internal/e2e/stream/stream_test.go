@@ -9,7 +9,11 @@ import (
 )
 
 const mainFiles = `
+-- MODULE.bazel --
+bazel_dep(name = "rules_shell", version = "0.2.0")
+
 -- single/BUILD.bazel --
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 # Create an sh_test that passes and prints some output. Confirm that the
 # results were streamed.
 sh_test(
