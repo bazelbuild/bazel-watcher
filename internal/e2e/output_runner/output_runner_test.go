@@ -12,8 +12,11 @@ import (
 )
 
 const mainFiles = `
--- WORKSPACE --
-#required
+-- MODULE.bazel --
+bazel_dep(name = "rules_shell", version = "0.2.0")
+
+-- BUILD.bazel --
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 -- single/defs.bzl --
 def fix_deps(name):
     print("used-to-be-the-magic-command")
