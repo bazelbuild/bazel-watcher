@@ -9,7 +9,12 @@ import (
 )
 
 const mainFiles = `
+-- MODULE.bazel --
+bazel_dep(name = "rules_shell", version = "0.2.0")
+
 -- BUILD.bazel --
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+
 sh_binary(
   name = "smoke",
   srcs = ["smoke.sh"],
