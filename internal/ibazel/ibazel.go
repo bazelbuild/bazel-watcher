@@ -44,9 +44,9 @@ var bazelNew = bazel.New
 var commandDefaultCommand = command.DefaultCommand
 var commandNotifyCommand = command.NotifyCommand
 var exitMessages = map[os.Signal]string{
-        syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
-        syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
-        syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
+	syscall.SIGINT:  "Subprocess killed from getting SIGINT (trigger SIGINT again to stop ibazel)",
+	syscall.SIGTERM: "Subprocess killed from getting SIGTERM",
+	syscall.SIGHUP:  "Subprocess killed from getting SIGHUP",
 }
 
 type State string
