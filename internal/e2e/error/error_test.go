@@ -12,7 +12,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestSimpleBuildWithoutSourceFiles(t *testing.T) {
+	e2e.MustWriteFile(t, "MODULE.bazel", `bazel_dep(name = "rules_shell", version = "0.2.0")`)
 	e2e.MustWriteFile(t, "BUILD", `
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 # Invalid rule due to a missing input file
 sh_binary(
   name = "test",
@@ -28,7 +30,9 @@ sh_binary(
 }
 
 func TestSimpleBuildWithQueryFailure(t *testing.T) {
+	e2e.MustWriteFile(t, "MODULE.bazel", `bazel_dep(name = "rules_shell", version = "0.2.0")`)
 	e2e.MustWriteFile(t, "BUILD", `
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 # Invalid rule due to a typo
 shh_binary(
   name = "test",
@@ -44,7 +48,9 @@ shh_binary(
 }
 
 func TestExampleClientWhoDies(t *testing.T) {
+	e2e.MustWriteFile(t, "MODULE.bazel", `bazel_dep(name = "rules_shell", version = "0.2.0")`)
 	e2e.MustWriteFile(t, "BUILD", `
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 sh_binary(
 	name = "live_reload",
 	srcs = ["test.sh"],
