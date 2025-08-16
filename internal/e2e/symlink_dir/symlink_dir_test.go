@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -75,6 +76,10 @@ func TestMain(m *testing.M) {
 // links), Getwd may return any one of them." This resulted in inconsistent
 // automatic rebuild behavior because `ibazel.go` was not evaluating symlinks.
 func TestSymlinkRun(t *testing.T) {
+	// Ensure BAZEL_SH is set for this test on Windows
+	if runtime.GOOS == "windows" {
+		os.Setenv("BAZEL_SH", "C:\\Progra~1\\Git\\bin\\bash.exe")
+	}
 	ibazel := e2e.SetUp(t)
 	ibazel.Run([]string{}, "//:simple")
 	defer ibazel.Kill()
