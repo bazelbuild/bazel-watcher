@@ -14,6 +14,17 @@ import (
 const mainFiles = `
 -- WORKSPACE --
 #required
+load("//repo:deps.bzl", "deps")
+deps(name = "hash")
+load("@hash//:build.bzl", "build")
+-- repo/deps.bzl --
+def _deps_impl(rctx):
+    rctx.file("BUILD")
+    rctx.file("build.bzl", "build = 1")
+    return {"name": rctx.attr.name, "integrity": "sha256-aaaa"}
+
+deps = repository_rule(implementation = _deps_impl, attrs = {"integrity": attr.string()})
+-- repo/BUILD --
 -- single/defs.bzl --
 def fix_deps(name):
     print("used-to-be-the-magic-command")
@@ -185,6 +196,25 @@ func TestOutputRunnerUniqueCommandsOnly(t *testing.T) {
               "echo baz",
               "echo bar",
       })
+}
+
+func TestOutputRunnerTriggerOnRepoRule(t *testing.T) {
+	e2e.MustWriteFile(t, ".bazel_fix_commands.json", `
+		[{
+					"regex": "Rule '([^']+)' indicated that a canonical reproducible form can be obtained by modifying arguments ([^ ]+) = \"([^\"]+)\"",
+					"command": "echo",
+					"args": ["$1", "$2", "$3"]
+
+		}]
+  `)
+	ibazel := e2e.SetUp(t)
+	ibazel.Clean()
+	ibazel.RunUnverifiedWithBazelFixCommands("//single:overwrite")
+	defer ibazel.Kill()
+
+	ibazel.ExpectFixCommands([]string{
+					"echo hash integrity sha256-aaaa",
+	})
 }
 
 func TestNotifyWhenInvalidConfig(t *testing.T) {
