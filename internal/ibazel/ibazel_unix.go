@@ -28,7 +28,7 @@ import (
 )
 
 func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
-	info, err := i.getInfo()
+	info, _, err := i.getInfo()
 	if err != nil {
 		log.Errorf("Error finding bazel info: %v\n", err)
 		return nil, err

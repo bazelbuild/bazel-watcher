@@ -133,8 +133,8 @@ type Bazel interface {
 	SetStartupArgs([]string)
 	WriteToStderr(v bool)
 	WriteToStdout(v bool)
-	Info() (map[string]string, error)
 	Query(args ...string) (*blaze_query.QueryResult, error)
+	Info() (map[string]string, *bytes.Buffer, error)
 	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
 	Norun(args ...string) (*bytes.Buffer, error)
@@ -235,10 +235,10 @@ func (b *bazel) newCommand(command string, args ...string) (*bytes.Buffer, *byte
 // 'bazel help info-keys'.
 //
 // res, err := b.Info()
-func (b *bazel) Info() (map[string]string, error) {
+func (b *bazel) Info() (map[string]string, *bytes.Buffer, error) {
 	b.WriteToStderr(false)
 	b.WriteToStdout(false)
-	stdoutBuffer, _ := b.newCommand("info")
+	stdoutBuffer, stderrBuffer := b.newCommand("info")
 
 	// This gofunction only prints if 'bazel info' takes longer than 8 seconds
 	doneCh := make(chan struct{})
@@ -254,9 +254,10 @@ func (b *bazel) Info() (map[string]string, error) {
 
 	err := b.cmd.Run()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return b.processInfo(stdoutBuffer.String())
+	result, err := b.processInfo(stdoutBuffer.String())
+	return result, stderrBuffer, err
 }
 
 func (b *bazel) processInfo(info string) (map[string]string, error) {

@@ -114,7 +114,7 @@ func New(version string) (*IBazel, error) {
 		lifecycleHooks,
 	}
 
-	info, _ := i.getInfo()
+	info, stderrBuffer, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
 		l.Initialize(&info)
 	}
@@ -468,16 +468,16 @@ func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
 	return nil, errors.New("No information available")
 }
 
-func (i *IBazel) getInfo() (map[string]string, error) {
+func (i *IBazel) getInfo() (map[string]string, *bytes.Buffer, error) {
 	b := i.newBazel()
 
-	res, err := b.Info()
+	res, stderrBuffer, err := b.Info()
 	if err != nil {
 		log.Errorf("Error getting Bazel info %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return res, nil
+	return res, stderrBuffer, nil
 }
 
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
