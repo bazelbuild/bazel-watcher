@@ -57,9 +57,9 @@ func (b *MockBazel) WriteToStderr(v bool) {
 func (b *MockBazel) WriteToStdout(v bool) {
 	b.actions = append(b.actions, []string{"WriteToStdout", fmt.Sprint(v)})
 }
-func (b *MockBazel) Info() (map[string]string, error) {
+func (b *MockBazel) Info() (map[string]string, *bytes.Buffer, error) {
 	b.actions = append(b.actions, []string{"Info"})
-	return map[string]string{}, nil
+	return map[string]string{}, nil, nil
 }
 func (b *MockBazel) AddQueryResponse(query string, res *blaze_query.QueryResult) {
 	if b.queryResponse == nil {
