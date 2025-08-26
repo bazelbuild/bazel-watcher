@@ -116,7 +116,7 @@ func New(version string) (*IBazel, error) {
 
 	info, stderrBuffer, _ := i.getInfo()
 	for _, l := range i.lifecycleListeners {
-		l.Initialize(&info)
+		l.Initialize(&info, stderrBuffer)
 	}
 
 	go func() {

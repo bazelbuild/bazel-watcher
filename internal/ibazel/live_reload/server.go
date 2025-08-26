@@ -47,7 +47,7 @@ func (l *LiveReloadServer) AddEventsListener(listener Events) {
 	l.eventListeners = append(l.eventListeners, listener)
 }
 
-func (l *LiveReloadServer) Initialize(info *map[string]string) {}
+func (l *LiveReloadServer) Initialize(info *map[string]string, stderrBuffer *bytes.Buffer) {}
 
 func (l *LiveReloadServer) Cleanup() {
 	if l.lrserver != nil {

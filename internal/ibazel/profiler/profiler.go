@@ -100,7 +100,7 @@ func New(version string) *Profiler {
 	return p
 }
 
-func (i *Profiler) Initialize(info *map[string]string) {
+func (i *Profiler) Initialize(info *map[string]string, _stderrBuffer *bytes.Buffer) {
 	if *profileDev == "" {
 		return
 	}
