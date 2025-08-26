@@ -11,7 +11,7 @@ import (
 type Lifecycle interface {
 	// Initialize is called once it is known that this lifecycle client is going
 	// to be used.
-	Initialize(info *map[string]string)
+	Initialize(info *map[string]string, stderrBuffer *bytes.Buffer)
 
 	// TargetDecider takes a protobuf rule and performs setup if it matches the
 	// listener's expectations.

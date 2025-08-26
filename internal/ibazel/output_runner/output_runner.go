@@ -64,7 +64,13 @@ func New() *OutputRunner {
 	return i
 }
 
-func (i *OutputRunner) Initialize(info *map[string]string) {}
+func (i *OutputRunner) Initialize(info *map[string]string, output *bytes.Buffer) {
+	if *runOutput == false || output == nil {
+		return
+	}
+
+	i.executeOutput(output)
+}
 
 func (i *OutputRunner) TargetDecider(rule *blaze_query.Rule) {}
 
@@ -77,6 +83,10 @@ func (i *OutputRunner) AfterCommand(targets []string, command string, success bo
 		return
 	}
 
+	i.executeOutput(output)
+}
+
+func (i *OutputRunner) executeOutput(output *bytes.Buffer) {
 	jsonCommandPath := ".bazel_fix_commands.json"
 	defaultRegex := Optcmd{
 		Regex:   "^buildozer '(.*)'\\s+(.*)$",

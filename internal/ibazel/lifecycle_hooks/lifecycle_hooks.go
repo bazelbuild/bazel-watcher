@@ -43,7 +43,7 @@ func New() *LifecycleHooks {
 	}
 }
 
-func (l *LifecycleHooks) Initialize(info *map[string]string) {}
+func (l *LifecycleHooks) Initialize(info *map[string]string, stderrBuffer *bytes.Buffer) {}
 
 func (l *LifecycleHooks) TargetDecider(rule *blaze_query.Rule) {}
 
