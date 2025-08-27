@@ -409,6 +409,20 @@ func (i *IBazelTester) run(target string, bazelArgs []string, additionalArgs []s
 	i.runUnverified(target, bazelArgs, additionalArgs, prebuild)
 }
 
+func (i *IBazelTester) Clean() {
+	args := []string{"clean", "--expunge"}
+	cmd := bazel_testing.BazelCmd(args...)
+	var buildStdout, buildStderr bytes.Buffer
+	cmd.Stdout = &buildStdout
+	cmd.Stderr = &buildStderr
+	if err := cmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			status := exitErr.Sys().(syscall.WaitStatus)
+			i.t.Fatalf("Unable to clean. Error code: %d\nStdout:\n%s\nStderr:\n%s", status.ExitStatus(), buildStdout.String(), buildStderr.String())
+		}
+	}
+}
+
 func (i *IBazelTester) runUnverified(target string, bazelArgs []string, additionalArgs []string, prebuild bool) {
 	i.t.Helper()
 
