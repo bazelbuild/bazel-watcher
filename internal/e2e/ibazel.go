@@ -127,14 +127,25 @@ func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
 	})
 }
 
-func (i *IBazelTester) RunWithBazelFixCommands(target string) {
+func (i *IBazelTester) runWithFixCommands(target string, prebuild bool) {
 	i.t.Helper()
-	i.run(target, []string{}, []string{
+	i.runUnverified(target, []string{}, []string{
 		"--log_to_file=" + i.ibazelLogFile,
 		"--graceful_termination_wait_duration=1s",
 		"--run_output=true",
 		"--run_output_interactive=false",
-	})
+	},
+	prebuild)
+}
+
+func (i *IBazelTester) RunWithBazelFixCommands(target string) {
+	prebuild := true
+	i.runWithFixCommands(target, prebuild)
+}
+
+func (i *IBazelTester) RunUnverifiedWithBazelFixCommands(target string) {
+	prebuild := false
+	i.runWithFixCommands(target, prebuild)
 }
 
 func (i *IBazelTester) RunWithAdditionalArgs(target string, additionalArgs []string) {
