@@ -301,10 +301,10 @@ func TestIBazelBuild(t *testing.T) {
 	i.build("//path/to:target")
 	expected := [][]string{
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--enable_bzlmod"},
 		{"Info"},
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--enable_bzlmod"},
 		{"Cancel"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
@@ -337,16 +337,16 @@ func TestIBazelTest(t *testing.T) {
 	i.test("//path/to:target")
 	expected := [][]string{
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--enable_bzlmod"},
 		{"Info"},
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--enable_bzlmod"},
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "--enable_bzlmod"},
 		{"WriteToStderr", "false"},
 		{"WriteToStdout", "false"},
 		{"CQuery", "//path/to:target"},
-		{"SetArguments", "--test_output=streamed"},
+		{"SetArguments", "--test_output=streamed", "--enable_bzlmod"},
 		{"Cancel"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},

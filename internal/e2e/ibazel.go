@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bazelbuild/bazel-watcher/internal/utils"
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
@@ -21,6 +22,10 @@ import (
 const (
 	defaultDelay = 50 * time.Second
 )
+
+var defaultFlags = []string{
+	"--graceful_termination_wait_duration=1s",
+}
 
 type IBazelTester struct {
 	t             *testing.T
@@ -35,9 +40,9 @@ type IBazelTester struct {
 }
 
 func NewIBazelTester(t *testing.T) *IBazelTester {
-	f, err := ioutil.TempFile("", "ibazel_output.*.log")
+	f, err := os.CreateTemp("", "ibazel_output.*.log")
 	if err != nil {
-		panic(fmt.Sprintf("Error ioutil.Tempfile: %v", err))
+		panic(fmt.Sprintf("Error os.CreateTemp: %v", err))
 	}
 
 	return &IBazelTester{
@@ -66,13 +71,14 @@ func (i *IBazelTester) Test(bazelArgs []string, targets ...string) {
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args,
 		"--log_to_file="+i.ibazelLogFile,
-		"--graceful_termination_wait_duration=1s")
+	)
 	args = append(args, "test")
-	args = append(args, "--bazelrc=/dev/null")
+	bazelArgs = utils.EnsureBazel8Compatibility(bazelArgs)
 	args = append(args, targets...)
 	args = append(args, bazelArgs...)
 	i.cmd = exec.Command(ibazelPath, args...)
-	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
+	i.t.Logf("ibazel invoked in %s as: %s", i.cmd.Dir,
+		strings.Join(i.cmd.Args, " "))
 
 	i.stdoutBuffer = &Buffer{}
 	i.cmd.Stdout = i.stdoutBuffer
@@ -89,15 +95,17 @@ func (i *IBazelTester) Coverage(bazelArgs []string, targets ...string) {
 	i.t.Helper()
 
 	args := []string{"--bazel_path=" + i.bazelPath()}
+	args = append(args, defaultFlags...)
 	args = append(args,
 		"--log_to_file="+i.ibazelLogFile,
-		"--graceful_termination_wait_duration=1s")
+	)
 	args = append(args, "coverage")
-	args = append(args, "--bazelrc=/dev/null")
+	bazelArgs = utils.EnsureBazel8Compatibility(bazelArgs)
 	args = append(args, targets...)
 	args = append(args, bazelArgs...)
 	i.cmd = exec.Command(ibazelPath, args...)
-	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
+	i.t.Logf("ibazel invoked in %s as: %s", i.cmd.Dir,
+		strings.Join(i.cmd.Args, " "))
 
 	i.stdoutBuffer = &Buffer{}
 	i.cmd.Stdout = i.stdoutBuffer
@@ -112,24 +120,22 @@ func (i *IBazelTester) Coverage(bazelArgs []string, targets ...string) {
 
 func (i *IBazelTester) Run(bazelArgs []string, target string) {
 	i.t.Helper()
-	i.run(target, bazelArgs, []string{
-		"--log_to_file=" + i.ibazelLogFile,
-		"--graceful_termination_wait_duration=1s",
-	})
+	i.run(target, utils.EnsureBazel8Compatibility(bazelArgs), append(defaultFlags,
+		"--log_to_file="+i.ibazelLogFile,
+	))
 }
 
 func (i *IBazelTester) RunWithProfiler(target string, profiler string) {
 	i.t.Helper()
-	i.run(target, []string{}, []string{
-		"--log_to_file=" + i.ibazelLogFile,
-		"--graceful_termination_wait_duration=1s",
-		"--profile_dev=" + profiler,
-	})
+	i.run(target, utils.EnsureBazel8Compatibility([]string{}), append(defaultFlags,
+		"--log_to_file="+i.ibazelLogFile,
+		"--profile_dev="+profiler,
+	))
 }
 
 func (i *IBazelTester) runWithFixCommands(target string, prebuild bool) {
 	i.t.Helper()
-	i.runUnverified(target, []string{}, []string{
+	i.runUnverified(target, utils.EnsureBazel8Compatibility([]string{}), []string{
 		"--log_to_file=" + i.ibazelLogFile,
 		"--graceful_termination_wait_duration=1s",
 		"--run_output=true",
@@ -150,13 +156,13 @@ func (i *IBazelTester) RunUnverifiedWithBazelFixCommands(target string) {
 
 func (i *IBazelTester) RunWithAdditionalArgs(target string, additionalArgs []string) {
 	i.t.Helper()
-	i.run(target, []string{}, additionalArgs)
+	i.run(target, utils.EnsureBazel8Compatibility([]string{}), additionalArgs)
 }
 
 func (i *IBazelTester) RunUnverifiedWithAdditionalArgs(target string, additionalArgs []string) {
 	i.t.Helper()
 	prebuild := false
-	i.runUnverified(target, []string{}, additionalArgs, prebuild)
+	i.runUnverified(target, utils.EnsureBazel8Compatibility([]string{}), additionalArgs, prebuild)
 }
 
 func (i *IBazelTester) GetOutput() string {
@@ -440,15 +446,17 @@ func (i *IBazelTester) runUnverified(target string, bazelArgs []string, addition
 	args := []string{"--bazel_path=" + i.bazelPath()}
 	args = append(args, additionalArgs...)
 	args = append(args, "run")
-	args = append(args, "--bazelrc=/dev/null")
+
 	args = append(args, target)
 	args = append(args, bazelArgs...)
 	i.cmd = exec.Command(ibazelPath, args...)
-	i.t.Logf("ibazel invoked as: %s", strings.Join(i.cmd.Args, " "))
+	i.t.Logf("ibazel invoked in %s as: %s in: %s",
+		i.cmd.Dir, strings.Join(i.cmd.Args, " "),
+		os.Getenv("TEST_TMPDIR"))
 
 	checkArgs := []string{"build"}
 	checkArgs = append(checkArgs, target)
-	checkArgs = append(checkArgs, bazelArgs...)
+	checkArgs = append(checkArgs, utils.EnsureBazel8Compatibility(bazelArgs)...)
 	cmd := bazel_testing.BazelCmd(checkArgs...)
 
 	var buildStdout, buildStderr bytes.Buffer
@@ -461,6 +469,8 @@ func (i *IBazelTester) runUnverified(target string, bazelArgs []string, addition
 			if exitErr, ok := err.(*exec.ExitError); ok {
 				status := exitErr.Sys().(syscall.WaitStatus)
 				i.t.Fatalf("Unable to build target. Error code: %d\nStdout:\n%s\nStderr:\n%s", status.ExitStatus(), buildStdout.String(), buildStderr.String())
+			} else {
+				i.t.Fatalf("Unable to build target. %v", err)
 			}
 		}
 	}
