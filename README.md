@@ -23,6 +23,14 @@ Right now this repo supports `build`, `test`, and `run`.
 
 There are several ways to install iBazel, documented below.
 
+### MacOs and Linux using mise
+
+If you are an enthustiac user of [mise](https://github.com/jdx/mise) a polyglot tools version manager you can install it using a command like:
+
+```shell
+mise use -g ibazel@latest
+```
+
 ### Mac (Homebrew)
 
 If you run a macOS you can install it from [homebrew](https://brew.sh).
