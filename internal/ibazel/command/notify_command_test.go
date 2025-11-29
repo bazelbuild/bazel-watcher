@@ -65,7 +65,7 @@ func TestNotifyCommand(t *testing.T) {
 		{"WriteToStdout", "true"},
 		{"Norun", "//path/to:target"},
 		{"SetStartupArgs"},
-		{"SetArguments"},
+		{"SetArguments", "moo"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
 		{"Run", "--script_path=.*", "//path/to:target"},

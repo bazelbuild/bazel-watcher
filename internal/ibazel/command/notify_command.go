@@ -66,6 +66,8 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
 	b.SetStartupArgs(c.startupArgs)
 	b.SetArguments(c.bazelArgs)
+	// For commands like `--test_sharding_strategy=disabled` which come through normal args
+	b.SetArguments(c.args)
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
