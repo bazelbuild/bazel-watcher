@@ -2,7 +2,7 @@ module github.com/bazelbuild/bazel-watcher
 
 go 1.23.0
 
-toolchain go1.25.2
+toolchain go1.25.5
 
 require (
 	github.com/bazelbuild/rules_go v0.57.0
