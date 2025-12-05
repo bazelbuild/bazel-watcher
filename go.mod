@@ -1,6 +1,6 @@
 module github.com/bazelbuild/bazel-watcher
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.25.2
 
@@ -13,8 +13,8 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jaschaephraim/lrserver v0.0.0-20240306232639-afed386b3640
 	github.com/mattn/go-shellwords v1.0.12
-	golang.org/x/sys v0.35.0
-	golang.org/x/tools v0.35.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/tools v0.39.0
 )
 
 require google.golang.org/protobuf v1.36.6 // indirect
