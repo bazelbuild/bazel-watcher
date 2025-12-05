@@ -55,7 +55,7 @@ jobs:
         run: cp $(bazel info bazel-bin)/cmd/ibazel/ibazel_/ibazel${{ matrix.ext }} ${{ matrix.artifact }}
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.artifact }}
@@ -83,7 +83,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           path: ./npm-staging/bin
 
