@@ -65,6 +65,7 @@ func TestNotifyCommand(t *testing.T) {
 		{"WriteToStdout", "true"},
 		{"Norun", "//path/to:target"},
 		{"SetStartupArgs"},
+		{"SetArguments"},
 		{"SetArguments", "moo"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
@@ -81,6 +82,40 @@ func TestNotifyCommand(t *testing.T) {
 		{"Norun", "//path/to:target"},
 		{"SetStartupArgs"},
 		{"SetArguments"},
+		{"SetArguments", "moo"},
+		{"WriteToStderr", "true"},
+		{"WriteToStdout", "true"},
+		{"Run", "--script_path=.*", "//path/to:target"},
+	})
+}
+
+func TestNotifyCommand_Start_ForwardsArgsToBazel(t *testing.T) {
+	log.SetLogger(t)
+
+	execCommand = func(name string, args ...string) process_group.ProcessGroup {
+		return oldExecCommand("ls")
+	}
+	defer func() { execCommand = oldExecCommand }()
+
+	b := &mock_bazel.MockBazel{}
+	bazelNew = func() bazel.Bazel { return b }
+	defer func() { bazelNew = oldBazelNew }()
+
+	c := &notifyCommand{
+		args:      []string{"--test_sharding_strategy=disabled"},
+		bazelArgs: []string{},
+		target:    "//path/to:target",
+	}
+
+	// Regression test: args after `--` must be forwarded to Bazel in Start().
+	if _, err := c.Start(); err != nil {
+		t.Fatalf("Start(): %v", err)
+	}
+
+	b.AssertActions(t, [][]string{
+		{"SetStartupArgs"},
+		{"SetArguments"},
+		{"SetArguments", "--test_sharding_strategy=disabled"},
 		{"WriteToStderr", "true"},
 		{"WriteToStdout", "true"},
 		{"Run", "--script_path=.*", "//path/to:target"},
