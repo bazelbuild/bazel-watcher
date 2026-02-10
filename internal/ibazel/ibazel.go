@@ -480,6 +480,18 @@ func (i *IBazel) getInfo() (map[string]string, *bytes.Buffer, error) {
 	return res, stderrBuffer, nil
 }
 
+func (i *IBazel) dumpRootRepoMapping() (map[string]string, *bytes.Buffer, error) {
+	b := i.newBazel()
+
+	res, stderr, err := b.DumpRepoMapping("")
+	if err != nil {
+		log.Errorf("Error dumping Bazel repo mapping: %v", err)
+		return nil, nil, err
+	}
+
+	return res, stderr, nil
+}
+
 func (i *IBazel) queryForSourceFiles(query string) ([]string, error) {
 	b := i.newBazel()
 

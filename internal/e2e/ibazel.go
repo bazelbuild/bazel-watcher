@@ -134,8 +134,7 @@ func (i *IBazelTester) runWithFixCommands(target string, prebuild bool) {
 		"--graceful_termination_wait_duration=1s",
 		"--run_output=true",
 		"--run_output_interactive=false",
-	},
-	prebuild)
+	}, prebuild)
 }
 
 func (i *IBazelTester) RunWithBazelFixCommands(target string) {

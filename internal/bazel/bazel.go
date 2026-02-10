@@ -17,6 +17,7 @@ package bazel
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -135,6 +136,7 @@ type Bazel interface {
 	WriteToStdout(v bool)
 	Query(args ...string) (*blaze_query.QueryResult, error)
 	Info() (map[string]string, *bytes.Buffer, error)
+	DumpRepoMapping(canonicalRepoName string) (map[string]string, *bytes.Buffer, error)
 	CQuery(args ...string) (*analysis.CqueryResult, error)
 	Build(args ...string) (*bytes.Buffer, error)
 	Norun(args ...string) (*bytes.Buffer, error)
@@ -276,6 +278,24 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 	return output, nil
 }
 
+// Returns a mapping of apparent to canonical repository names under the given
+// repository. The root repository is denoted by an empty string.
+func (b *bazel) DumpRepoMapping(canonicalRepoName string) (map[string]string, *bytes.Buffer, error) {
+	b.WriteToStderr(false)
+	b.WriteToStdout(false)
+	stdoutBuffer, stderrBuffer := b.newCommand("mod", "dump_repo_mapping", canonicalRepoName)
+
+	err := b.cmd.Run()
+	if err != nil {
+		return nil, nil, err
+	}
+	var result map[string]string
+	if err := json.Unmarshal(stdoutBuffer.Bytes(), &result); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse output of dump_repo_mapping: %w", err)
+	}
+	return result, stderrBuffer, nil
+}
+
 // Executes a query language expression over a specified subgraph of the
 // build dependency graph.
 //
@@ -294,7 +314,7 @@ func (b *bazel) Query(args ...string) (*blaze_query.QueryResult, error) {
 	blazeArgs := append([]string(nil), "--output=proto", "--order_output=no", "--color=no")
 	blazeArgs = append(blazeArgs, args...)
 
-	b.WriteToStderr(true)  // revert 34c48343 (#536: Improve logging infrastructure) TODO: hide behind argument?
+	b.WriteToStderr(true) // revert 34c48343 (#536: Improve logging infrastructure) TODO: hide behind argument?
 	b.WriteToStdout(false)
 	stdoutBuffer, stderrBuff := b.newCommand("query", blazeArgs...)
 

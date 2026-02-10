@@ -97,10 +97,15 @@ type Args struct {
 	// all tests. If SetUp returns a non-nil error, execution is halted and
 	// tests cases are not executed.
 	SetUp func() error
+
+	// ModuleFileContent is the content of the MODULE.bazel file to be generated
+	// in the main workspace. If empty, no MODULE.bazel file will be generated
+	// and Bzlmod will be explicitly disabled.
+	ModuleFileContent string
 }
 
 func TestMain(m *testing.M, args Args) {
-	print := flag.Bool("print", false, "print out the directory listing before running the test")
+	print := flag.Bool("print", false, "print out the directory listing after SetUp but before running the test")
 
 	var skipGeneratingWorkspace bool
 	ar := txtar.Parse([]byte(args.Main))
@@ -111,6 +116,8 @@ func TestMain(m *testing.M, args Args) {
 		case ".bazelrc":
 			fmt.Printf("Do not specify a %q file in your test case. It is not allowed in order to prevent difficult to debug things, like having a .bazelrc file in the test user's home directory be accidentally detected as the one to use in here.", f.Name)
 			os.Exit(1)
+		case "MODULE.bazel":
+			args.ModuleFileContent = string(f.Data)
 		}
 	}
 
@@ -122,9 +129,33 @@ func TestMain(m *testing.M, args Args) {
 `
 	}
 
+	// We must set _some_ non-emoty suffix, so that the generated `.bazelrc`
+	// enables the use of Bzlmod. Otherwise `TestMain` would automatically
+	// disable the feature. The auto-generated `MODULE.bazel` is not suitable
+	// for us since it tries to target `rules_go`.
+	var moduleFileSuffix string
+	if args.ModuleFileContent != "" {
+		moduleFileSuffix = "placeholder"
+	}
+
 	bazel_testing.TestMain(m, bazel_testing.Args{
-		Main: args.Main + additional,
+		Main:             args.Main + additional,
+		ModuleFileSuffix: moduleFileSuffix,
 		SetUp: func() error {
+			if args.ModuleFileContent != "" {
+				// Fully replace the auto-generated MODULE.bazel with the
+				// provided content.
+				if err := ioutil.WriteFile("MODULE.bazel", []byte(args.ModuleFileContent), 0777); err != nil {
+					return fmt.Errorf("Failed to write main MODULE.bazel: %w", err)
+				}
+			}
+
+			if args.SetUp != nil {
+				if err := args.SetUp(); err != nil {
+					return err
+				}
+			}
+
 			if *print {
 				if err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 					if d.IsDir() {
@@ -135,12 +166,6 @@ func TestMain(m *testing.M, args Args) {
 					return nil
 				}); err != nil {
 					return fmt.Errorf("WalkDir(.): %w", err)
-				}
-			}
-
-			if args.SetUp != nil {
-				if err := args.SetUp(); err != nil {
-					return err
 				}
 			}
 

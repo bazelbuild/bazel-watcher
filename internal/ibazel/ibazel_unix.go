@@ -18,7 +18,6 @@
 package ibazel
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -36,9 +35,6 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 
 	outputBase := info["output_base"]
 	installBase := info["install_base"]
-	if false {
-		return nil, fmt.Errorf("`bazel info` didn't include install_base")
-	}
 	externalPath := filepath.Join(outputBase, "external")
 
 	files, err := ioutil.ReadDir(externalPath)
@@ -61,6 +57,23 @@ func (i *IBazel) realLocalRepositoryPaths() (map[string]string, error) {
 
 			localRepositories[name] = realPath
 		}
+	}
+
+	// Replace the canonical repository name with the actual repository name
+	// from the repository mapping known to Bazel.
+	if len(localRepositories) > 0 {
+		if repoMapping, _, err := i.dumpRootRepoMapping(); err == nil { // if NO error
+			for repo, canonical := range repoMapping {
+				if realPath, ok := localRepositories[canonical]; ok {
+					delete(localRepositories, canonical)
+					localRepositories[repo] = realPath
+				}
+			}
+		} else {
+			// Don't fail on this. We will try without the mapping.
+			log.Errorf("Error finding repository mapping: %v\n", err)
+		}
+
 	}
 
 	// Apply overrides set via arguments. Overrides must already be absolute.
