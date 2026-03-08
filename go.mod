@@ -1,11 +1,11 @@
 module github.com/bazelbuild/bazel-watcher
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.25.2
 
 require (
-	github.com/bazelbuild/rules_go v0.57.0
+	github.com/bazelbuild/rules_go v0.60.0
 	github.com/fsnotify/fsevents v0.2.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang/protobuf v1.5.4
@@ -17,4 +17,4 @@ require (
 	golang.org/x/tools v0.35.0
 )
 
-require google.golang.org/protobuf v1.36.6 // indirect
+require google.golang.org/protobuf v1.36.10 // indirect
