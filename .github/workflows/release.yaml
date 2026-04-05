@@ -104,7 +104,7 @@ jobs:
           bazel run --config="release" "//release/npm" -- "${PWD}/CONTRIBUTORS" > "npm-staging/package.json"
 
       # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
