@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jaschaephraim/lrserver v0.0.0-20240306232639-afed386b3640
-	github.com/mattn/go-shellwords v1.0.12
+	github.com/mattn/go-shellwords v1.0.13
 	golang.org/x/sys v0.35.0
 	golang.org/x/tools v0.35.0
 )
