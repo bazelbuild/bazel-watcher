@@ -44,6 +44,16 @@ type fakeFSNotifyWatcher struct {
 	EventChan chan common.Event
 }
 
+type fakeWorkspaceWithPath struct {
+	path string
+}
+
+func (w *fakeWorkspaceWithPath) FindWorkspace() (string, error) {
+	return w.path, nil
+}
+
+func (w *fakeWorkspaceWithPath) ExecuteCommand(command string, args []string) {}
+
 var _ common.Watcher = &fakeFSNotifyWatcher{}
 
 func (w *fakeFSNotifyWatcher) Close() error                   { return nil }
@@ -373,6 +383,54 @@ func TestIBazelBuild(t *testing.T) {
 	}
 
 	mockBazel.AssertActions(t, expected)
+}
+
+func TestLabelsToWatch_DoesNotDropWorkspaceFilesAfterLocalRepositoryLabel(t *testing.T) {
+	log.SetTesting(t)
+
+	if runtime.GOOS == "windows" {
+		t.Skip("local repository resolution is not implemented on Windows")
+	}
+
+	i, mockBazel := newIBazel(t)
+	defer i.Cleanup()
+
+	workspacePath := t.TempDir()
+	i.workspaceFinder = &fakeWorkspaceWithPath{path: workspacePath}
+
+	localRepoPath := t.TempDir()
+	outputBase := t.TempDir()
+	installBase := t.TempDir()
+	externalPath := filepath.Join(outputBase, "external")
+	if err := os.MkdirAll(externalPath, 0o700); err != nil {
+		t.Fatalf("failed to create external directory: %v", err)
+	}
+	if err := os.Symlink(localRepoPath, filepath.Join(externalPath, "my_local_repo")); err != nil {
+		t.Fatalf("failed to create local repository symlink: %v", err)
+	}
+
+	mockBazel.SetInfo(map[string]string{
+		"output_base":  outputBase,
+		"install_base": installBase,
+	})
+
+	got, err := i.labelsToWatch([]string{
+		"@my_local_repo//src/components:external.tsx",
+		"//path/to/components:header.tsx",
+		"//path/to:app.tsx",
+	})
+	if err != nil {
+		t.Fatalf("labelsToWatch() error: %v", err)
+	}
+
+	want := []string{
+		filepath.Join(localRepoPath, "src/components/external.tsx"),
+		filepath.Join(workspacePath, "path/to/components/header.tsx"),
+		filepath.Join(workspacePath, "path/to/app.tsx"),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("labelsToWatch() mismatch\nwant: %v\ngot:  %v", want, got)
+	}
 }
 
 func TestIBazelTest(t *testing.T) {

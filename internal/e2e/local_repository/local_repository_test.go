@@ -33,19 +33,56 @@ function say_hello {
 }
 `
 
+const mainWorkspaceTailDep = `
+function say_local_tail {
+	printf "local-tail-1!"
+}
+`
+
+const mainWorkspaceTailDepAlt = `
+function say_local_tail {
+	printf "local-tail-2!"
+}
+`
+
 const mainFiles = `
 -- BUILD.bazel --
+sh_library(
+	name = "late2",
+	srcs = ["late2.sh"],
+	visibility = ["//visibility:public"],
+)
+
+sh_library(
+	name = "late",
+	srcs = ["late.sh"],
+	deps = [":late2"],
+	visibility = ["//visibility:public"],
+)
+
 sh_binary(
 	name = "test",
 	srcs = ["test.sh"],
 	deps = [
 		"@secondary//:lib",
+		":late",
 	],
 )
 -- test.sh --
 #!/bin/bash
 source ../secondary/lib.sh
+source late.sh
+source late2.sh
 say_hello
+say_local_tail
+-- late.sh --
+function say_local {
+	true
+}
+-- late2.sh --
+function say_local_tail {
+	printf "local-tail-1!"
+}
 -- WORKSPACE --
 local_repository(
     name = "secondary",
@@ -118,4 +155,23 @@ func TestRunWithRepositoryOverrideModifiedFile(t *testing.T) {
 	ioutil.WriteFile(
 		filepath.Join(secondaryWd2, "lib.sh"), []byte(secondaryLibAlt), 0777)
 	ibazel.ExpectOutput("hello2!")
+}
+
+func TestRunWithModifiedWorkspaceFileAfterLocalRepositoryDependency(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("local_repository is not implemented in windows")
+	}
+
+	ibazel := e2e.SetUp(t)
+	ioutil.WriteFile("late2.sh", []byte(mainWorkspaceTailDep), 0777)
+	ibazel.Run([]string{}, "//:test")
+	defer ibazel.Kill()
+
+	// Reproduces the bug fixed in 9fbb5bc: cquery can interleave labels as
+	// local and workspace labels, so workspace files after @repo labels must
+	// still remain watched.
+	ibazel.ExpectOutput("local-tail-1!", 50*time.Second)
+
+	ioutil.WriteFile("late2.sh", []byte(mainWorkspaceTailDepAlt), 0777)
+	ibazel.ExpectOutput("local-tail-2!")
 }
