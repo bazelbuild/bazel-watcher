@@ -647,7 +647,7 @@ func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
 			if realPath, ok := localRepositories[repo]; ok {
 				label = strings.Replace(target, ":", string(filepath.Separator), 1)
 				toWatch = append(toWatch, filepath.Join(realPath, label))
-				break
+				continue
 			}
 			continue
 		}
