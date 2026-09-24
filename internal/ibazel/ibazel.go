@@ -598,7 +598,7 @@ func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
 					continue
 				}
 			}
-			if strings.HasPrefix(label, "//external") {
+			if strings.HasPrefix(label, "//external/") || strings.HasPrefix(label, "//external:") {
 				continue
 			}
 			// Build targets may contain characters that shells don't like.
@@ -695,7 +695,7 @@ func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
 			}
 			continue
 		}
-		if strings.HasPrefix(label, "//external") {
+		if strings.HasPrefix(label, "//external/") || strings.HasPrefix(label, "//external:") {
 			continue
 		}
 
