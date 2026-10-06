@@ -519,9 +519,6 @@ func TestIBazelRunStartsBeforeWatchQuery(t *testing.T) {
 func TestPrepareRunNegotiatesNotificationsAndInitialState(t *testing.T) {
 	oldCommandNotifyCommand := commandNotifyCommand
 	defer func() { commandNotifyCommand = oldCommandNotifyCommand }()
-	oldNotifyOutputGroups := *notifyOutputGroups
-	*notifyOutputGroups = "generated, manifest"
-	defer func() { *notifyOutputGroups = oldNotifyOutputGroups }()
 
 	for _, test := range []struct {
 		name          string
@@ -538,6 +535,7 @@ func TestPrepareRunNegotiatesNotificationsAndInitialState(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			i, mockBazel := newIBazel(t)
 			defer i.Cleanup()
+			i.SetNotifyOutputGroups("generated, manifest")
 
 			target := "//path/to:target"
 			attributeType := blaze_query.Attribute_STRING_LIST

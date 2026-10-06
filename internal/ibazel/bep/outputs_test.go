@@ -84,3 +84,30 @@ func TestReadOutputGroupsRejectsConflictingMetadata(t *testing.T) {
 		t.Fatalf("ReadOutputGroups() error = %v, want conflicting metadata error", err)
 	}
 }
+
+func TestReadOutputGroupsDeduplicatesNamedAndInlineFiles(t *testing.T) {
+	stream := strings.NewReader(`
+{"id":{"namedSet":{"id":"child"}},"namedSetOfFiles":{"files":[{"name":"result.txt","digest":"one"}]}}
+{"id":{"namedSet":{"id":"root"}},"namedSetOfFiles":{"files":[{"name":"result.txt","digest":"one"}],"fileSets":[{"id":"child"},{"id":"root"}]}}
+{"completed":{"outputGroup":[{"name":"generated","fileSets":[{"id":"root"},{"id":"child"}],"inlineFiles":[{"name":"result.txt","digest":"one"}]}]}}
+`)
+	got, err := ReadOutputGroups(stream, []string{"generated"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][]Output{"generated": {{Path: "result.txt", Digest: "one"}}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("output groups diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestReadOutputGroupsRejectsConflictingInlineMetadata(t *testing.T) {
+	stream := strings.NewReader(`
+{"id":{"namedSet":{"id":"outputs"}},"namedSetOfFiles":{"files":[{"name":"result.txt","digest":"one"}]}}
+{"completed":{"outputGroup":[{"name":"generated","fileSets":[{"id":"outputs"}],"inlineFiles":[{"name":"result.txt","digest":"two"}]}]}}
+`)
+	_, err := ReadOutputGroups(stream, []string{"generated"})
+	if err == nil || !strings.Contains(err.Error(), `artifact "result.txt" has conflicting metadata`) {
+		t.Fatalf("ReadOutputGroups() error = %v, want conflicting metadata error", err)
+	}
+}

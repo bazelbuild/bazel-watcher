@@ -162,7 +162,7 @@ func expandNamedSets(namedSets map[string]namedSetOfFiles, roots []string) ([]Ou
 		}
 	}
 
-	return deduplicate(outputs)
+	return outputs, nil
 }
 
 func outputsFromFiles(files []file) []Output {
