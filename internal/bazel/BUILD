@@ -33,7 +33,10 @@ go_library(
 
 go_test(
     name = "bazel_test",
-    srcs = ["bazel_test.go"],
+    srcs = [
+        "bazel_test.go",
+        "bazel_windows_test.go",
+    ],
     embed = [":bazel"],
     importpath = "github.com/bazelbuild/bazel-watcher/internal/bazel",
 )

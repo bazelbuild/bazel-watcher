@@ -19,6 +19,19 @@ Hack hack hack. Save and your target will be rebuilt.
 
 Right now this repo supports `build`, `test`, and `run`.
 
+## Windows Bazel wrappers
+
+`-bazel_path` accepts native executables and `.cmd`/`.bat` wrappers on Windows:
+
+```powershell
+ibazel -bazel_path="C:\project\bin\bazel.cmd" build //app:target
+```
+
+Batch wrappers can forward arguments to the native executable with `%*`.
+iBazel protects spaces, quotes, and shell metacharacters during forwarding;
+arguments containing newlines are rejected. Canceling a batch invocation also
+terminates its child processes.
+
 ## Installation
 
 There are several ways to install iBazel, documented below.
