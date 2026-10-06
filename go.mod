@@ -7,7 +7,7 @@ toolchain go1.25.2
 require (
 	github.com/bazelbuild/rules_go v0.57.0
 	github.com/fsnotify/fsevents v0.2.0
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.3
