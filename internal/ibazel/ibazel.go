@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/output_runner"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/profiler"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/workspace"
+	analysispb "github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/analysis"
 	"github.com/bazelbuild/bazel-watcher/third_party/bazel/master/src/main/protobuf/blaze_query"
 )
 
@@ -68,12 +70,12 @@ const (
 	notificationExecution
 )
 
-const sourceQuery = "kind('source file', deps(set(%s)))"
 const targetQuery = "deps(set(%s))"
 const buildQuery = "buildfiles(set(%s))"
 
 type IBazel struct {
-	debounceDuration time.Duration
+	debounceDuration   time.Duration
+	notifyOutputGroups []string
 
 	cmd         command.Command
 	args        []string
@@ -93,6 +95,9 @@ type IBazel struct {
 	lifecycleListeners []Lifecycle
 	pendingChanges     []command.Change
 	executionMode      executionMode
+	changeOwners       map[string][]string
+	directTargets      []string
+	ownershipReady     bool
 
 	state State
 }
@@ -194,6 +199,10 @@ func (i *IBazel) SetStartupArgs(args []string) {
 
 func (i *IBazel) SetDebounceDuration(debounceDuration time.Duration) {
 	i.debounceDuration = debounceDuration
+}
+
+func (i *IBazel) SetNotifyOutputGroups(groups string) {
+	i.notifyOutputGroups = splitCommaSeparated(groups)
 }
 
 func (i *IBazel) Cleanup() {
@@ -328,17 +337,17 @@ func (i *IBazel) iteration(commandName string, commandToRun runnableCommand, tar
 		// Query for which files to watch.
 		log.Logf("Querying for files to watch...")
 
-		toWatchBuildFiles, err := i.queryForBuildFiles(joinedTargets)
+		toWatchBuildFiles, targetGraph, err := i.queryForBuildFiles(joinedTargets)
 		if err != nil {
 			log.Errorf("Error querying for build files: %v", err)
 		} else {
 			i.watchFiles(toWatchBuildFiles, i.buildFileWatcher)
-		}
-
-		toWatchSourceFiles, err := i.queryForSourceFiles(joinedTargets)
-		if err != nil {
-			log.Errorf("Error querying for source files: %v", err)
-		} else {
+			toWatchSourceFiles, sourcePathsByLabel, sourceErr := i.sourceFilesFromGraph(targetGraph)
+			if sourceErr != nil {
+				log.Errorf("Error resolving source files: %v", sourceErr)
+			} else {
+				i.changeOwners, i.ownershipReady = i.sourceOwnersFromGraph(targetGraph, sourcePathsByLabel)
+			}
 			i.watchFiles(toWatchSourceFiles, i.sourceFileWatcher)
 		}
 
@@ -463,11 +472,16 @@ func (i *IBazel) setupRun(target string) command.Command {
 			}
 		}
 	}
+	i.directTargets = append([]string(nil), rule.RuleInput...)
 
 	if commandNotify {
 		i.executionMode = notificationStartupExecution
 		log.Logf("Launching with notifications")
-		return commandNotifyCommand(i.startupArgs, i.bazelArgs, target, i.args, structuredNotify)
+		var outputGroups []string
+		if structuredNotify {
+			outputGroups = i.notifyOutputGroups
+		}
+		return commandNotifyCommand(i.startupArgs, i.bazelArgs, target, i.args, structuredNotify, outputGroups)
 	} else {
 		i.executionMode = defaultStartupExecution
 		return commandDefaultCommand(i.startupArgs, i.bazelArgs, target, i.args)
@@ -482,6 +496,16 @@ func (i *IBazel) prepareRun(target string) {
 	default:
 		i.state = QUERY
 	}
+}
+
+func splitCommaSeparated(value string) []string {
+	var values []string
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			values = append(values, item)
+		}
+	}
+	return values
 }
 
 func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
@@ -500,9 +524,35 @@ func (i *IBazel) run(targets ...string) (*bytes.Buffer, error) {
 		return outputBuffer, err
 	default:
 		log.Logf("Notifying of changes")
-		outputBuffer := i.cmd.NotifyOfChanges(i.pendingChanges)
+		outputBuffer := i.cmd.NotifyOfChanges(i.pendingChanges, i.changeImpact())
 		return outputBuffer, nil
 	}
+}
+
+func (i *IBazel) changeImpact() command.ChangeImpact {
+	if !i.ownershipReady || len(i.pendingChanges) == 0 {
+		return command.ChangeImpact{}
+	}
+
+	targets := make(map[string]struct{})
+	complete := true
+	for _, change := range i.pendingChanges {
+		owners, ok := i.changeOwners[change.Path]
+		if !ok {
+			complete = false
+			continue
+		}
+		for _, target := range owners {
+			targets[target] = struct{}{}
+		}
+	}
+
+	result := make([]string, 0, len(targets))
+	for target := range targets {
+		result = append(result, target)
+	}
+	sort.Strings(result)
+	return command.ChangeImpact{Targets: result, Complete: complete}
 }
 
 func (i *IBazel) queryRule(rule string) (*blaze_query.Rule, error) {
@@ -551,41 +601,18 @@ func (i *IBazel) dumpRootRepoMapping() (map[string]string, *bytes.Buffer, error)
 	return res, stderr, nil
 }
 
-func (i *IBazel) queryForSourceFiles(targets string) ([]string, error) {
-	b := i.newBazel()
-
-	res, err := b.CQuery(i.cQueryArgs(fmt.Sprintf(sourceQuery, targets))...)
-	if err != nil {
-		log.Errorf("Bazel cquery failed: %v", err)
-		return nil, err
-	}
-
-	labels := make([]string, 0, len(res.Results))
-	for _, target := range res.Results {
-		switch *target.Target.Type {
-		case blaze_query.Target_SOURCE_FILE:
-			label := target.Target.SourceFile.GetName()
-			labels = append(labels, label)
-		default:
-			log.Errorf("%v\n", target)
-		}
-	}
-
-	return i.labelsToWatch(labels)
-}
-
-func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
+func (i *IBazel) queryForBuildFiles(targets string) ([]string, *analysispb.CqueryResult, error) {
 	b := i.newBazel()
 
 	targetRes, err := b.CQuery(i.cQueryArgs(fmt.Sprintf(targetQuery, targets))...)
 	if err != nil {
 		log.Errorf("Bazel target query failed: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	localRepositories, err := i.realLocalRepositoryPaths()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	quotedBuildTargets := make([]string, 0, len(targetRes.Results))
 	for _, configuredTarget := range targetRes.Results {
@@ -609,7 +636,7 @@ func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
 
 	f, err := os.CreateTemp("", "query")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create query file: %w", err)
+		return nil, nil, fmt.Errorf("failed to create query file: %w", err)
 	}
 	defer func() {
 		f.Close()
@@ -617,13 +644,13 @@ func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
 	}()
 	_, err = f.WriteString(fmt.Sprintf(buildQuery, strings.Join(quotedBuildTargets, " ")))
 	if err != nil {
-		return nil, fmt.Errorf("failed to write query file: %w", err)
+		return nil, nil, fmt.Errorf("failed to write query file: %w", err)
 	}
 
 	res, err := b.Query(i.queryArgs(fmt.Sprintf("--query_file=%s", f.Name()))...)
 	if err != nil {
 		log.Errorf("Bazel query failed: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	labels := make([]string, 0, len(res.GetTarget()))
@@ -637,7 +664,136 @@ func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
 		}
 	}
 
-	return i.labelsToWatch(labels)
+	paths, err := i.labelsToWatch(labels)
+	return paths, targetRes, err
+}
+
+func (i *IBazel) sourceFilesFromGraph(graph *analysispb.CqueryResult) ([]string, map[string]string, error) {
+	labels := make([]string, 0, len(graph.Results))
+	for _, configuredTarget := range graph.Results {
+		if configuredTarget.Target.GetType() != blaze_query.Target_SOURCE_FILE {
+			continue
+		}
+		labels = append(labels, configuredTarget.Target.SourceFile.GetName())
+	}
+	pathsByLabel, err := i.labelsToWatchMap(labels)
+	if err != nil {
+		return nil, nil, err
+	}
+	paths := make([]string, 0, len(pathsByLabel))
+	for _, label := range labels {
+		if path, ok := pathsByLabel[label]; ok {
+			paths = append(paths, path)
+		}
+	}
+	return paths, pathsByLabel, nil
+}
+
+func (i *IBazel) sourceOwnersFromGraph(graph *analysispb.CqueryResult, pathsByLabel map[string]string) (map[string][]string, bool) {
+	if len(i.directTargets) == 0 {
+		return nil, false
+	}
+
+	dependencies := make(map[string][]string)
+	sources := make(map[string]struct{})
+	locations := make(map[string]string)
+	for _, configuredTarget := range graph.Results {
+		target := configuredTarget.Target
+		switch target.GetType() {
+		case blaze_query.Target_RULE:
+			name := target.Rule.GetName()
+			dependencies[name] = append(dependencies[name], target.Rule.RuleInput...)
+			locations[name] = ruleLocationPath(target.Rule.GetLocation())
+		case blaze_query.Target_GENERATED_FILE:
+			dependencies[target.GeneratedFile.GetName()] = []string{target.GeneratedFile.GetGeneratingRule()}
+		case blaze_query.Target_SOURCE_FILE:
+			sources[target.SourceFile.GetName()] = struct{}{}
+		}
+	}
+
+	ownersByLabel := make(map[string]map[string]struct{})
+	ownersByLocation := make(map[string]map[string]struct{})
+	for _, root := range i.directTargets {
+		if _, ok := locations[root]; !ok {
+			continue
+		}
+		seen := make(map[string]struct{})
+		stack := []string{root}
+		for len(stack) > 0 {
+			label := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if _, ok := seen[label]; ok {
+				continue
+			}
+			seen[label] = struct{}{}
+			if location := locations[label]; location != "" {
+				if ownersByLocation[location] == nil {
+					ownersByLocation[location] = make(map[string]struct{})
+				}
+				ownersByLocation[location][root] = struct{}{}
+			}
+			if _, ok := sources[label]; ok {
+				if ownersByLabel[label] == nil {
+					ownersByLabel[label] = make(map[string]struct{})
+				}
+				ownersByLabel[label][root] = struct{}{}
+			}
+			stack = append(stack, dependencies[label]...)
+		}
+	}
+
+	ownersByPath := make(map[string]map[string]struct{}, len(pathsByLabel))
+	for label, path := range pathsByLabel {
+		resolved, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			continue
+		}
+		if ownersByPath[resolved] == nil {
+			ownersByPath[resolved] = make(map[string]struct{})
+		}
+		for owner := range ownersByLabel[label] {
+			ownersByPath[resolved][owner] = struct{}{}
+		}
+	}
+	workspacePath, err := i.workspaceFinder.FindWorkspace()
+	if err != nil {
+		log.Errorf("Error finding workspace for graph ownership: %v", err)
+		return nil, false
+	}
+	for location, owners := range ownersByLocation {
+		if !filepath.IsAbs(location) {
+			location = filepath.Join(workspacePath, location)
+		}
+		resolved, err := filepath.EvalSymlinks(location)
+		if err != nil {
+			continue
+		}
+		if ownersByPath[resolved] == nil {
+			ownersByPath[resolved] = make(map[string]struct{})
+		}
+		for owner := range owners {
+			ownersByPath[resolved][owner] = struct{}{}
+		}
+	}
+	result := make(map[string][]string, len(ownersByPath))
+	for path, owners := range ownersByPath {
+		for owner := range owners {
+			result[path] = append(result[path], owner)
+		}
+		sort.Strings(result[path])
+	}
+	return result, true
+}
+
+func ruleLocationPath(location string) string {
+	for range 2 {
+		index := strings.LastIndex(location, ":")
+		if index < 0 {
+			return ""
+		}
+		location = location[:index]
+	}
+	return location
 }
 
 func (i *IBazel) watchFiles(toWatch []string, watcher common.Watcher) {
@@ -674,6 +830,21 @@ func (i *IBazel) watchFiles(toWatch []string, watcher common.Watcher) {
 }
 
 func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
+	pathsByLabel, err := i.labelsToWatchMap(labels)
+	if err != nil {
+		return nil, err
+	}
+
+	toWatch := make([]string, 0, len(pathsByLabel))
+	for _, label := range labels {
+		if path, ok := pathsByLabel[label]; ok {
+			toWatch = append(toWatch, path)
+		}
+	}
+	return toWatch, nil
+}
+
+func (i *IBazel) labelsToWatchMap(labels []string) (map[string]string, error) {
 	localRepositories, err := i.realLocalRepositoryPaths()
 	if err != nil {
 		return nil, err
@@ -685,13 +856,14 @@ func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
 		return nil, err
 	}
 
-	toWatch := make([]string, 0, len(labels))
+	toWatch := make(map[string]string, len(labels))
 	for _, label := range labels {
+		original := label
 		if strings.HasPrefix(label, "@") {
 			repo, target := parseTarget(label)
 			if realPath, ok := localRepositories[repo]; ok {
 				label = strings.Replace(target, ":", string(filepath.Separator), 1)
-				toWatch = append(toWatch, filepath.Join(realPath, label))
+				toWatch[original] = filepath.Join(realPath, label)
 			}
 			continue
 		}
@@ -700,7 +872,7 @@ func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
 		}
 
 		label = strings.Replace(strings.TrimPrefix(label, "//"), ":", string(filepath.Separator), 1)
-		toWatch = append(toWatch, filepath.Join(workspacePath, label))
+		toWatch[original] = filepath.Join(workspacePath, label)
 	}
 
 	return toWatch, nil

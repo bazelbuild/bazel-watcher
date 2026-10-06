@@ -84,7 +84,7 @@ func (c *defaultCommand) Start() (*bytes.Buffer, error) {
 	return outputBuffer, nil
 }
 
-func (c *defaultCommand) NotifyOfChanges(_ []Change) *bytes.Buffer {
+func (c *defaultCommand) NotifyOfChanges(_ []Change, _ ChangeImpact) *bytes.Buffer {
 	c.Terminate()
 	c.Start()
 	return nil

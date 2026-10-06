@@ -19,39 +19,47 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
+	"github.com/bazelbuild/bazel-watcher/internal/ibazel/bep"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/process_group"
 )
 
 type notifyCommand struct {
-	target      string
-	startupArgs []string
-	bazelArgs   []string
-	args        []string
-	pg          process_group.ProcessGroup
-	stdin       io.WriteCloser
-	structured  bool
-	termSync    sync.Once
+	target       string
+	startupArgs  []string
+	bazelArgs    []string
+	args         []string
+	pg           process_group.ProcessGroup
+	stdin        io.WriteCloser
+	structured   bool
+	outputGroups []string
+	termSync     sync.Once
 }
 
 type buildEvent struct {
-	Version int      `json:"version"`
-	Type    string   `json:"type"`
-	Success bool     `json:"success"`
-	Changes []Change `json:"changes"`
+	Version                 int                     `json:"version"`
+	Type                    string                  `json:"type"`
+	Success                 bool                    `json:"success"`
+	Changes                 []Change                `json:"changes"`
+	AffectedTargets         []string                `json:"affected_targets,omitempty"`
+	AffectedTargetsComplete bool                    `json:"affected_targets_complete,omitempty"`
+	OutputGroups            map[string][]bep.Output `json:"output_groups,omitempty"`
+	OutputGroupsComplete    bool                    `json:"output_groups_complete,omitempty"`
 }
 
 // NotifyCommand is an alternate mode for starting a command. In this mode the
 // command will be notified on stdin that the source files have changed.
-func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string, structured bool) Command {
+func NotifyCommand(startupArgs []string, bazelArgs []string, target string, args []string, structured bool, outputGroups []string) Command {
 	return &notifyCommand{
-		startupArgs: startupArgs,
-		target:      target,
-		bazelArgs:   bazelArgs,
-		args:        args,
-		structured:  structured,
+		startupArgs:  startupArgs,
+		target:       target,
+		bazelArgs:    bazelArgs,
+		args:         args,
+		structured:   structured,
+		outputGroups: outputGroups,
 	}
 }
 
@@ -75,7 +83,7 @@ func (c *notifyCommand) Kill() {
 func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	b := bazelNew()
 	b.SetStartupArgs(c.startupArgs)
-	b.SetArguments(c.bazelArgs)
+	b.SetArguments(c.argumentsWithOutputGroups())
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -101,10 +109,16 @@ func (c *notifyCommand) Start() (*bytes.Buffer, error) {
 	return outputBuffer, nil
 }
 
-func (c *notifyCommand) NotifyOfChanges(changes []Change) *bytes.Buffer {
+func (c *notifyCommand) NotifyOfChanges(changes []Change, impact ChangeImpact) *bytes.Buffer {
 	b := bazelNew()
 	b.SetStartupArgs(c.startupArgs)
-	b.SetArguments(c.bazelArgs)
+	bepPath, cleanup := c.buildEventFile()
+	defer cleanup()
+	bazelArgs := c.argumentsWithOutputGroups()
+	if bepPath != "" {
+		bazelArgs = append(bazelArgs, "--build_event_json_file="+bepPath)
+	}
+	b.SetArguments(bazelArgs)
 
 	b.WriteToStderr(true)
 	b.WriteToStdout(true)
@@ -121,14 +135,15 @@ func (c *notifyCommand) NotifyOfChanges(changes []Change) *bytes.Buffer {
 		if err != nil {
 			log.Errorf("Error writing failure to stdin: %s", err)
 		}
-		c.writeBuildEvent(false, changes)
+		c.writeBuildEvent(false, changes, impact, nil, false)
 	} else {
 		log.Log("IBAZEL BUILD SUCCESS")
 		_, err := c.stdin.Write([]byte("IBAZEL_BUILD_COMPLETED SUCCESS\n"))
 		if err != nil {
 			log.Errorf("Error writing success to stdin: %v", err)
 		}
-		c.writeBuildEvent(true, changes)
+		outputGroups, complete := c.readOutputGroups(bepPath)
+		c.writeBuildEvent(true, changes, impact, outputGroups, complete)
 		if !c.IsSubprocessRunning() {
 			log.Log("Restarting process...")
 			c.Terminate()
@@ -138,15 +153,19 @@ func (c *notifyCommand) NotifyOfChanges(changes []Change) *bytes.Buffer {
 	return outputBuffer
 }
 
-func (c *notifyCommand) writeBuildEvent(success bool, changes []Change) {
+func (c *notifyCommand) writeBuildEvent(success bool, changes []Change, impact ChangeImpact, outputGroups map[string][]bep.Output, outputGroupsComplete bool) {
 	if !c.structured {
 		return
 	}
 	event, err := json.Marshal(buildEvent{
-		Version: 1,
-		Type:    "build_completed",
-		Success: success,
-		Changes: changes,
+		Version:                 1,
+		Type:                    "build_completed",
+		Success:                 success,
+		Changes:                 changes,
+		AffectedTargets:         impact.Targets,
+		AffectedTargetsComplete: impact.Complete,
+		OutputGroups:            outputGroups,
+		OutputGroupsComplete:    outputGroupsComplete,
 	})
 	if err != nil {
 		log.Errorf("Error encoding build event: %v", err)
@@ -155,6 +174,53 @@ func (c *notifyCommand) writeBuildEvent(success bool, changes []Change) {
 	if _, err := c.stdin.Write(append(append([]byte("IBAZEL_EVENT "), event...), '\n')); err != nil {
 		log.Errorf("Error writing build event to stdin: %v", err)
 	}
+}
+
+func (c *notifyCommand) argumentsWithOutputGroups() []string {
+	args := append([]string(nil), c.bazelArgs...)
+	if len(c.outputGroups) == 0 {
+		return args
+	}
+	groups := make([]string, 0, len(c.outputGroups))
+	for _, group := range c.outputGroups {
+		groups = append(groups, "+"+group)
+	}
+	return append(args, "--output_groups="+strings.Join(groups, ","))
+}
+
+func (c *notifyCommand) buildEventFile() (string, func()) {
+	if !c.structured || len(c.outputGroups) == 0 {
+		return "", func() {}
+	}
+	file, err := os.CreateTemp("", "ibazel-bep-*.json")
+	if err != nil {
+		log.Errorf("Error creating build event file: %v", err)
+		return "", func() {}
+	}
+	if err := file.Close(); err != nil {
+		log.Errorf("Error closing build event file: %v", err)
+		_ = os.Remove(file.Name())
+		return "", func() {}
+	}
+	return file.Name(), func() { _ = os.Remove(file.Name()) }
+}
+
+func (c *notifyCommand) readOutputGroups(path string) (map[string][]bep.Output, bool) {
+	if path == "" {
+		return nil, false
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		log.Errorf("Error opening build events: %v", err)
+		return nil, false
+	}
+	defer file.Close()
+	groups, err := bep.ReadOutputGroups(file, c.outputGroups)
+	if err != nil {
+		log.Errorf("Error reading build event output groups: %v", err)
+		return nil, false
+	}
+	return groups, true
 }
 
 func (c *notifyCommand) IsSubprocessRunning() bool {

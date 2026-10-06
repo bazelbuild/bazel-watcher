@@ -85,6 +85,7 @@ type mockCommand struct {
 
 	notifiedOfChanges bool
 	changes           []command.Change
+	impact            command.ChangeImpact
 	started           bool
 	terminated        bool
 
@@ -100,9 +101,10 @@ func (m *mockCommand) Start() (*bytes.Buffer, error) {
 	m.started = true
 	return nil, nil
 }
-func (m *mockCommand) NotifyOfChanges(changes []command.Change) *bytes.Buffer {
+func (m *mockCommand) NotifyOfChanges(changes []command.Change, impact command.ChangeImpact) *bytes.Buffer {
 	m.notifiedOfChanges = true
 	m.changes = changes
+	m.impact = impact
 	return nil
 }
 func (m *mockCommand) Terminate() {
@@ -224,24 +226,25 @@ func TestIBazelLoop(t *testing.T) {
 		}},
 	})
 	mockBazel.AddCQueryResponse(fmt.Sprintf("deps(set(%s))", target), &analysispb.CqueryResult{
-		Results: []*analysispb.ConfiguredTarget{{
-			Target: &blaze_query.Target{
-				Type: &ruleType,
-				Rule: &blaze_query.Rule{
-					Name: &target,
+		Results: []*analysispb.ConfiguredTarget{
+			{
+				Target: &blaze_query.Target{
+					Type: &ruleType,
+					Rule: &blaze_query.Rule{
+						Name:      &target,
+						RuleInput: []string{sourceFilePath},
+					},
 				},
 			},
-		}},
-	})
-	mockBazel.AddCQueryResponse(fmt.Sprintf("kind('source file', deps(set(%s)))", target), &analysispb.CqueryResult{
-		Results: []*analysispb.ConfiguredTarget{{
-			Target: &blaze_query.Target{
-				Type: &sourceFileType,
-				SourceFile: &blaze_query.SourceFile{
-					Name: &sourceFilePath,
+			{
+				Target: &blaze_query.Target{
+					Type: &sourceFileType,
+					SourceFile: &blaze_query.SourceFile{
+						Name: &sourceFilePath,
+					},
 				},
 			},
-		}},
+		},
 	})
 
 	outputBase := t.TempDir()
@@ -491,7 +494,7 @@ func TestIBazelRunStartsBeforeWatchQuery(t *testing.T) {
 	})
 
 	cmd := &mockCommand{}
-	commandNotifyCommand = func(_ []string, _ []string, _ string, _ []string, _ bool) command.Command {
+	commandNotifyCommand = func(_ []string, _ []string, _ string, _ []string, _ bool, _ []string) command.Command {
 		return cmd
 	}
 
@@ -518,18 +521,21 @@ func TestPrepareRunNegotiatesNotificationsAndInitialState(t *testing.T) {
 	defer func() { commandNotifyCommand = oldCommandNotifyCommand }()
 
 	for _, test := range []struct {
-		name         string
-		tags         []string
-		structured   bool
-		initialState State
+		name          string
+		tags          []string
+		structured    bool
+		initialState  State
+		outputGroups  []string
+		directTargets []string
 	}{
 		{name: "default", initialState: QUERY},
 		{name: "legacy", tags: []string{"ibazel_notify_changes"}, initialState: RUN},
-		{name: "structured", tags: []string{"ibazel_notify_changes", "ibazel_notify_changes_v1"}, structured: true, initialState: RUN},
+		{name: "structured", tags: []string{"ibazel_notify_changes", "ibazel_notify_changes_v1"}, structured: true, initialState: RUN, outputGroups: []string{"generated", "manifest"}, directTargets: []string{"//path/to:rpc", "//path/to:electron"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			i, mockBazel := newIBazel(t)
 			defer i.Cleanup()
+			i.SetNotifyOutputGroups("generated, manifest")
 
 			target := "//path/to:target"
 			attributeType := blaze_query.Attribute_STRING_LIST
@@ -538,26 +544,33 @@ func TestPrepareRunNegotiatesNotificationsAndInitialState(t *testing.T) {
 					Target: &blaze_query.Target{
 						Type: blaze_query.Target_RULE.Enum(),
 						Rule: &blaze_query.Rule{
-							Name: proto.String(target),
-							Attribute: []*blaze_query.Attribute{{
-								Name:            proto.String("tags"),
-								Type:            &attributeType,
-								StringListValue: test.tags,
-							}},
+							Name:      proto.String(target),
+							RuleInput: test.directTargets,
+							Attribute: []*blaze_query.Attribute{
+								{
+									Name:            proto.String("tags"),
+									Type:            &attributeType,
+									StringListValue: test.tags,
+								},
+							},
 						},
 					},
 				}},
 			})
 
 			var structured bool
-			commandNotifyCommand = func(_ []string, _ []string, _ string, _ []string, enabled bool) command.Command {
+			var outputGroups []string
+			commandNotifyCommand = func(_ []string, _ []string, _ string, _ []string, enabled bool, groups []string) command.Command {
 				structured = enabled
+				outputGroups = groups
 				return &mockCommand{}
 			}
 
 			i.prepareRun(target)
 			assertEqual(t, test.structured, structured, "Structured notification mode")
 			assertEqual(t, test.initialState, i.state, "Initial run state")
+			assertEqual(t, test.outputGroups, outputGroups, "Notification output groups")
+			assertEqual(t, test.directTargets, i.directTargets, "Direct targets")
 		})
 	}
 }
@@ -573,6 +586,78 @@ func TestChangeDetectedRecordsUniqueChanges(t *testing.T) {
 		{Path: "/workspace/path/to/BUILD", Kind: "graph"},
 	}
 	assertEqual(t, want, i.pendingChanges, "Unique changes for the current iteration")
+}
+
+func TestSourceOwnersDriveChangeImpact(t *testing.T) {
+	i, mockBazel := newIBazel(t)
+	defer i.Cleanup()
+
+	outputBase := t.TempDir()
+	if err := os.Mkdir(filepath.Join(outputBase, "external"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mockBazel.SetInfo(map[string]string{
+		"output_base":  outputBase,
+		"install_base": t.TempDir(),
+	})
+
+	rpcSource := filepath.Join(t.TempDir(), "rpc.rs")
+	electronSource := filepath.Join(t.TempDir(), "electron.ts")
+	sharedSource := filepath.Join(t.TempDir(), "shared.txt")
+	rpcBuild := filepath.Join(t.TempDir(), "BUILD.bazel")
+	for _, path := range []string{rpcSource, electronSource, sharedSource, rpcBuild} {
+		if err := os.WriteFile(path, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ruleType := blaze_query.Target_RULE
+	sourceType := blaze_query.Target_SOURCE_FILE
+	configuredRule := func(name string, inputs ...string) *analysispb.ConfiguredTarget {
+		return &analysispb.ConfiguredTarget{Target: &blaze_query.Target{
+			Type: &ruleType,
+			Rule: &blaze_query.Rule{Name: proto.String(name), RuleInput: inputs},
+		}}
+	}
+	configuredSource := func(name string) *analysispb.ConfiguredTarget {
+		return &analysispb.ConfiguredTarget{Target: &blaze_query.Target{
+			Type:       &sourceType,
+			SourceFile: &blaze_query.SourceFile{Name: proto.String(name)},
+		}}
+	}
+	rpcRule := configuredRule("//app:rpc", rpcSource, sharedSource)
+	rpcRule.Target.Rule.Location = proto.String(rpcBuild + ":1:1")
+	graph := &analysispb.CqueryResult{Results: []*analysispb.ConfiguredTarget{
+		rpcRule,
+		configuredRule("//app:electron", electronSource, sharedSource),
+		configuredSource(rpcSource),
+		configuredSource(electronSource),
+		configuredSource(sharedSource),
+	}}
+
+	i.directTargets = []string{"//app:rpc", "//app:electron"}
+	i.changeOwners, i.ownershipReady = i.sourceOwnersFromGraph(graph, map[string]string{
+		rpcSource:      rpcSource,
+		electronSource: electronSource,
+		sharedSource:   sharedSource,
+	})
+	resolved := func(path string) string {
+		result, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+	i.pendingChanges = []command.Change{{Path: resolved(rpcSource), Kind: "source"}}
+	assertEqual(t, command.ChangeImpact{Targets: []string{"//app:rpc"}, Complete: true}, i.changeImpact(), "RPC change impact")
+	i.pendingChanges = []command.Change{{Path: resolved(rpcBuild), Kind: "graph"}}
+	assertEqual(t, command.ChangeImpact{Targets: []string{"//app:rpc"}, Complete: true}, i.changeImpact(), "RPC graph impact")
+
+	i.pendingChanges = []command.Change{
+		{Path: resolved(sharedSource), Kind: "source"},
+		{Path: filepath.Join(t.TempDir(), "BUILD"), Kind: "graph"},
+	}
+	assertEqual(t, command.ChangeImpact{Targets: []string{"//app:electron", "//app:rpc"}, Complete: false}, i.changeImpact(), "Incomplete shared change impact")
 }
 
 func TestHandleSignals_SIGINTWithoutRunningCommand(t *testing.T) {

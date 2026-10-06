@@ -17,16 +17,66 @@ package command
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/bazel-watcher/internal/bazel"
 	mock_bazel "github.com/bazelbuild/bazel-watcher/internal/bazel/testing"
+	"github.com/bazelbuild/bazel-watcher/internal/ibazel/bep"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/log"
 	"github.com/bazelbuild/bazel-watcher/internal/ibazel/process_group"
+	"github.com/google/go-cmp/cmp"
 )
 
 type bufferWriteCloser struct {
 	bytes.Buffer
+}
+
+func TestNotifyCommandStructuredBuildEventWithOutputGroups(t *testing.T) {
+	stdin := &bufferWriteCloser{}
+	c := &notifyCommand{stdin: stdin, structured: true}
+	groups := map[string][]bep.Output{
+		"generated": {{Path: "bazel-out/bin/schema.ts", URI: "file:///execroot/bazel-out/bin/schema.ts", Digest: "abc123"}},
+	}
+
+	c.writeBuildEvent(true, nil, ChangeImpact{}, groups, true)
+
+	want := "IBAZEL_EVENT {\"version\":1,\"type\":\"build_completed\",\"success\":true,\"changes\":null,\"output_groups\":{\"generated\":[{\"path\":\"bazel-out/bin/schema.ts\",\"uri\":\"file:///execroot/bazel-out/bin/schema.ts\",\"digest\":\"abc123\"}]},\"output_groups_complete\":true}\n"
+	if got := stdin.String(); got != want {
+		t.Errorf("structured build event = %q, want %q", got, want)
+	}
+}
+
+func TestNotifyCommandOutputGroupArguments(t *testing.T) {
+	c := &notifyCommand{
+		bazelArgs:    []string{"--config=dev"},
+		outputGroups: []string{"generated", "manifest"},
+	}
+
+	want := []string{"--config=dev", "--output_groups=+generated,+manifest"}
+	if diff := cmp.Diff(want, c.argumentsWithOutputGroups()); diff != "" {
+		t.Errorf("argumentsWithOutputGroups() diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestNotifyCommandReadsOutputGroups(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bep.json")
+	contents := `{"id":{"namedSet":{"id":"outputs"}},"namedSetOfFiles":{"files":[{"name":"schema.ts","pathPrefix":["bazel-out","bin"]}]}}
+{"id":{"targetCompleted":{"label":"//app:dev"}},"completed":{"success":true,"outputGroup":[{"name":"generated","fileSets":[{"id":"outputs"}]}]}}`
+	if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := &notifyCommand{outputGroups: []string{"generated"}}
+
+	got, complete := c.readOutputGroups(path)
+	want := map[string][]bep.Output{"generated": {{Path: "bazel-out/bin/schema.ts"}}}
+	if !complete {
+		t.Fatal("readOutputGroups() marked valid BEP incomplete")
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("readOutputGroups() diff (-want +got):\n%s", diff)
+	}
 }
 
 func (b *bufferWriteCloser) Close() error { return nil }
@@ -39,9 +89,12 @@ func TestNotifyCommandStructuredBuildEvent(t *testing.T) {
 		{Path: "/workspace/frontend/BUILD", Kind: "graph"},
 	}
 
-	c.writeBuildEvent(true, changes)
+	c.writeBuildEvent(true, changes, ChangeImpact{
+		Targets:  []string{"//frontend:dev"},
+		Complete: true,
+	}, nil, false)
 
-	want := "IBAZEL_EVENT {\"version\":1,\"type\":\"build_completed\",\"success\":true,\"changes\":[{\"path\":\"/workspace/frontend/app.tsx\",\"kind\":\"source\"},{\"path\":\"/workspace/frontend/BUILD\",\"kind\":\"graph\"}]}\n"
+	want := "IBAZEL_EVENT {\"version\":1,\"type\":\"build_completed\",\"success\":true,\"changes\":[{\"path\":\"/workspace/frontend/app.tsx\",\"kind\":\"source\"},{\"path\":\"/workspace/frontend/BUILD\",\"kind\":\"graph\"}],\"affected_targets\":[\"//frontend:dev\"],\"affected_targets_complete\":true}\n"
 	if got := stdin.String(); got != want {
 		t.Errorf("structured build event = %q, want %q", got, want)
 	}
@@ -51,7 +104,7 @@ func TestNotifyCommandLegacyProtocolDoesNotWriteBuildEvent(t *testing.T) {
 	stdin := &bufferWriteCloser{}
 	c := &notifyCommand{stdin: stdin}
 
-	c.writeBuildEvent(true, []Change{{Path: "/workspace/app.ts", Kind: "source"}})
+	c.writeBuildEvent(true, []Change{{Path: "/workspace/app.ts", Kind: "source"}}, ChangeImpact{}, nil, false)
 
 	if got := stdin.String(); got != "" {
 		t.Errorf("legacy protocol wrote structured event %q", got)
@@ -86,11 +139,11 @@ func TestNotifyCommand(t *testing.T) {
 	bazelNew = func() bazel.Bazel { return b }
 	defer func() { bazelNew = oldBazelNew }()
 
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	b.BuildError(errors.New("Demo error"))
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	b.BuildError(nil)
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 
 	b.AssertActions(t, [][]string{
 		{"SetStartupArgs"},
@@ -154,14 +207,14 @@ func TestNotifyCommand_Restart(t *testing.T) {
 		t.Errorf("new subprocess shouldn't have been started yet. State: %v", pg.RootProcess().ProcessState)
 	}
 
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	if c.IsSubprocessRunning() {
 		t.Errorf("process should not start with build errors. State: %v", pg.RootProcess().ProcessState)
 	}
 
 	// Since the process isn't currently running, this should start it.
 	b.BuildError(nil)
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	if !c.IsSubprocessRunning() {
 		t.Errorf("subprocess should have started. State: %v", pg.RootProcess().ProcessState)
 	}
@@ -174,14 +227,14 @@ func TestNotifyCommand_Restart(t *testing.T) {
 	}
 
 	b.BuildError(errors.New("Demo error"))
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	if c.IsSubprocessRunning() {
 		t.Errorf("subprocess should not restart with build errors. State: %v", pg.RootProcess().ProcessState)
 	}
 
 	// Since the process isn't currently running, this should re-start it.
 	b.BuildError(nil)
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	if !c.IsSubprocessRunning() {
 		t.Errorf("subprocess should have been restarted. State: %v", pg.RootProcess().ProcessState)
 	}
@@ -191,7 +244,7 @@ func TestNotifyCommand_Restart(t *testing.T) {
 		t.Error("PIDs of restarted process should be different that original process")
 	}
 
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	if pid2 != c.pg.RootProcess().Process.Pid {
 		t.Error("non-dead process was restarted")
 	}

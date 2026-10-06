@@ -46,7 +46,7 @@ type Command interface {
 	Start() (*bytes.Buffer, error)
 	Terminate()
 	Kill()
-	NotifyOfChanges(changes []Change) *bytes.Buffer
+	NotifyOfChanges(changes []Change, impact ChangeImpact) *bytes.Buffer
 	IsSubprocessRunning() bool
 }
 
@@ -54,6 +54,12 @@ type Command interface {
 type Change struct {
 	Path string `json:"path"`
 	Kind string `json:"kind"`
+}
+
+// ChangeImpact describes which notification-mode child targets own a change.
+type ChangeImpact struct {
+	Targets  []string
+	Complete bool
 }
 
 // start will be called by most implementations since this logic is extremely

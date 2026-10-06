@@ -63,7 +63,7 @@ func TestDefaultCommand(t *testing.T) {
 	}
 
 	// This is synonymous with killing the job so use it to kill the job and test everything.
-	c.NotifyOfChanges(nil)
+	c.NotifyOfChanges(nil, ChangeImpact{})
 	assertKilled(t, toKill.RootProcess())
 }
 

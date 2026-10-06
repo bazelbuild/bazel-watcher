@@ -92,6 +92,7 @@ var overrideableBazelFlags []string = []string{
 
 var debounceDuration = flag.Duration("debounce", 100*time.Millisecond, "Debounce duration")
 var logToFile = flag.String("log_to_file", "-", "Log iBazel stderr to a file instead of os.Stderr")
+var notifyOutputGroups = flag.String("notify_output_groups", "", "Comma-separated Bazel output groups included in structured build notifications")
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `iBazel - Version %s
@@ -196,6 +197,7 @@ func main() {
 		log.Fatalf("Error creating iBazel: %s", err)
 	}
 	i.SetDebounceDuration(*debounceDuration)
+	i.SetNotifyOutputGroups(*notifyOutputGroups)
 	defer i.Cleanup()
 
 	// increase the number of files that this process can

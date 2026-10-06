@@ -25,6 +25,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/bazel",
+        "//internal/ibazel/bep",
         "//internal/ibazel/log",
         "//internal/ibazel/process_group",
     ],
@@ -43,7 +44,9 @@ go_test(
     deps = [
         "//internal/bazel",
         "//internal/bazel/testing",
+        "//internal/ibazel/bep",
         "//internal/ibazel/log",
         "//internal/ibazel/process_group",
+        "@com_github_google_go_cmp//cmp",
     ],
 )
