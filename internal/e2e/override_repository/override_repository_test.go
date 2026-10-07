@@ -42,6 +42,7 @@ sh_binary(
 #!/bin/bash
 source ../secondary/lib.sh
 say_hello
+-- MODULE.bazel --
 -- WORKSPACE --
 local_repository(
     name = "secondary",
