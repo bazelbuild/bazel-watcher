@@ -42,13 +42,17 @@ import (
 type fakeFSNotifyWatcher struct {
 	ErrorChan chan error
 	EventChan chan common.Event
+	Watched   []string
 }
 
 var _ common.Watcher = &fakeFSNotifyWatcher{}
 
-func (w *fakeFSNotifyWatcher) Close() error                   { return nil }
-func (w *fakeFSNotifyWatcher) UpdateAll(names []string) error { return nil }
-func (w *fakeFSNotifyWatcher) Events() chan common.Event      { return w.EventChan }
+func (w *fakeFSNotifyWatcher) Close() error { return nil }
+func (w *fakeFSNotifyWatcher) UpdateAll(names []string) error {
+	w.Watched = names
+	return nil
+}
+func (w *fakeFSNotifyWatcher) Events() chan common.Event { return w.EventChan }
 
 var oldCommandDefaultCommand = command.DefaultCommand
 
@@ -339,6 +343,148 @@ func TestIBazelLoop(t *testing.T) {
 	step() // Actually run the command
 	assertRun()
 	assertState(WAIT)
+}
+
+func mustWriteFile(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatalf("failed to create %s: %v", filepath.Dir(path), err)
+	}
+	if err := os.WriteFile(path, []byte(""), 0o600); err != nil {
+		t.Fatalf("failed to write %s: %v", path, err)
+	}
+}
+
+type watchNewFilesFixture struct {
+	i       *IBazel
+	source  *fakeFSNotifyWatcher
+	dir     string
+	builds  int
+	targets []string
+}
+
+func newWatchNewFilesFixture(t *testing.T) *watchNewFilesFixture {
+	t.Helper()
+	log.SetTesting(t)
+
+	i, _ := newIBazel(t)
+	t.Cleanup(i.Cleanup)
+	i.SetDebounceDuration(time.Millisecond)
+
+	source := &fakeFSNotifyWatcher{EventChan: make(chan common.Event, 1)}
+	i.sourceFileWatcher = source
+	i.buildFileWatcher = &fakeFSNotifyWatcher{EventChan: make(chan common.Event, 1)}
+
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing := filepath.Join(dir, "existing.ts")
+	mustWriteFile(t, existing)
+	if err := os.Mkdir(filepath.Join(dir, "unwatched"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	i.watchFiles([]string{existing}, source)
+	i.state = WAIT
+
+	return &watchNewFilesFixture{i: i, source: source, dir: dir, targets: []string{"//my:target"}}
+}
+
+func (f *watchNewFilesFixture) send(t *testing.T, op common.Op, path string) State {
+	t.Helper()
+	f.i.sourceFileWatcher.Events() <- common.Event{Op: op, Name: path}
+	f.step()
+	return f.i.state
+}
+
+func (f *watchNewFilesFixture) step() {
+	f.i.iteration("build", func(...string) (*bytes.Buffer, error) {
+		f.builds++
+		return nil, nil
+	}, f.targets, f.targets[0])
+}
+
+func (f *watchNewFilesFixture) buildUntilWait(t *testing.T) {
+	t.Helper()
+	for n := 0; f.i.state != WAIT; n++ {
+		if n > 5 {
+			t.Fatalf("stuck in state %s", f.i.state)
+		}
+		f.step()
+	}
+}
+
+func TestWatchNewFiles_editsToCreatedFileRebuild(t *testing.T) {
+	f := newWatchNewFilesFixture(t)
+	created := filepath.Join(f.dir, "created.ts")
+	mustWriteFile(t, created)
+
+	assertEqual(t, DEBOUNCE_RUN, f.send(t, common.Create, created), "Creating a file in a watched directory")
+	f.buildUntilWait(t)
+	assertEqual(t, 1, f.builds, "Builds after create")
+
+	assertEqual(t, DEBOUNCE_RUN, f.send(t, common.Write, created), "Editing the created file")
+	assertEqual(t, []command.Change{{Path: created, Kind: "source"}}, f.i.pendingChanges, "Pending changes")
+}
+
+func TestWatchNewFiles_ignoresEditorTempFilesAndUnwatchedDirectories(t *testing.T) {
+	for _, name := range []string{
+		".created.ts.swp",
+		"created.ts~",
+		"#created.ts#",
+		"created.ts___jb_tmp___",
+		filepath.Join("unwatched", "created.ts"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newWatchNewFilesFixture(t)
+			path := filepath.Join(f.dir, name)
+			mustWriteFile(t, path)
+
+			assertEqual(t, WAIT, f.send(t, common.Create, path), "Creating "+name)
+			assertEqual(t, WAIT, f.send(t, common.Write, path), "Editing "+name)
+		})
+	}
+}
+
+func TestWatchNewFiles_createdDirectoryIsWatchedRecursively(t *testing.T) {
+	f := newWatchNewFilesFixture(t)
+	sub := filepath.Join(f.dir, "sub")
+	nested := filepath.Join(sub, "deeper", "nested.ts")
+	mustWriteFile(t, nested)
+
+	assertEqual(t, DEBOUNCE_RUN, f.send(t, common.Create, sub), "Creating a directory in a watched directory")
+	f.buildUntilWait(t)
+
+	want := map[string]bool{
+		f.dir + string(filepath.Separator):                        true,
+		sub + string(filepath.Separator):                          true,
+		filepath.Join(sub, "deeper") + string(filepath.Separator): true,
+	}
+	got := map[string]bool{}
+	for _, d := range f.source.Watched {
+		got[d] = true
+	}
+	assertEqual(t, want, got, "Watched directories")
+
+	assertEqual(t, DEBOUNCE_RUN, f.send(t, common.Write, nested), "Editing a file that existed when the directory was adopted")
+	f.buildUntilWait(t)
+
+	later := filepath.Join(sub, "deeper", "later.ts")
+	mustWriteFile(t, later)
+	assertEqual(t, DEBOUNCE_RUN, f.send(t, common.Create, later), "Creating a file in an adopted directory")
+}
+
+func TestWatchNewFiles_largeCreatedDirectoryRequeries(t *testing.T) {
+	f := newWatchNewFilesFixture(t)
+	big := filepath.Join(f.dir, "big")
+	for n := 0; n <= maxAdoptedPaths; n++ {
+		mustWriteFile(t, filepath.Join(big, fmt.Sprintf("f%d.ts", n)))
+	}
+
+	assertEqual(t, DEBOUNCE_QUERY, f.send(t, common.Create, big), "Creating a large directory")
+	if _, ok := f.i.filesWatched[f.source][filepath.Join(big, "f0.ts")]; ok {
+		t.Errorf("Files under a large directory should come from the requery, not adoption")
+	}
 }
 
 func TestIBazelBuild(t *testing.T) {

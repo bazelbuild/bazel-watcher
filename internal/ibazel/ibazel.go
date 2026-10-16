@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -89,6 +90,7 @@ type IBazel struct {
 	sourceFileWatcher common.Watcher
 
 	filesWatched map[common.Watcher]map[string]struct{} // Inner map is a surrogate for a set
+	dirsWatched  map[common.Watcher]map[string]struct{}
 
 	lifecycleListeners []Lifecycle
 	pendingChanges     []command.Change
@@ -106,6 +108,7 @@ func New(version string) (*IBazel, error) {
 
 	i.debounceDuration = 100 * time.Millisecond
 	i.filesWatched = map[common.Watcher]map[string]struct{}{}
+	i.dirsWatched = map[common.Watcher]map[string]struct{}{}
 	i.workspaceFinder = &workspace.MainWorkspace{}
 
 	i.sigs = make(chan os.Signal, 1)
@@ -302,7 +305,11 @@ func (i *IBazel) iteration(commandName string, commandToRun runnableCommand, tar
 	case WAIT:
 		select {
 		case e := <-i.sourceFileWatcher.Events():
-			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+			if i.adoptNewSourcePath(e) {
+				log.Logf("Too many new files under %q. Requerying...", e.Name)
+				i.changeDetected(targets, "graph", e.Name)
+				i.state = DEBOUNCE_QUERY
+			} else if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				log.Logf("Changed: %q. Rebuilding...", e.Name)
 				i.changeDetected(targets, "source", e.Name)
 				i.state = DEBOUNCE_RUN
@@ -346,10 +353,13 @@ func (i *IBazel) iteration(commandName string, commandToRun runnableCommand, tar
 	case DEBOUNCE_RUN:
 		select {
 		case e := <-i.sourceFileWatcher.Events():
-			if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
+			i.state = DEBOUNCE_RUN
+			if i.adoptNewSourcePath(e) {
+				i.changeDetected(targets, "graph", e.Name)
+				i.state = DEBOUNCE_QUERY
+			} else if _, ok := i.filesWatched[i.sourceFileWatcher][e.Name]; ok && e.Op&modifyingEvents != 0 {
 				i.changeDetected(targets, "source", e.Name)
 			}
-			i.state = DEBOUNCE_RUN
 		case <-time.After(i.debounceDuration):
 			i.state = RUN
 		}
@@ -671,6 +681,81 @@ func (i *IBazel) watchFiles(toWatch []string, watcher common.Watcher) {
 	}
 
 	i.filesWatched[watcher] = filesWatched
+	i.dirsWatched[watcher] = uniqueDirectories
+}
+
+const maxAdoptedPaths = 1000
+
+// adoptNewSourcePath watches a file or directory created directly inside a
+// watched source directory, so later edits to it trigger rebuilds. Bazel decides
+// whether the path is actually an input when it rebuilds. Directory keys keep the
+// trailing separator from filepath.Split so UpdateAll diffs against the same
+// strings it was given.
+func (i *IBazel) adoptNewSourcePath(e common.Event) (requery bool) {
+	if e.Op&common.Create == 0 {
+		return false
+	}
+	files := i.filesWatched[i.sourceFileWatcher]
+	if _, ok := files[e.Name]; ok {
+		return false
+	}
+	dirs := i.dirsWatched[i.sourceFileWatcher]
+	parent, name := filepath.Split(e.Name)
+	if _, ok := dirs[parent]; !ok || isEditorTempFile(name) {
+		return false
+	}
+	info, err := os.Lstat(e.Name)
+	if err != nil {
+		return false
+	}
+	if !info.IsDir() {
+		files[e.Name] = struct{}{}
+		return false
+	}
+
+	var newDirs, newFiles []string
+	err = filepath.WalkDir(e.Name, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if path != e.Name && isEditorTempFile(d.Name()) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			newDirs = append(newDirs, path+string(filepath.Separator))
+		} else {
+			newFiles = append(newFiles, path)
+		}
+		if len(newDirs)+len(newFiles) > maxAdoptedPaths {
+			return fs.SkipAll
+		}
+		return nil
+	})
+	if err != nil || len(newDirs)+len(newFiles) > maxAdoptedPaths {
+		return true
+	}
+
+	files[e.Name] = struct{}{}
+	for _, f := range newFiles {
+		files[f] = struct{}{}
+	}
+	for _, d := range newDirs {
+		dirs[d] = struct{}{}
+	}
+	if err := i.sourceFileWatcher.UpdateAll(keys(dirs)); err != nil {
+		log.Errorf("Error(s) updating watch list:\n %v", err)
+	}
+	return false
+}
+
+func isEditorTempFile(name string) bool {
+	return strings.HasPrefix(name, ".") ||
+		strings.HasSuffix(name, "~") ||
+		(len(name) > 1 && strings.HasPrefix(name, "#") && strings.HasSuffix(name, "#")) ||
+		strings.Contains(name, "___jb_")
 }
 
 func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
