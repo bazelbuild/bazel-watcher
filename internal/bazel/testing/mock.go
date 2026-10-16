@@ -37,8 +37,9 @@ type MockBazel struct {
 	startupArgs    []string
 	info           map[string]string
 
-	buildError error
-	waitError  error
+	buildError           error
+	waitError            error
+	dumpRepoMappingError error
 }
 
 func (b *MockBazel) Args() []string {
@@ -70,7 +71,13 @@ func (b *MockBazel) Info() (map[string]string, *bytes.Buffer, error) {
 }
 func (b *MockBazel) DumpRepoMapping(canonicalRepoName string) (map[string]string, *bytes.Buffer, error) {
 	b.actions = append(b.actions, []string{"DumpRepoMapping", canonicalRepoName})
+	if b.dumpRepoMappingError != nil {
+		return nil, nil, b.dumpRepoMappingError
+	}
 	return map[string]string{}, nil, nil
+}
+func (b *MockBazel) DumpRepoMappingError(e error) {
+	b.dumpRepoMappingError = e
 }
 func (b *MockBazel) AddQueryResponse(query string, res *blaze_query.QueryResult) {
 	if b.queryResponse == nil {
@@ -147,6 +154,18 @@ func (b *MockBazel) Wait() error {
 func (b *MockBazel) Cancel() {
 	b.actions = append(b.actions, []string{"Cancel"})
 }
+
+// ActionCount returns how many times the named action was invoked.
+func (b *MockBazel) ActionCount(name string) int {
+	count := 0
+	for _, action := range b.actions {
+		if action[0] == name {
+			count++
+		}
+	}
+	return count
+}
+
 func (b *MockBazel) AssertActions(t *testing.T, expected [][]string) {
 	t.Helper()
 

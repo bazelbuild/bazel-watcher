@@ -16,6 +16,7 @@ package ibazel
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -824,4 +825,65 @@ func TestIBazelConvertLabelsToPaths(t *testing.T) {
 		expectedToWatch = append(expectedToWatch, filepath.Join(repo, "second", "file"))
 	}
 	assertEqual(t, expectedToWatch, toWatch, "Resulting paths")
+}
+
+func TestQueryBazelInfoAndRepoMappingCalls(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("local repositories are not watched on windows")
+	}
+
+	for _, tc := range []struct {
+		name                string
+		repoMappingErr      error
+		wantRepoMappingRuns int
+	}{
+		{name: "bzlmod enabled", wantRepoMappingRuns: 2},
+		{name: "bzlmod disabled", repoMappingErr: bazel.ErrBzlmodDisabled, wantRepoMappingRuns: 1},
+		{name: "other repo mapping error", repoMappingErr: errors.New("server crashed"), wantRepoMappingRuns: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			log.SetTesting(t)
+
+			outputBase := t.TempDir()
+			if err := os.Mkdir(filepath.Join(outputBase, "external"), 0o700); err != nil {
+				t.Fatalf("failed to create external directory: %v", err)
+			}
+			repo := t.TempDir()
+			if err := os.Symlink(repo, filepath.Join(outputBase, "external", "repo")); err != nil {
+				t.Fatalf("failed to create symlink to repo: %v", err)
+			}
+
+			target := "//my:target"
+			mockBazel := &mock_bazel.MockBazel{}
+			mockBazel.SetInfo(map[string]string{
+				"output_base":  outputBase,
+				"install_base": t.TempDir(),
+			})
+			mockBazel.DumpRepoMappingError(tc.repoMappingErr)
+			mockBazel.AddCQueryResponse(fmt.Sprintf("deps(set(%s))", target), &analysispb.CqueryResult{})
+			mockBazel.AddQueryResponse("buildfiles(set())", &blaze_query.QueryResult{})
+			mockBazel.AddCQueryResponse(fmt.Sprintf("kind('source file', deps(set(%s)))", target), &analysispb.CqueryResult{})
+			bazelNew = func() bazel.Bazel {
+				return mockBazel
+			}
+
+			i, err := New("testing")
+			if err != nil {
+				t.Fatalf("Error creating IBazel: %s", err)
+			}
+			defer i.Cleanup()
+			i.workspaceFinder = &workspace.FakeWorkspace{}
+			i.buildFileWatcher = &fakeFSNotifyWatcher{EventChan: make(chan common.Event)}
+			i.sourceFileWatcher = &fakeFSNotifyWatcher{EventChan: make(chan common.Event)}
+
+			for range 2 {
+				i.state = QUERY
+				i.iteration("build", nil, []string{target}, target)
+			}
+
+			assertEqual(t, 1, mockBazel.ActionCount("Info"), "bazel info runs")
+			assertEqual(t, tc.wantRepoMappingRuns, mockBazel.ActionCount("DumpRepoMapping"), "bazel mod dump_repo_mapping runs")
+			assertEqual(t, map[string]string{"repo": repo}, i.localRepositories, "Local repositories")
+		})
+	}
 }

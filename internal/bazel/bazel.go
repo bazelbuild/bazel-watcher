@@ -278,6 +278,9 @@ func (b *bazel) processInfo(info string) (map[string]string, error) {
 	return output, nil
 }
 
+// ErrBzlmodDisabled is returned by DumpRepoMapping when Bzlmod is disabled.
+var ErrBzlmodDisabled = errors.New("bzlmod is disabled")
+
 // Returns a mapping of apparent to canonical repository names under the given
 // repository. The root repository is denoted by an empty string.
 func (b *bazel) DumpRepoMapping(canonicalRepoName string) (map[string]string, *bytes.Buffer, error) {
@@ -287,6 +290,9 @@ func (b *bazel) DumpRepoMapping(canonicalRepoName string) (map[string]string, *b
 
 	err := b.cmd.Run()
 	if err != nil {
+		if strings.Contains(stderrBuffer.String(), "Bzlmod has to be enabled") {
+			return nil, nil, ErrBzlmodDisabled
+		}
 		return nil, nil, err
 	}
 	var result map[string]string

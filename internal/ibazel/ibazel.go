@@ -90,6 +90,10 @@ type IBazel struct {
 
 	filesWatched map[common.Watcher]map[string]struct{} // Inner map is a surrogate for a set
 
+	info              map[string]string
+	localRepositories map[string]string // Reset at the start of each query
+	bzlmodDisabled    bool
+
 	lifecycleListeners []Lifecycle
 	pendingChanges     []command.Change
 	executionMode      executionMode
@@ -126,6 +130,7 @@ func New(version string) (*IBazel, error) {
 	}
 
 	info, stderrBuffer, _ := i.getInfo()
+	i.info = info
 	for _, l := range i.lifecycleListeners {
 		l.Initialize(&info, stderrBuffer)
 	}
@@ -327,6 +332,7 @@ func (i *IBazel) iteration(commandName string, commandToRun runnableCommand, tar
 	case QUERY:
 		// Query for which files to watch.
 		log.Logf("Querying for files to watch...")
+		i.localRepositories = nil
 
 		toWatchBuildFiles, err := i.queryForBuildFiles(joinedTargets)
 		if err != nil {
@@ -539,10 +545,41 @@ func (i *IBazel) getInfo() (map[string]string, *bytes.Buffer, error) {
 	return res, stderrBuffer, nil
 }
 
+func (i *IBazel) cachedInfo() (map[string]string, error) {
+	if _, ok := i.info["output_base"]; !ok {
+		info, _, err := i.getInfo()
+		if err != nil {
+			return nil, err
+		}
+		i.info = info
+	}
+	return i.info, nil
+}
+
+func (i *IBazel) localRepositoryPaths() (map[string]string, error) {
+	if i.localRepositories == nil {
+		localRepositories, err := i.realLocalRepositoryPaths()
+		if err != nil {
+			return nil, err
+		}
+		i.localRepositories = localRepositories
+	}
+	return i.localRepositories, nil
+}
+
 func (i *IBazel) dumpRootRepoMapping() (map[string]string, *bytes.Buffer, error) {
+	if i.bzlmodDisabled {
+		return map[string]string{}, nil, nil
+	}
+
 	b := i.newBazel()
 
 	res, stderr, err := b.DumpRepoMapping("")
+	if errors.Is(err, bazel.ErrBzlmodDisabled) {
+		// Without Bzlmod, apparent and canonical repository names are the same.
+		i.bzlmodDisabled = true
+		return map[string]string{}, nil, nil
+	}
 	if err != nil {
 		log.Errorf("Error dumping Bazel repo mapping: %v", err)
 		return nil, nil, err
@@ -583,7 +620,7 @@ func (i *IBazel) queryForBuildFiles(targets string) ([]string, error) {
 		return nil, err
 	}
 
-	localRepositories, err := i.realLocalRepositoryPaths()
+	localRepositories, err := i.localRepositoryPaths()
 	if err != nil {
 		return nil, err
 	}
@@ -674,7 +711,7 @@ func (i *IBazel) watchFiles(toWatch []string, watcher common.Watcher) {
 }
 
 func (i *IBazel) labelsToWatch(labels []string) ([]string, error) {
-	localRepositories, err := i.realLocalRepositoryPaths()
+	localRepositories, err := i.localRepositoryPaths()
 	if err != nil {
 		return nil, err
 	}
